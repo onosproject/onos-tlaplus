@@ -1,26 +1,40 @@
 ------------------------------- MODULE E2Node -------------------------------
 
-EXTENDS Naturals, FiniteSets, Sequences, TLC, Messages
+EXTENDS RIC, SB
 
 \* The set of all E2 nodes
-CONSTANT Node
+CONSTANT E2Node
 
 ----
 
-SendE2SetupRequest(n, c) ==
-    /\ Send(c, [type |-> E2SetupRequest])
+InitE2NodeVars == TRUE
+
+----
+
+E2NodeSendE2SetupRequest(n, c) ==
+    /\ SBSend(c, [type |-> E2Setup])
     /\ UNCHANGED <<>>
 
-HandleE2SetupResponse(n, c, m) ==
-    /\ Receive(c)
+E2NodeHandleE2SetupResponse(n, c, m) ==
+    /\ SBReceive(c)
     /\ UNCHANGED <<>>
 
-HandleMessage(c, m) ==
-    /\ \/ /\ m.type = E2SetupRequest
-          /\ HandleE2SetupResponse(connections[c].e2node, c, m)
-    /\ UNCHANGED <<>>
+E2NodeHandleMessage(c) ==
+    /\ Len(sbConn[c].messages) > 0
+    /\ LET m == sbConn[c].messages[1] IN
+           /\ \/ /\ m.type = E2SetupResponse
+                 /\ E2NodeHandleE2SetupResponse(sbConn[c].e2node, c, m)
+           /\ UNCHANGED <<>>
+
+----
+
+E2NodeNext ==
+    \/ \E n \in E2Node, r \in RICNode : 
+          SBConnect(n, r)
+    \/ \E c \in DOMAIN sbConn : 
+          E2NodeHandleMessage(c)
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 03 17:02:35 PDT 2021 by jordanhalterman
+\* Last modified Tue Aug 03 18:55:15 PDT 2021 by jordanhalterman
 \* Created Mon Jul 26 10:00:09 PDT 2021 by jordanhalterman
