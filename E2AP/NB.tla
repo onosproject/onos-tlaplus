@@ -1,44 +1,50 @@
 ------------------------------ MODULE NB ------------------------------
 
-EXTENDS Naturals, Sequences, TLC, Messages
+LOCAL INSTANCE Naturals
+
+LOCAL INSTANCE Sequences
+
+LOCAL INSTANCE TLC
+
+CONSTANT Nil
 
 \* Message type constants
 CONSTANT 
     SubscribeRequest,
     SubscribeResponse
 
-VARIABLE nbConn
+VARIABLE conn
 
-VARIABLE nbConnId
-
-----
-
-InitNBVars ==
-    /\ nbConn = [c \in {} |-> [app |-> Nil, appnode |-> Nil, ricnode |-> Nil, messages |-> <<>>]]
+VARIABLE connId
 
 ----
 
-NBSend(c, m) == nbConn' = [nbConn EXCEPT ![c] = [nbConn[c] EXCEPT !.messages = Append(nbConn[c].messages, m)]]
-
-NBReceive(c) == nbConn' = [nbConn EXCEPT ![c] = [nbConn[c] EXCEPT !.messages = SubSeq(nbConn[c].messages, 2, Len(nbConn[c].messages))]]
-
-NBReply(c, m) == nbConn' = [nbConn EXCEPT ![c] = [nbConn[c] EXCEPT !.messages = Append(SubSeq(nbConn[c].messages, 2, Len(nbConn[c].messages)), m)]]
+Init ==
+    /\ conn = [c \in {} |-> [app |-> Nil, appnode |-> Nil, ricnode |-> Nil, messages |-> <<>>]]
 
 ----
 
-NBConnect(app, appnode, ricnode) ==
-    /\ nbConnId' = nbConnId + 1
-    /\ nbConn' = nbConn @@ (nbConnId' :> [app |-> app, appnode |-> appnode, ricnode |-> ricnode, messages |-> <<>>])
+Send(c, m) == conn' = [conn EXCEPT ![c] = [conn[c] EXCEPT !.messages = Append(conn[c].messages, m)]]
 
-NBDisconnect(id) ==
-    /\ nbConn' = [c \in {v \in DOMAIN nbConn : v # id} |-> nbConn[c]]
+Receive(c) == conn' = [conn EXCEPT ![c] = [conn[c] EXCEPT !.messages = SubSeq(conn[c].messages, 2, Len(conn[c].messages))]]
+
+Reply(c, m) == conn' = [conn EXCEPT ![c] = [conn[c] EXCEPT !.messages = Append(SubSeq(conn[c].messages, 2, Len(conn[c].messages)), m)]]
 
 ----
 
-NBNext ==
-    \/ \E c \in DOMAIN nbConn : NBDisconnect(c)
+Connect(app, appnode, ricnode) ==
+    /\ connId' = connId + 1
+    /\ conn' = conn @@ (connId' :> [app |-> app, appnode |-> appnode, ricnode |-> ricnode, messages |-> <<>>])
+
+Disconnect(id) ==
+    /\ conn' = [c \in {v \in DOMAIN conn : v # id} |-> conn[c]]
+
+----
+
+Next ==
+    \/ \E c \in DOMAIN conn : Disconnect(c)
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 03 18:57:18 PDT 2021 by jordanhalterman
+\* Last modified Tue Aug 10 04:33:16 PDT 2021 by jordanhalterman
 \* Created Mon Jul 26 10:01:02 PDT 2021 by jordanhalterman

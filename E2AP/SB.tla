@@ -1,104 +1,47 @@
 ------------------------------ MODULE SB ------------------------------
 
-EXTENDS Naturals, Sequences, TLC, Messages
+EXTENDS Protocol
 
-\* Message type constants
-CONSTANT 
-    E2Setup,
-    E2SetupResponse,
-    E2SetupFailure
-CONSTANT
-    ResetRequest,
-    ResetResponse
-CONSTANT
-    RICSubscriptionRequest,
-    RICSubscriptionResponse,
-    RICSubscriptionFailure
-CONSTANT
-    RICSubscriptionDeleteRequest,
-    RICSubscriptionDeleteResponse,
-    RICSubscriptionDeleteFailure
-CONSTANT
-    RICControlRequest,
-    RICControlResponse,
-    RICControlFailure,
-    RICServiceUpdate
-CONSTANT
-    E2ConnectionUpdate,
-    E2ConnectionUpdateAcknowledge,
-    E2ConnectionUpdateFailure
-CONSTANT
-    E2NodeConfigurationUpdate,
-    E2NodeConfigurationUpdateAcknowledge,
-    E2NodeConfigurationUpdateFailure
+LOCAL INSTANCE Naturals
 
-\* Failure cause constants
-CONSTANT
-    MiscFailureUnspecified,
-    MiscFailureControlProcessingOverload,
-    MiscFailureHardwareFailure,
-    MiscFailureOMIntervention
-CONSTANT
-    ProtocolFailureUnspecified,
-    ProtocolFailureTransferSyntaxError,
-    ProtocolFailureAbstractSyntaxErrorReject,
-    ProtocolFailureAbstractSyntaxErrorIgnoreAndNotify,
-    ProtocolFailureMessageNotCompatibleWithReceiverState,
-    ProtocolFailureSemanticError,
-    ProtocolFailureAbstractSyntaxErrorFalselyConstructedMessage
-CONSTANT
-    RICFailureUnspecified,
-    RICFailureRANFunctionIDInvalid,
-    RICFailureActionNotSupported,
-    RICFailureExcessiveActions,
-    RICFailureDuplicateAction,
-    RICFailureDuplicateEvent,
-    RICFailureFunctionResourceLimit,
-    RICFailureRequestIDUnknown,
-    RICFailureInconsistentActionSubsequentActionSequence,
-    RICFailureControlMessageInvalid,
-    RICFailureCallProcessIDInvalid
-CONSTANT
-    RICServiceFailureUnspecified,
-    RICServiceFailureFunctionNotRequired,
-    RICServiceFailureExcessiveFunctions,
-    RICServiceFailureRICResourceLimit
-CONSTANT
-    TransportFailureUnspecified,
-    TransportFailureTransportResourceUnavailable
+LOCAL INSTANCE Sequences
 
-VARIABLE sbConn
+LOCAL INSTANCE TLC
 
-VARIABLE sbConnId
+CONSTANT Nil
+
+VARIABLE conn
+
+VARIABLE connId
 
 ----
 
-InitSBVars ==
-    /\ sbConn = [c \in {} |-> [e2node |-> Nil, ricnode |-> Nil, messages |-> <<>>]]
+Init ==
+    /\ conn = [c \in {} |-> [e2node |-> Nil, ricnode |-> Nil, messages |-> <<>>]]
 
 ----
 
-SBSend(c, m) == sbConn' = [sbConn EXCEPT ![c] = [sbConn[c] EXCEPT !.messages = Append(sbConn[c].messages, m)]]
+Send(c, m) == conn' = [conn EXCEPT ![c] = [conn[c] EXCEPT !.messages = Append(conn[c].messages, m)]]
 
-SBReceive(c) == sbConn' = [sbConn EXCEPT ![c] = [sbConn[c] EXCEPT !.messages = SubSeq(sbConn[c].messages, 2, Len(sbConn[c].messages))]]
+Receive(c) == conn' = [conn EXCEPT ![c] = [conn[c] EXCEPT !.messages = SubSeq(conn[c].messages, 2, Len(conn[c].messages))]]
 
-SBReply(c, m) == sbConn' = [sbConn EXCEPT ![c] = [sbConn[c] EXCEPT !.messages = Append(SubSeq(sbConn[c].messages, 2, Len(sbConn[c].messages)), m)]]
-
-----
-
-SBConnect(e2node, ricnode) ==
-    /\ sbConnId' = sbConnId + 1
-    /\ sbConn' = sbConn @@ (sbConnId' :> [e2node |-> e2node, ricnode |-> ricnode, messages |-> <<>>])
-
-SBDisconnect(id) ==
-    /\ sbConn' = [c \in {v \in DOMAIN sbConn : v # id} |-> sbConn[c]]
+Reply(c, m) == conn' = [conn EXCEPT ![c] = [conn[c] EXCEPT !.messages = Append(SubSeq(conn[c].messages, 2, Len(conn[c].messages)), m)]]
 
 ----
 
-SBNext ==
-    \/ \E c \in DOMAIN sbConn : SBDisconnect(c)
+Connect(e2node, ricnode) ==
+    /\ connId' = connId + 1
+    /\ conn' = conn @@ (connId' :> [e2node |-> e2node, ricnode |-> ricnode, messages |-> <<>>])
+
+Disconnect(id) ==
+    /\ conn' = [c \in {v \in DOMAIN conn : v # id} |-> conn[c]]
+
+----
+
+Next ==
+    \/ \E c \in DOMAIN conn : Disconnect(c)
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 03 18:57:12 PDT 2021 by jordanhalterman
+\* Last modified Tue Aug 10 04:49:43 PDT 2021 by jordanhalterman
 \* Created Mon Jul 26 10:01:02 PDT 2021 by jordanhalterman

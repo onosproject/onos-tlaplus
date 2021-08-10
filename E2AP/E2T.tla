@@ -1,34 +1,49 @@
 -------------------------------- MODULE E2T --------------------------------
 
-EXTENDS Naturals, FiniteSets, Sequences, TLC, NB, SB
+EXTENDS Protocol
+
+LOCAL INSTANCE Naturals
+
+LOCAL INSTANCE Sequences
+
+LOCAL INSTANCE FiniteSets
+
+LOCAL NB == INSTANCE NB
 
 \* The set of all E2T nodes
 CONSTANT E2TNode
 
+VARIABLE sbConnId, sbConn
+
+LOCAL SB == INSTANCE SB WITH Nil <- "", connId <- sbConnId, conn <- sbConn
+
 ----
 
-InitE2TVars == TRUE
+InitE2TVars == 
+    /\ SB!Init
+    /\ NB!Init
 
 ----
 
-E2THandleE2SetupRequest(n, c, m) ==
-    /\ SBReply(c, [type |-> E2SetupResponse])
+LOCAL E2THandleE2SetupRequest(n, c, m) ==
+    /\ SB!Reply(c, [type |-> E2SetupResponse])
     /\ UNCHANGED <<>>
 
-E2THandleMessage(c) ==
-    /\ Len(sbConn[c].messages) > 0
-    /\ LET m == sbConn[c].messages[1] IN
-           /\ \/ /\ m.type = E2Setup
-                 /\ E2THandleE2SetupRequest(sbConn[c].ricnode, c, m)
+LOCAL E2THandleMessage(c) ==
+    /\ Len(SB!conn[c].messages) > 0
+    /\ LET m == SB!conn[c].messages[1] IN
+           /\ \/ /\ m.type = SB!E2Setup
+                 /\ E2THandleE2SetupRequest(SB!conn[c].ricnode, c, m)
            /\ UNCHANGED <<>>
 
 ----
 
 E2TNext ==
-    \/ \E c \in DOMAIN sbConn : 
+    \/ SB!Next
+    \/ \E c \in DOMAIN SB!conn : 
           E2THandleMessage(c)
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 10 03:51:50 PDT 2021 by jordanhalterman
+\* Last modified Tue Aug 10 04:51:39 PDT 2021 by jordanhalterman
 \* Created Mon Jul 26 09:56:24 PDT 2021 by jordanhalterman
