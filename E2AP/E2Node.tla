@@ -1,6 +1,6 @@
 ------------------------------- MODULE E2Node -------------------------------
 
-EXTENDS RIC, SB
+EXTENDS E2T, SB
 
 \* The set of all E2 nodes
 CONSTANT E2Node
@@ -29,12 +29,12 @@ E2NodeHandleMessage(c) ==
 ----
 
 E2NodeNext ==
-    \/ \E n \in E2Node, r \in RICNode : 
+    \/ \E n \in E2Node, r \in E2TNode : 
           SBConnect(n, r)
     \/ \E c \in DOMAIN sbConn : 
           E2NodeHandleMessage(c)
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 03 18:55:15 PDT 2021 by jordanhalterman
+\* Last modified Tue Aug 10 03:52:20 PDT 2021 by jordanhalterman
 \* Created Mon Jul 26 10:00:09 PDT 2021 by jordanhalterman

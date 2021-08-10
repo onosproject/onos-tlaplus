@@ -1,12 +1,12 @@
 -------------------------------- MODULE E2AP --------------------------------
 
-EXTENDS App, RIC, E2Node
+EXTENDS App, E2T, E2Node
 
 ----
 
 Init ==
     /\ InitAppVars
-    /\ InitRICVars
+    /\ InitE2TVars
     /\ InitNBVars
     /\ InitE2NodeVars
     /\ InitSBVars
@@ -14,11 +14,11 @@ Init ==
 Next ==
     \/ AppNext
     \/ NBNext
-    \/ RICNext
+    \/ E2TNext
     \/ SBNext
     \/ E2NodeNext
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 03 18:54:13 PDT 2021 by jordanhalterman
+\* Last modified Tue Aug 10 03:51:57 PDT 2021 by jordanhalterman
 \* Created Mon Jul 26 09:32:11 PDT 2021 by jordanhalterman

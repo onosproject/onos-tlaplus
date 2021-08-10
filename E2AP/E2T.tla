@@ -1,34 +1,34 @@
--------------------------------- MODULE RIC --------------------------------
+-------------------------------- MODULE E2T --------------------------------
 
 EXTENDS Naturals, FiniteSets, Sequences, TLC, NB, SB
 
-\* The set of all RIC nodes
-CONSTANT RICNode
+\* The set of all E2T nodes
+CONSTANT E2TNode
 
 ----
 
-InitRICVars == TRUE
+InitE2TVars == TRUE
 
 ----
 
-RICHandleE2SetupRequest(n, c, m) ==
+E2THandleE2SetupRequest(n, c, m) ==
     /\ SBReply(c, [type |-> E2SetupResponse])
     /\ UNCHANGED <<>>
 
-RICHandleMessage(c) ==
+E2THandleMessage(c) ==
     /\ Len(sbConn[c].messages) > 0
     /\ LET m == sbConn[c].messages[1] IN
            /\ \/ /\ m.type = E2Setup
-                 /\ RICHandleE2SetupRequest(sbConn[c].ricnode, c, m)
+                 /\ E2THandleE2SetupRequest(sbConn[c].ricnode, c, m)
            /\ UNCHANGED <<>>
 
 ----
 
-RICNext ==
+E2TNext ==
     \/ \E c \in DOMAIN sbConn : 
-          RICHandleMessage(c)
+          E2THandleMessage(c)
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 03 18:56:14 PDT 2021 by jordanhalterman
+\* Last modified Tue Aug 10 03:51:50 PDT 2021 by jordanhalterman
 \* Created Mon Jul 26 09:56:24 PDT 2021 by jordanhalterman

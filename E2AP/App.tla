@@ -1,6 +1,6 @@
 ------------------------------- MODULE App -------------------------------
 
-EXTENDS RIC, NB
+EXTENDS E2T, NB
 
 \* The domain of all apps and their nodes
 CONSTANT App
@@ -30,12 +30,12 @@ AppNodeHandleMessage(c) ==
 
 AppNext ==
     \/ \E a \in DOMAIN App : 
-          \E n \in App[a], r \in RICNode : 
+          \E n \in App[a], r \in E2TNode : 
              NBConnect(a, n, r)
     \/ \E c \in DOMAIN nbConn : 
           AppNodeHandleMessage(c)
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 03 18:54:45 PDT 2021 by jordanhalterman
+\* Last modified Tue Aug 10 03:52:05 PDT 2021 by jordanhalterman
 \* Created Mon Jul 26 10:00:09 PDT 2021 by jordanhalterman
