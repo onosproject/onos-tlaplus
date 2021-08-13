@@ -27,9 +27,9 @@ CONSTANT Kind,
          Entity,
          Relation
 
-VARIABLES topoSbConn, topoSbConnId
+VARIABLES topoSbConn
 
-TopoSB == INSTANCE Messaging WITH Nil <- "<nil>", conn <- topoSbConn, connId <- topoSbConnId
+TopoSB == INSTANCE Messaging WITH Nil <- "<nil>", conn <- topoSbConn
 
 ----
 
@@ -70,7 +70,7 @@ TopoHandleMessage(c, m) ==
          /\ TopoHandleListRequest(c, m)
       \/ /\ m.type = WatchRequest
          /\ TopoHandleWatchRequest(c, m)
-   /\ UNCHANGED <<topoSbConnId>>
+   /\ UNCHANGED <<>>
 
 ----
 
@@ -83,5 +83,5 @@ TopoNext ==
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 10 06:37:13 PDT 2021 by jordanhalterman
+\* Last modified Thu Aug 12 17:19:10 PDT 2021 by jordanhalterman
 \* Created Tue Aug 10 04:55:19 PDT 2021 by jordanhalterman

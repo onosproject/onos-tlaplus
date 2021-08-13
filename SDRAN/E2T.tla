@@ -18,9 +18,9 @@ CONSTANTS
    UnsubscribeRequest,
    UnsubscribeResponse
    
-VARIABLES e2tNbConn, e2tNbConnId
+VARIABLES e2tNbConn
 
-E2TNB == INSTANCE Messaging WITH Nil <- "<nil>", conn <- e2tNbConn, connId <- e2tNbConnId
+E2TNB == INSTANCE Messaging WITH Nil <- "<nil>", conn <- e2tNbConn
 
 ----
 
@@ -89,9 +89,9 @@ CONSTANT
     TransportFailureUnspecified,
     TransportFailureTransportResourceUnavailable
 
-VARIABLES e2tSbConn, e2tSbConnId
+VARIABLES e2tSbConn
 
-E2TSB == INSTANCE Messaging WITH Nil <- "<nil>", conn <- e2tSbConn, connId <- e2tSbConnId
+E2TSB == INSTANCE Messaging WITH Nil <- "<nil>", conn <- e2tSbConn
 
 ----
 
@@ -135,5 +135,5 @@ E2TNext ==
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 10 06:31:08 PDT 2021 by jordanhalterman
+\* Last modified Thu Aug 12 17:18:53 PDT 2021 by jordanhalterman
 \* Created Tue Aug 10 04:55:45 PDT 2021 by jordanhalterman
