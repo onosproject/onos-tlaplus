@@ -1,20 +1,32 @@
 ------------------------------- MODULE SDRAN -------------------------------
 
-EXTENDS Topo, E2T, E2Node, xApp
+EXTENDS API
+
+CONSTANT E2TNodes
+
+E2T == INSTANCE E2T WITH Nodes <- E2TNodes
+
+CONSTANT E2Nodes
+
+E2Node == INSTANCE E2Node WITH Nodes <- E2Nodes
+
+CONSTANT xAppNodes
+
+xApp == INSTANCE xApp WITH Nodes <- xAppNodes
 
 Init ==
-   /\ TopoInit
-   /\ E2TInit
-   /\ E2NodeInit
-   /\ AppInit
+   /\ API!Init
+   /\ E2T!Init
+   /\ E2Node!Init
+   /\ xApp!Init
 
 Next ==
-   \/ TopoNext
-   \/ E2TNext
-   \/ E2NodeNext
-   \/ AppNext
+   \/ API!Next
+   \/ E2T!Next
+   \/ E2Node!Next
+   \/ xApp!Next
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 10 06:37:29 PDT 2021 by jordanhalterman
+\* Last modified Fri Aug 13 04:58:21 PDT 2021 by jordanhalterman
 \* Created Tue Aug 10 04:53:48 PDT 2021 by jordanhalterman

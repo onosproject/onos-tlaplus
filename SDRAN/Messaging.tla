@@ -12,38 +12,81 @@ LOCAL INSTANCE TLC
 
 CONSTANT Nil
 
-VARIABLES conn
+VARIABLE servers
+
+VARIABLE conns
+
+CONSTANT IsValid(_)
 
 ----
 
-Connections == {conn[c] : c \in DOMAIN conn}
+LOCAL Min(s) == CHOOSE x \in s : \A y \in s : x >= y
 
-Connect(n, m) ==
-   /\ LET connId == CHOOSE i \in 1..Cardinality(DOMAIN conn) : i \notin DOMAIN conn IN
-         /\ conn' = conn @@ (connId' :> [id |-> connId', src |-> n, dst |-> m, msgs |-> <<>>])
+LOCAL Max(s) == CHOOSE x \in s : \A y \in s : x <= y
 
-Disconnect(c) ==
-   /\ conn' = [x \in {y \in DOMAIN conn : y # c.id} |-> conn[x]]
+   ------------------------------ MODULE Client ----------------------------
+   
+   Connect(c, s) ==
+      LET maxId == Max(DOMAIN conns)
+          connId == Min({i \in 1..(maxId+1) : i \notin DOMAIN conns})
+      IN conns' = conns @@ (connId :> [id |-> connId, src |-> c, dst |-> s, req |-> <<>>, res |-> <<>>])
+   
+   Disconnect(c) ==
+      conns' = [x \in DOMAIN conns \ {c.id} |-> conns[x]]
+   
+   Send(c, m) == 
+      conns' = [conns EXCEPT ![c.id] = [conns[c.id] EXCEPT !.req = Append(conns[c.id].req, m)]]
+   
+   Receive(c) == 
+      conns' = [conns EXCEPT ![c.id] = [conns[c.id] EXCEPT !.res = SubSeq(conns[c.id].res, 2, Len(conns[c.id].res))]]
+   
+   Reply(c, m) == 
+      conns' = [conns' EXCEPT ![c.id] = [conns'[c.id] EXCEPT !.req = Append(conns'[c.id].req, m)]]
+   
+   Handle(c, f(_, _)) == Len(c.res) > 0 /\ f(c, c.res[1])
 
-Send(c, m) == 
-   /\ conn' = [conn EXCEPT ![c.id] = [conn[c.id] EXCEPT !.msgs = Append(conn[c.id].msgs, m)]]
+   =========================================================================
 
-Receive(c) == 
-   /\ conn' = [conn EXCEPT ![c.id] = [conn[c.id] EXCEPT !.msgs = SubSeq(conn[c.id].msgs, 2, Len(conn[c.id].msgs))]]
+Client == INSTANCE Client
 
-Reply(c, m) == 
-   /\ conn' = [conn EXCEPT ![c.id] = [conn[c.id] EXCEPT !.msgs = Append(SubSeq(conn[c.id].msgs, 2, Len(conn[c.id].msgs)), m)]]
+Connections == {conns[c] : c \in DOMAIN conns}
+   
+   ------------------------------ MODULE Server ----------------------------
+   
+   Start(s) ==
+      /\ servers' = servers \cup {s}
+      /\ UNCHANGED <<conns>>
+   
+   Stop(s) == 
+      /\ servers' = servers \ {s}
+      /\ conns' = [c \in DOMAIN conns \ {c \in conns : conns[c].dst # s} |-> conns[c]]
+   
+   Send(c, m) == 
+      conns' = [conns EXCEPT ![c.id] = [conns[c.id] EXCEPT !.res = Append(conns[c.id].res, m)]]
+   
+   Receive(c) == 
+      conns' = [conns EXCEPT ![c.id] = [conns[c.id] EXCEPT !.req = SubSeq(conns[c.id].req, 2, Len(conns[c.id].req))]]
+   
+   Reply(c, m) == 
+      conns' = [conns' EXCEPT ![c.id] = [conns'[c.id] EXCEPT !.res = Append(conns'[c.id].res, m)]]
+   
+   Handle(c, f(_, _)) == Len(c.req) > 0 /\ f(c, c.req[1])
+   
+   =========================================================================
 
-Handle(c, f(_, _)) == Len(c.msgs) > 0 /\ f(c, c.msgs[1])
+Servers == servers
+   
+Server == INSTANCE Server
 
 ----
 
-Init ==
-    /\ conn = [c \in {} |-> [e2n |-> Nil, e2t |-> Nil, msgs |-> <<>>]]
+Init == 
+   /\ conns = [c \in {} |-> [e2n |-> Nil, e2t |-> Nil, req |-> <<>>, res |-> <<>>]]
 
-Next == \E c \in DOMAIN conn : Disconnect(c)
+Next == 
+   \/ TRUE
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Aug 12 17:18:32 PDT 2021 by jordanhalterman
+\* Last modified Fri Aug 13 04:30:26 PDT 2021 by jordanhalterman
 \* Created Tue Aug 10 05:35:32 PDT 2021 by jordanhalterman

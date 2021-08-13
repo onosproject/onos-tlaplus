@@ -1,47 +1,65 @@
 -------------------------------- MODULE xApp --------------------------------
 
-EXTENDS E2T
+EXTENDS API
 
 LOCAL INSTANCE Naturals
 
 LOCAL INSTANCE Sequences
 
-CONSTANT AppNode
+CONSTANT Nodes
+
+   ------------------------------- MODULE SB ------------------------------
+   
+   SendSubscribeRequest(c) ==
+       /\ API!E2T!Client!Send(c, [type |-> API!E2T!Protocol.SubscribeRequest])
+       /\ UNCHANGED <<>>
+   
+   HandleSubscribeResponse(c, m) ==
+       /\ API!E2T!Client!Receive(c)
+       /\ UNCHANGED <<>>
+   
+   SendUnsubscribeRequest(c) ==
+       /\ API!E2T!Client!Send(c, [type |-> API!E2T!Protocol.UnsubscribeRequest])
+       /\ UNCHANGED <<>>
+   
+   HandleUnsubscribeResponse(c, m) ==
+       /\ API!E2T!Client!Receive(c)
+       /\ UNCHANGED <<>>
+   
+   HandleMessage(c, m) ==
+      /\ \/ /\ m.type = API!E2T!Protocol.SubscribeResponse
+            /\ HandleSubscribeResponse(c, m)
+         \/ /\ m.type = API!E2T!Protocol.UnsubscribeResponse
+            /\ HandleUnsubscribeResponse(c, m)
+      /\ UNCHANGED <<>>
+   
+   Handle(c) == API!E2T!Client!Handle(c, HandleMessage)
+   
+   Servers == API!E2T!Servers
+   
+   Connections == API!E2T!Connections
+    
+   Connect(s, d) == API!E2T!Client!Connect(s, d)
+
+   Init == TRUE
+   
+   Next ==
+       \/ \E s \in Nodes, d \in Servers : Connect(s, d)
+       \/ \E c \in Connections : Handle(c)
+      
+   ==========================================================================
+
+LOCAL SB == INSTANCE SB
 
 ----
 
-AppSendSubscribeRequest(c) ==
-    /\ E2TNB!Send(c, [type |-> SubscribeRequest])
-    /\ UNCHANGED <<>>
+Init ==
+   /\ SB!Init
 
-AppHandleSubscribeResponse(c, m) ==
-    /\ E2TNB!Receive(c)
-    /\ UNCHANGED <<>>
-
-AppSendUnsubscribeRequest(c) ==
-    /\ E2TNB!Send(c, [type |-> UnsubscribeRequest])
-    /\ UNCHANGED <<>>
-
-AppHandleUnsubscribeResponse(c, m) ==
-    /\ E2TNB!Receive(c)
-    /\ UNCHANGED <<>>
-
-AppHandleMessage(c, m) ==
-   /\ \/ /\ m.type = SubscribeResponse
-         /\ AppHandleSubscribeResponse(c, m)
-      \/ /\ m.type = UnsubscribeResponse
-         /\ AppHandleUnsubscribeResponse(c, m)
-   /\ UNCHANGED <<>>
-
-----
-
-AppInit == TRUE
-
-AppNext ==
-    \/ \E s \in AppNode, d \in E2TNode : E2TNB!Connect(s, d)
-    \/ \E c \in E2TNB!Connections : E2TNB!Handle(c, AppHandleMessage)
+Next ==
+   \/ SB!Next
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 10 06:36:57 PDT 2021 by jordanhalterman
+\* Last modified Fri Aug 13 04:57:31 PDT 2021 by jordanhalterman
 \* Created Tue Aug 10 04:55:35 PDT 2021 by jordanhalterman

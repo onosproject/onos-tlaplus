@@ -1,139 +1,101 @@
 -------------------------------- MODULE E2T --------------------------------
 
+EXTENDS API
+
 LOCAL INSTANCE Naturals
 
 LOCAL INSTANCE Sequences
 
 LOCAL INSTANCE TLC
 
-CONSTANT E2TNode
+CONSTANT Nodes
 
 ----
 
-\* Message type constants
-CONSTANT 
-   SubscribeRequest,
-   SubscribeResponse
-CONSTANTS
-   UnsubscribeRequest,
-   UnsubscribeResponse
+   ------------------------------- MODULE NB ------------------------------
    
-VARIABLES e2tNbConn
+   HandleSubscribeRequest(c, m) ==
+       /\ API!E2T!Server!Receive(c)
+       /\ API!E2T!Server!Reply(c, [type |-> API!E2T!Protocol.SubscribeResponse])
+       /\ UNCHANGED <<>>
+   
+   HandleUnsubscribeRequest(c, m) ==
+       /\ API!E2T!Server!Receive(c)
+       /\ API!E2T!Server!Reply(c, [type |-> API!E2T!Protocol.UnsubscribeResponse])
+       /\ UNCHANGED <<>>
+   
+   HandleMessage(c, m) ==
+      /\ \/ /\ m.type = API!E2T!Protocol.SubscribeRequest
+            /\ HandleSubscribeRequest(c, m)
+      /\ \/ /\ m.type = API!E2T!Protocol.UnsubscribeRequest
+            /\ HandleUnsubscribeRequest(c, m)
+      /\ UNCHANGED <<>>
+      
+   Handle(c) == API!E2T!Server!Handle(c, HandleMessage)
+   
+   Servers == API!E2T!Servers
+   
+   Connections == API!E2T!Connections
+    
+   Serve(s) == API!E2T!Server!Start(s)
+    
+   Stop(s) == API!E2T!Server!Stop(s)
+   
+   Init == TRUE
+   
+   Next ==
+       \/ \E s \in Nodes : Serve(s)
+       \/ \E s \in Servers : Stop(s)
+       \/ \E c \in Connections : Handle(c)
+      
+   ==========================================================================
 
-E2TNB == INSTANCE Messaging WITH Nil <- "<nil>", conn <- e2tNbConn
+LOCAL NB == INSTANCE NB
 
-----
+   ------------------------------- MODULE SB ------------------------------
+   
+   HandleE2Setup(c, m) ==
+       /\ API!E2AP!Server!Receive(c)
+       /\ API!E2AP!Server!Reply(c, [type |-> API!E2AP!Protocol.E2SetupResponse])
+       /\ UNCHANGED <<>>
+   
+   HandleMessage(c, m) ==
+      /\ \/ /\ m.type = API!E2AP!Protocol.E2Setup
+            /\ HandleE2Setup(c, m)
+      /\ UNCHANGED <<>>
+   
+   Handle(c) == API!E2AP!Server!Handle(c, HandleMessage)
+   
+   Servers == API!E2AP!Servers
+   
+   Connections == API!E2AP!Connections
+    
+   Serve(s) == API!E2AP!Server!Start(s)
+    
+   Stop(s) == API!E2AP!Server!Stop(s)
+   
+   Init == TRUE
+      
+   Next ==
+       \/ \E s \in Nodes : Serve(s)
+       \/ \E s \in Servers : Stop(s)
+       \/ \E c \in Connections : Handle(c)
+      
+   ==========================================================================
 
-\* Message type constants
-CONSTANT 
-    E2Setup,
-    E2SetupResponse,
-    E2SetupFailure
-CONSTANT
-    ResetRequest,
-    ResetResponse
-CONSTANT
-    RICSubscriptionRequest,
-    RICSubscriptionResponse,
-    RICSubscriptionFailure
-CONSTANT
-    RICSubscriptionDeleteRequest,
-    RICSubscriptionDeleteResponse,
-    RICSubscriptionDeleteFailure
-CONSTANT
-    RICControlRequest,
-    RICControlResponse,
-    RICControlFailure,
-    RICServiceUpdate
-CONSTANT
-    E2ConnectionUpdate,
-    E2ConnectionUpdateAcknowledge,
-    E2ConnectionUpdateFailure
-CONSTANT
-    E2NodeConfigurationUpdate,
-    E2NodeConfigurationUpdateAcknowledge,
-    E2NodeConfigurationUpdateFailure
-
-\* Failure cause constants
-CONSTANT
-    MiscFailureUnspecified,
-    MiscFailureControlProcessingOverload,
-    MiscFailureHardwareFailure,
-    MiscFailureOMIntervention
-CONSTANT
-    ProtocolFailureUnspecified,
-    ProtocolFailureTransferSyntaxError,
-    ProtocolFailureAbstractSyntaxErrorReject,
-    ProtocolFailureAbstractSyntaxErrorIgnoreAndNotify,
-    ProtocolFailureMessageNotCompatibleWithReceiverState,
-    ProtocolFailureSemanticError,
-    ProtocolFailureAbstractSyntaxErrorFalselyConstructedMessage
-CONSTANT
-    RICFailureUnspecified,
-    RICFailureRANFunctionIDInvalid,
-    RICFailureActionNotSupported,
-    RICFailureExcessiveActions,
-    RICFailureDuplicateAction,
-    RICFailureDuplicateEvent,
-    RICFailureFunctionResourceLimit,
-    RICFailureRequestIDUnknown,
-    RICFailureInconsistentActionSubsequentActionSequence,
-    RICFailureControlMessageInvalid,
-    RICFailureCallProcessIDInvalid
-CONSTANT
-    RICServiceFailureUnspecified,
-    RICServiceFailureFunctionNotRequired,
-    RICServiceFailureExcessiveFunctions,
-    RICServiceFailureRICResourceLimit
-CONSTANT
-    TransportFailureUnspecified,
-    TransportFailureTransportResourceUnavailable
-
-VARIABLES e2tSbConn
-
-E2TSB == INSTANCE Messaging WITH Nil <- "<nil>", conn <- e2tSbConn
+LOCAL SB == INSTANCE SB
 
 ----
 
-E2TNBHandleSubscribe(c, m) ==
-    /\ E2TNB!Reply(c, [type |-> SubscribeResponse])
-    /\ UNCHANGED <<>>
+Init ==
+   /\ SB!Init
+   /\ NB!Init
 
-E2TNBHandleUnsubscribe(c, m) ==
-    /\ E2TNB!Reply(c, [type |-> UnsubscribeResponse])
-    /\ UNCHANGED <<>>
-
-E2TNBHandleMessage(c, m) ==
-   /\ \/ /\ m.type = SubscribeRequest
-         /\ E2TNBHandleSubscribe(c, m)
-   /\ \/ /\ m.type = UnsubscribeRequest
-         /\ E2TNBHandleSubscribe(c, m)
-   /\ UNCHANGED <<>>
-
-----
-
-E2TSBHandleE2Setup(c, m) ==
-    /\ E2TSB!Reply(c, [type |-> E2SetupResponse])
-    /\ UNCHANGED <<>>
-
-E2TSBHandleMessage(c, m) ==
-   /\ \/ /\ m.type = E2Setup
-         /\ E2TSBHandleE2Setup(c, m)
-   /\ UNCHANGED <<>>
-
-----
-
-E2TInit ==
-   /\ E2TNB!Init
-   /\ E2TSB!Init
-
-E2TNext ==
-   \/ \E c \in E2TNB!Connections : E2TNB!Disconnect(c)
-   \/ \E c \in E2TSB!Connections : E2TSB!Disconnect(c)
-   \/ \E c \in E2TNB!Connections : E2TNB!Handle(c, E2TNBHandleMessage)
-   \/ \E c \in E2TSB!Connections : E2TSB!Handle(c, E2TSBHandleMessage)
+Next ==
+   \/ SB!Next
+   \/ NB!Next
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Aug 12 17:18:53 PDT 2021 by jordanhalterman
+\* Last modified Fri Aug 13 04:56:41 PDT 2021 by jordanhalterman
 \* Created Tue Aug 10 04:55:45 PDT 2021 by jordanhalterman
