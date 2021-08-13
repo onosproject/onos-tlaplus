@@ -145,9 +145,36 @@ LOCAL INSTANCE TLC
        RICServiceFailureRICResourceLimit,
        TransportFailureUnspecified,
        TransportFailureTransportResourceUnavailable}
+       
+       
+   CONSTANTS
+      Report,
+      Insert,
+      Policy
+      
+   CONSTANTS
+      ricService,
+      supportFunction,
+      both   
+ 
+   LOCAL actionTypes == {
+         Report,
+         Insert, 
+         Policy}
+         
+   LOCAL tnlAssociationUsage == {
+      ricService,
+      supportFunction,
+      both}    
    
    \* Failure causes should be defined as strings to simplify debugging
    ASSUME \A c \in failureCauses : c \in STRING
+   
+   Cause == [c \in failureCauses |-> c]
+   
+   ActionType == [a \in actionTypes |-> a]
+   
+   TnlAssociationUsage == [u \in tnlAssociationUsage |-> u]
    
       --------------------------- MODULE Messages --------------------------
       
@@ -213,47 +240,191 @@ LOCAL INSTANCE TLC
       to verify that steps adhere to the E2AP protocol specification.
       *)
       
-      LOCAL ValidE2SetupRequest(m) == TRUE
+      LOCAL ContainValidTransactionID(m) == 
+                /\ "transactionID" \in DOMAIN m 
+                /\ m.trasnactionID \in Nat 
+                /\ m.transactionID < 256
+   
+   
+      LOCAL ContainValidRANFunctionID(m) == 
+                 /\ "ranFunctionID" \in DOMAIN m 
+                 /\ m.ranFunctionID \in Nat 
+                 /\ m.ranFunctionID > 0 
+                 /\ m.ranFunctionID < 4096
+  
+      LOCAL ContainValidRANFunctionOID(m) == 
+                 /\ "ranFunctionOID" \in DOMAIN m
+                 /\  m.ranFunctionOID \in STRING
+                 
+   
+      LOCAL IsValidRANFunctionItem(ranFunctionItem) == 
+                 /\ ContainValidRANFunctionID(ranFunctionItem)
+                 /\ ContainValidRANFunctionOID(ranFunctionItem)
+   
+      LOCAL ContainValidRANFunctionList(m) == 
+                 /\  "ranFunctionList" \in DOMAIN m 
+                 /\ \A ranFunctionItem \in m.ranFunctionList : IsValidRANFunctionItem(ranFunctionItem)
+   
+   
+   
+      LOCAL ContainValidRICRequestID(m) == 
+         /\ "ricRequestID" \in DOMAIN m
+         /\ m.ricRequestID.requesterID \in Nat /\ m.ricRequestID.requesterID < 65536
+         /\ m.ricRequestID.instanceID \in Nat /\ m.ricRequestID.instanceID < 65536
+   
+   
+   
+      LOCAL ContainValidFailureCause(m) == 
+         /\ "cause" \in DOMAIN m  
+         /\  m.cause \in DOMAIN Cause  
+ 
+ 
+      LOCAL ContainValidActionID(m) == 
+         /\ "actionID" \in DOMAIN m
+         /\ m.actionID \in DOMAIN Nat 
+         /\ m.actionID < 256    
+          
+      LOCAL ContainValidActionType(m) == 
+         /\ "actionType" \in DOMAIN m
+         /\  m.actionType \in DOMAIN ActionType                    
+ 
+ 
+      LOCAL IsValidAction(m) == 
+         /\ ContainValidActionID(m)
+         /\ ContainValidActionType(m)  
+     
+     
+      LOCAL ContainValidTranportLayerInfo(m) == 
+         /\ "transportLayerInformation" \in DOMAIN m
+         /\ m.address \in DOMAIN STRING
+         /\ m.port \in DOMAIN Nat
+           
+     
+      LOCAL ContainValidTnlAssociationUsage(m) == 
+         /\ "tnlAssociationUsage" \in DOMAIN m
+         /\ m.tnlAssociationUsage \in DOMAIN TnlAssociationUsage
+             
+     
+      LOCAL IsValidConnectionToAddItem(m) == 
+         /\ ContainValidTranportLayerInfo(m)
+         /\ ContainValidTnlAssociationUsage(m)
+     
+           
+        
+      LOCAL ContainValidConnectionToAddList(m) == 
+         /\ "connectionAddToList" \in DOMAIN m
+         /\ \A connectionToAddItem \in m.connectionToAddList : IsValidConnectionToAddItem(connectionToAddItem) 
       
-      LOCAL ValidE2SetupResponse(m) == TRUE
       
-      LOCAL ValidE2SetupFailure(m) == TRUE
+      LOCAL ValidE2SetupRequest(m) == 
+         /\ IsE2SetupRequest(m)
+         /\ "globalE2NodeID" \in DOMAIN m /\ m.globalE2NodeID \in STRING
+         /\ "plmnID" \in DOMAIN m /\ m.plmnID \in Nat
+         /\ ContainValidRANFunctionList(m)
+         /\ ContainValidTransactionID(m)
       
-      LOCAL ValidResetRequest(m) == TRUE
+      LOCAL ValidE2SetupResponse(m) == 
+         /\ IsE2SetupResponse(m)
+         /\ ContainValidTransactionID(m)
       
-      LOCAL ValidResetResponse(m) == TRUE
+      LOCAL ValidE2SetupFailure(m) == 
+         /\ IsE2SetupFailure(m)
+         /\ ContainValidTransactionID(m)
+         /\ ContainValidFailureCause(m)
       
-      LOCAL ValidRICSubscriptionRequest(m) == TRUE
+      LOCAL ValidResetRequest(m) == 
+         /\ IsResetRequest(m)
+         /\ ContainValidTransactionID(m)
       
-      LOCAL ValidRICSubscriptionResponse(m) == TRUE
       
-      LOCAL ValidRICSubscriptionFailure(m) == TRUE
+      LOCAL ValidResetResponse(m) == 
+         /\ IsResetResponse(m)
+         /\ ContainValidTransactionID(m)
       
-      LOCAL ValidRICSubscriptionDeleteRequest(m) == TRUE
+      LOCAL ValidRICSubscriptionRequest(m) == 
+         /\ IsRICSubscriptionRequest(m)
+         /\ ContainValidRANFunctionID(m)
+         /\ ContainValidRICRequestID(m)
+         /\ "subscriptionDetails" \in DOMAIN m
+         /\ \A action \in m.subscriptionDetails.actions : IsValidAction(action)
       
-      LOCAL ValidRICSubscriptionDeleteResponse(m) == TRUE
+      LOCAL ValidRICSubscriptionResponse(m) == 
+         /\ IsRICSubscriptionResponse(m)
+         /\ ContainValidRANFunctionID(m)
+         /\ ContainValidRICRequestID(m)
       
-      LOCAL ValidRICSubscriptionDeleteFailure(m) == TRUE
+      LOCAL ValidRICSubscriptionFailure(m) == 
+         /\ IsRICSubscriptionFailure(m)
+         /\ ContainValidRANFunctionID(m)
+         /\ ContainValidRICRequestID(m)
+         /\ ContainValidFailureCause(m)
       
-      LOCAL ValidRICControlRequest(m) == TRUE
+      LOCAL ValidRICSubscriptionDeleteRequest(m) == 
+         /\ IsRICSubscriptionDeleteRequest(m)
+         /\ ContainValidRANFunctionID(m)
+         /\ ContainValidRICRequestID(m)
       
-      LOCAL ValidRICControlResponse(m) == TRUE
+      LOCAL ValidRICSubscriptionDeleteResponse(m) == 
+         /\ IsRICSubscriptionDeleteResponse(m)
+         /\ ContainValidRANFunctionID(m)
+         /\ ContainValidRICRequestID(m)
       
-      LOCAL ValidRICControlFailure(m) == TRUE
+      LOCAL ValidRICSubscriptionDeleteFailure(m) == 
+         /\ IsRICSubscriptionDeleteFailure(m)
+         /\ ContainValidRANFunctionID(m)
+         /\ ContainValidRICRequestID(m)
+         /\ ContainValidFailureCause(m)
       
-      LOCAL ValidRICServiceUpdate(m) == TRUE
+      LOCAL ValidRICControlRequest(m) == 
+         /\ IsRICControlRequest(m)
+         /\ ContainValidRANFunctionID(m)
+         /\ ContainValidRICRequestID(m)
+         /\ "controlHeader" \in DOMAIN m
+         /\ "controlMessage" \in DOMAIN m
       
-      LOCAL ValidE2ConnectionUpdate(m) == TRUE
+      LOCAL ValidRICControlResponse(m) == 
+         /\ IsRICControlResponse(m)
+         /\ ContainValidRANFunctionID(m)
+         /\ ContainValidRICRequestID(m)
       
-      LOCAL ValidE2ConnectionUpdateAcknowledge(m) == TRUE
+      LOCAL ValidRICControlFailure(m) == 
+         /\ IsRICControlFailure(m)
+         /\ ContainValidRANFunctionID(m)
+         /\ ContainValidRICRequestID(m)
+         /\ ContainValidFailureCause(m)
       
-      LOCAL ValidE2ConnectionUpdateFailure(m) == TRUE
+      LOCAL ValidRICServiceUpdate(m) == 
+         /\ IsRICServiceUpdate(m)
+         /\ ContainValidTransactionID(m)
       
-      LOCAL ValidE2NodeConfigurationUpdate(m) == TRUE
+      LOCAL ValidE2ConnectionUpdate(m) == 
+         /\ IsE2ConnectionUpdate(m)  
+         /\ ContainValidTransactionID(m)
+         /\ ContainValidConnectionToAddList(m)
+       \*/\ ContainValidConnectionToRemoveList(m)
+       \*/\ ContainValidConnectionTomModifyList(m)
       
-      LOCAL ValidE2NodeConfigurationUpdateAcknowledge(m) == TRUE
+      LOCAL ValidE2ConnectionUpdateAcknowledge(m) == 
+         /\ IsE2ConnectionUpdateAcknowledge(m)
+         /\ ContainValidTransactionID(m)
       
-      LOCAL ValidE2NodeConfigurationUpdateFailure(m) == TRUE
+      LOCAL ValidE2ConnectionUpdateFailure(m) == 
+         /\ IsE2ConnectionUpdateFailure(m)
+         /\ ContainValidTransactionID(m) 
+         /\ ContainValidFailureCause(m)
+      
+      LOCAL ValidE2NodeConfigurationUpdate(m) == 
+         /\ IsE2NodeConfigurationUpdate(m)
+         /\ ContainValidTransactionID(m) 
+      
+      LOCAL ValidE2NodeConfigurationUpdateAcknowledge(m) == 
+         /\ IsE2NodeConfigurationUpdateAcknowledge(m)
+         /\ ContainValidTransactionID(m) 
+      
+      LOCAL ValidE2NodeConfigurationUpdateFailure(m) == 
+         /\ IsE2NodeConfigurationUpdateFailure(m)
+         /\ ContainValidTransactionID(m)
+         /\ ContainValidFailureCause(m)
       
       ----
       
@@ -577,7 +748,13 @@ E2AP == INSTANCE E2AP WITH
    RICServiceFailureExcessiveFunctions <- "RICServiceFailureExcessiveFunctions",
    RICServiceFailureRICResourceLimit <- "RICServiceFailureRICResourceLimit",
    TransportFailureUnspecified <- "TransportFailureUnspecified",
-   TransportFailureTransportResourceUnavailable <- "TransportFailureTransportResourceUnavailable"
+   TransportFailureTransportResourceUnavailable <- "TransportFailureTransportResourceUnavailable",
+   Report <- "Report",
+   Insert <- "Insert",
+   Policy <- "Policy",
+   ricService <- "RicService",
+   supportFunction <- "SupportFunction",
+   both <- "Both"
 
    --------------------------- MODULE E2TService ---------------------------
    
@@ -1293,5 +1470,7 @@ Topo == INSTANCE TopoService WITH
 
 =============================================================================
 \* Modification History
+\* Last modified Fri Aug 13 18:00:43 PDT 2021 by adibrastegarnia
 \* Last modified Fri Aug 13 17:42:40 PDT 2021 by jordanhalterman
+\* Last modified Fri Aug 13 15:56:13 PDT 2021 by jordanhalterman
 \* Created Fri Aug 13 15:34:11 PDT 2021 by jordanhalterman
