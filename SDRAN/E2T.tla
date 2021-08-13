@@ -8,82 +8,73 @@ LOCAL INSTANCE Sequences
 
 LOCAL INSTANCE FiniteSets
 
-LOCAL INSTANCE TLC
-
 CONSTANT Nodes
+
+CONSTANT OK, Error
 
 ASSUME /\ IsFiniteSet(Nodes) 
        /\ \A n \in Nodes : n \in STRING
 
-   ------------------------------- MODULE NB ------------------------------
+   ------------------------------ MODULE Store -----------------------------
    
-   HandleSubscribeRequest(c, m) ==
-       /\ API!E2T!Server!Receive(c)
-       /\ API!E2T!Server!Reply(c, [type |-> API!E2T!Protocol.SubscribeResponse])
-       /\ UNCHANGED <<>>
+   CreateSubscription(s) == [status |-> OK]
    
-   HandleUnsubscribeRequest(c, m) ==
-       /\ API!E2T!Server!Receive(c)
-       /\ API!E2T!Server!Reply(c, [type |-> API!E2T!Protocol.UnsubscribeResponse])
-       /\ UNCHANGED <<>>
-   
-   HandleMessage(c, m) ==
-      /\ \/ /\ m.type = API!E2T!Protocol.SubscribeRequest
-            /\ HandleSubscribeRequest(c, m)
-      /\ \/ /\ m.type = API!E2T!Protocol.UnsubscribeRequest
-            /\ HandleUnsubscribeRequest(c, m)
-      /\ UNCHANGED <<>>
-      
-   Handle(c) == API!E2T!Server!Handle(c, HandleMessage)
-   
-   Servers == API!E2T!Servers
-   
-   Connections == API!E2T!Connections
-    
-   Serve(s) == API!E2T!Server!Start(s)
-    
-   Stop(s) == API!E2T!Server!Stop(s)
+   DeleteSubscription(s) == [status |-> OK]
    
    Init == TRUE
    
+   Next == FALSE
+
+   ========================================================================
+   
+LOCAL Store == INSTANCE Store
+   
+   ------------------------------- MODULE NB ------------------------------
+   
+   HandleSubscribeRequest(c, m) ==
+       /\ LET r == Store!CreateSubscription(m)
+          IN API!E2T!Server!Send!SubscribeResponse(c, r)
+       /\ UNCHANGED <<>>
+   
+   HandleUnsubscribeRequest(c, m) ==
+       /\ LET r == Store!DeleteSubscription(m)
+          IN API!E2T!Server!Send!UnsubscribeResponse(c, r)
+       /\ UNCHANGED <<>>
+   
+   HandleMessage(c, m) ==
+      /\ \/ API!E2T!Server!Receive!SubscribeRequest(c, HandleSubscribeRequest)
+         \/ API!E2T!Server!Receive!UnsubscribeRequest(c, HandleUnsubscribeRequest)
+      /\ UNCHANGED <<>>
+   
+   Init ==
+      /\ TRUE
+   
    Next ==
-       \/ \E s \in Nodes : Serve(s)
-       \/ \E s \in Servers : Stop(s)
-       \/ \E c \in Connections : Handle(c)
-      
+      \/ \E s \in Nodes : API!E2T!Server!Serve(s)
+      \/ \E s \in API!E2T!Servers : API!E2T!Server!Stop(s)
+      \/ \E c \in API!E2T!Connections :
+            \/ API!E2T!Server!Receive!SubscribeRequest(c, HandleSubscribeRequest)
+            \/ API!E2T!Server!Receive!UnsubscribeRequest(c, HandleUnsubscribeRequest)
+         
    ==========================================================================
 
 LOCAL NB == INSTANCE NB
 
    ------------------------------- MODULE SB ------------------------------
    
-   HandleE2Setup(c, m) ==
-       /\ API!E2AP!Server!Receive(c)
-       /\ API!E2AP!Server!Reply(c, [type |-> API!E2AP!Protocol.E2SetupResponse])
+   HandleE2SetupRequest(c, m) ==
+       /\ API!E2AP!Server!Send!E2SetupResponse(c, [status |-> OK])
        /\ UNCHANGED <<>>
    
-   HandleMessage(c, m) ==
-      /\ \/ /\ m.type = API!E2AP!Protocol.E2Setup
-            /\ HandleE2Setup(c, m)
-      /\ UNCHANGED <<>>
+   Init ==
+      /\ TRUE
    
-   Handle(c) == API!E2AP!Server!Handle(c, HandleMessage)
-   
-   Servers == API!E2AP!Servers
-   
-   Connections == API!E2AP!Connections
-    
-   Serve(s) == API!E2AP!Server!Start(s)
-    
-   Stop(s) == API!E2AP!Server!Stop(s)
-   
-   Init == TRUE
-      
    Next ==
-       \/ \E s \in Nodes : Serve(s)
-       \/ \E s \in Servers : Stop(s)
-       \/ \E c \in Connections : Handle(c)
-      
+      \/ \E s \in Nodes : API!E2AP!Server!Serve(s)
+      \/ \E s \in API!E2AP!Servers : API!E2AP!Server!Stop(s)
+      \/ \E c \in API!E2AP!Connections :
+            \/ API!E2AP!Server!Receive!E2SetupRequest(c, HandleE2SetupRequest)
+         
    ==========================================================================
 
 LOCAL SB == INSTANCE SB
@@ -93,12 +84,14 @@ LOCAL SB == INSTANCE SB
 Init ==
    /\ SB!Init
    /\ NB!Init
+   /\ Store!Init
 
 Next ==
    \/ SB!Next
    \/ NB!Next
+   \/ Store!Next
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 06:01:04 PDT 2021 by jordanhalterman
+\* Last modified Fri Aug 13 15:49:45 PDT 2021 by jordanhalterman
 \* Created Tue Aug 10 04:55:45 PDT 2021 by jordanhalterman

@@ -17,56 +17,57 @@ CONSTANT Nodes
 ASSUME /\ IsFiniteSet(Nodes) 
        /\ \A n \in Nodes : n \in STRING
 
+   ------------------------------ MODULE Store -----------------------------
+   
+   Init == TRUE
+   
+   Next == FALSE
+
+   ========================================================================
+   
+LOCAL Store == INSTANCE Store
+   
    ------------------------------- MODULE SB ------------------------------
    
    SendSubscribeRequest(c) ==
-       /\ API!E2T!Client!Send(c, [type |-> API!E2T!Protocol.SubscribeRequest])
-       /\ UNCHANGED <<>>
+      /\ API!E2T!Client!Send!SubscribeRequest(c, [foo |-> "bar"])
    
    HandleSubscribeResponse(c, m) ==
-       /\ API!E2T!Client!Receive(c)
-       /\ UNCHANGED <<>>
-   
-   SendUnsubscribeRequest(c) ==
-       /\ API!E2T!Client!Send(c, [type |-> API!E2T!Protocol.UnsubscribeRequest])
-       /\ UNCHANGED <<>>
-   
-   HandleUnsubscribeResponse(c, m) ==
-       /\ API!E2T!Client!Receive(c)
-       /\ UNCHANGED <<>>
-   
-   HandleMessage(c, m) ==
-      /\ \/ /\ m.type = API!E2T!Protocol.SubscribeResponse
-            /\ HandleSubscribeResponse(c, m)
-         \/ /\ m.type = API!E2T!Protocol.UnsubscribeResponse
-            /\ HandleUnsubscribeResponse(c, m)
       /\ UNCHANGED <<>>
    
-   Handle(c) == API!E2T!Client!Handle(c, HandleMessage)
+   SendUnsubscribeRequest(c) ==
+      /\ API!E2T!Client!Send!UnsubscribeRequest(c, [foo |-> "bar"])
    
-   Servers == API!E2T!Servers
+   HandleUnsubscribeResponse(c, m) ==
+      /\ UNCHANGED <<>>
    
-   Connections == API!E2T!Connections
-    
-   Connect(s, d) == API!E2T!Client!Connect(s, d)
-
-   Init == TRUE
+   Init ==
+      /\ TRUE
    
    Next ==
-       \/ \E s \in Nodes, d \in Servers : Connect(s, d)
-       \/ \E c \in Connections : Handle(c)
-      
+      \/ \E n \in Nodes, s \in API!E2T!Servers : API!E2T!Client!Connect(n, s)
+      \/ \E c \in API!E2T!Connections : API!E2T!Client!Disconnect(c)
+      \/ \E c \in API!E2T!Connections :
+            \/ SendSubscribeRequest(c)
+            \/ SendUnsubscribeRequest(c)
+            \/ API!E2T!Client!Receive!SubscribeResponse(c, HandleSubscribeResponse)
+            \/ API!E2T!Client!Receive!UnsubscribeResponse(c, HandleUnsubscribeResponse)
+         
    ==========================================================================
 
 LOCAL SB == INSTANCE SB
 
-Init == TRUE
+----
+
+Init ==
+   /\ SB!Init
+   /\ Store!Init
 
 Next ==
-    \/ \E s \in Nodes, d \in SB!Servers : SB!Connect(s, d)
-    \/ \E c \in SB!Connections : SB!Handle(c)
-   
+   \/ SB!Next
+   \/ Store!Next
+
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 06:00:31 PDT 2021 by jordanhalterman
+\* Last modified Fri Aug 13 15:58:57 PDT 2021 by jordanhalterman
 \* Created Tue Aug 10 04:55:35 PDT 2021 by jordanhalterman

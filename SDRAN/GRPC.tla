@@ -1,4 +1,4 @@
------------------------------ MODULE Messaging -----------------------------
+-------------------------------- MODULE GRPC --------------------------------
 
 LOCAL INSTANCE Naturals
 
@@ -12,19 +12,17 @@ LOCAL INSTANCE TLC
 
 CONSTANT Nil
 
-VARIABLE servers
-
-VARIABLE conns
-
-CONSTANT IsValid(_)
-
 ----
 
 LOCAL Min(s) == CHOOSE x \in s : \A y \in s : x >= y
 
 LOCAL Max(s) == CHOOSE x \in s : \A y \in s : x <= y
 
-   ------------------------------ MODULE Client ----------------------------
+VARIABLE servers
+
+VARIABLE conns
+   
+   ------------------------------ MODULE Client -------------------------
    
    Connect(c, s) ==
       LET maxId == Max(DOMAIN conns)
@@ -45,13 +43,13 @@ LOCAL Max(s) == CHOOSE x \in s : \A y \in s : x <= y
    
    Handle(c, f(_, _)) == Len(c.res) > 0 /\ f(c, c.res[1])
 
-   =========================================================================
+   ======================================================================
 
 Client == INSTANCE Client
 
 Connections == {conns[c] : c \in DOMAIN conns}
    
-   ------------------------------ MODULE Server ----------------------------
+   ----------------------------- MODULE Server --------------------------
    
    Start(s) ==
       /\ servers' = servers \cup {s}
@@ -72,21 +70,19 @@ Connections == {conns[c] : c \in DOMAIN conns}
    
    Handle(c, f(_, _)) == Len(c.req) > 0 /\ f(c, c.req[1])
    
-   =========================================================================
+   ======================================================================
 
 Servers == servers
    
 Server == INSTANCE Server
-
-----
-
+      
 Init == 
    /\ conns = [c \in {} |-> [e2n |-> Nil, e2t |-> Nil, req |-> <<>>, res |-> <<>>]]
 
 Next == 
    \/ TRUE
-
+       
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 04:30:26 PDT 2021 by jordanhalterman
-\* Created Tue Aug 10 05:35:32 PDT 2021 by jordanhalterman
+\* Last modified Fri Aug 13 14:43:08 PDT 2021 by jordanhalterman
+\* Created Fri Aug 13 14:42:38 PDT 2021 by jordanhalterman
