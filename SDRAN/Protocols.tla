@@ -56,7 +56,9 @@ EXTENDS TLC
        E2NodeConfigurationUpdate,
        E2NodeConfigurationUpdateAcknowledge,
        E2NodeConfigurationUpdateFailure}
-   
+
+   ASSUME \A m \in messageTypes : m \in STRING
+
    \* Failure cause constants
    CONSTANTS
       MiscFailureUnspecified,
@@ -121,6 +123,8 @@ EXTENDS TLC
        RICServiceFailureRICResourceLimit,
        TransportFailureUnspecified,
        TransportFailureTransportResourceUnavailable}
+   
+   ASSUME \A c \in failureCauses : c \in STRING
    
    Protocol == [t \in messageTypes |-> t]
    
@@ -298,6 +302,8 @@ E2AP == INSTANCE E2AP WITH
        ControlRequest,
        ControlResponse}
    
+   ASSUME \A m \in messageTypes : m \in STRING
+   
    Protocol == [t \in messageTypes |-> t]
    
    ----
@@ -350,5 +356,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 04:37:45 PDT 2021 by jordanhalterman
+\* Last modified Fri Aug 13 06:03:48 PDT 2021 by jordanhalterman
 \* Created Fri Aug 13 04:37:35 PDT 2021 by jordanhalterman

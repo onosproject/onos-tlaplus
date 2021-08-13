@@ -10,23 +10,23 @@ CONSTANT E2Nodes
 
 E2Node == INSTANCE E2Node WITH Nodes <- E2Nodes
 
-CONSTANT xAppNodes
+CONSTANT xApps
 
-xApp == INSTANCE xApp WITH Nodes <- xAppNodes
+LOCAL xApp(app, nodes) == INSTANCE xApp WITH App <- app, Nodes <- nodes
 
 Init ==
    /\ API!Init
    /\ E2T!Init
    /\ E2Node!Init
-   /\ xApp!Init
+   /\ \A app \in DOMAIN xApps : xApp(app, xApps[app])!Init
 
 Next ==
    \/ API!Next
    \/ E2T!Next
    \/ E2Node!Next
-   \/ xApp!Next
+   \/ \E app \in DOMAIN xApps : xApp(app, xApps[app])!Next
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 04:58:21 PDT 2021 by jordanhalterman
+\* Last modified Fri Aug 13 06:01:47 PDT 2021 by jordanhalterman
 \* Created Tue Aug 10 04:53:48 PDT 2021 by jordanhalterman

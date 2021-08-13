@@ -6,11 +6,14 @@ LOCAL INSTANCE Naturals
 
 LOCAL INSTANCE Sequences
 
+LOCAL INSTANCE FiniteSets
+
 LOCAL INSTANCE TLC
 
 CONSTANT Nodes
 
-----
+ASSUME /\ IsFiniteSet(Nodes) 
+       /\ \A n \in Nodes : n \in STRING
 
    ------------------------------- MODULE NB ------------------------------
    
@@ -97,5 +100,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 04:56:41 PDT 2021 by jordanhalterman
+\* Last modified Fri Aug 13 06:01:04 PDT 2021 by jordanhalterman
 \* Created Tue Aug 10 04:55:45 PDT 2021 by jordanhalterman

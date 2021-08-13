@@ -6,7 +6,16 @@ LOCAL INSTANCE Naturals
 
 LOCAL INSTANCE Sequences
 
+LOCAL INSTANCE FiniteSets
+
+CONSTANT App
+
+ASSUME App \in STRING
+
 CONSTANT Nodes
+
+ASSUME /\ IsFiniteSet(Nodes) 
+       /\ \A n \in Nodes : n \in STRING
 
    ------------------------------- MODULE SB ------------------------------
    
@@ -51,15 +60,13 @@ CONSTANT Nodes
 
 LOCAL SB == INSTANCE SB
 
-----
-
-Init ==
-   /\ SB!Init
+Init == TRUE
 
 Next ==
-   \/ SB!Next
-
+    \/ \E s \in Nodes, d \in SB!Servers : SB!Connect(s, d)
+    \/ \E c \in SB!Connections : SB!Handle(c)
+   
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 04:57:31 PDT 2021 by jordanhalterman
+\* Last modified Fri Aug 13 06:00:31 PDT 2021 by jordanhalterman
 \* Created Tue Aug 10 04:55:35 PDT 2021 by jordanhalterman
