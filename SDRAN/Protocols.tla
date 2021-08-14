@@ -165,16 +165,13 @@ LOCAL INSTANCE TLC
    LOCAL tnlAssociationUsage == {
       RicService,
       SupportFunction,
-      Both}    
-   
+      Both} 
+      
+      
+      
    \* Failure causes should be defined as strings to simplify debugging
    ASSUME \A c \in failureCauses : c \in STRING
-   
-   Cause == [c \in failureCauses |-> c]
-   
-   ActionType == [a \in actionTypes |-> a]
-   
-   TnlAssociationUsage == [u \in tnlAssociationUsage |-> u]
+
    
       --------------------------- MODULE Messages --------------------------
       
@@ -240,171 +237,180 @@ LOCAL INSTANCE TLC
       to verify that steps adhere to the E2AP protocol specification.
       *)
       
-      LOCAL ContainValidTransactionID(m) == 
-                /\ "transactionID" \in DOMAIN m 
-                /\ m.trasnactionID \in Nat 
-                /\ m.transactionID < 256
-   
-   
-      LOCAL ContainValidRANFunctionID(m) == 
-                 /\ "ranFunctionID" \in DOMAIN m 
-                 /\ m.ranFunctionID \in Nat 
-                 /\ m.ranFunctionID > 0 
-                 /\ m.ranFunctionID < 4096
-  
-      LOCAL ContainValidRANFunctionOID(m) == 
-                 /\ "ranFunctionOID" \in DOMAIN m
-                 /\  m.ranFunctionOID \in STRING
-                 
-   
-      LOCAL IsValidRANFunctionItem(ranFunctionItem) == 
-                 /\ ContainValidRANFunctionID(ranFunctionItem)
-                 /\ ContainValidRANFunctionOID(ranFunctionItem)
-   
-      LOCAL ContainValidRANFunctionList(m) == 
-                 /\  "ranFunctionList" \in DOMAIN m 
-                 /\ \A ranFunctionItem \in m.ranFunctionList : IsValidRANFunctionItem(ranFunctionItem)
-   
-   
-   
-      LOCAL ContainValidRICRequestID(m) == 
-         /\ "ricRequestID" \in DOMAIN m
-         /\ m.ricRequestID.requesterID \in Nat /\ m.ricRequestID.requesterID < 65536
-         /\ m.ricRequestID.instanceID \in Nat /\ m.ricRequestID.instanceID < 65536
-   
-   
-   
-      LOCAL ContainValidFailureCause(m) == 
-         /\ "cause" \in DOMAIN m  
-         /\  m.cause \in DOMAIN Cause  
- 
- 
-      LOCAL ContainValidActionID(m) == 
-         /\ "actionID" \in DOMAIN m
-         /\ m.actionID \in DOMAIN Nat 
-         /\ m.actionID < 256    
-          
-      LOCAL ContainValidActionType(m) == 
-         /\ "actionType" \in DOMAIN m
-         /\  m.actionType \in DOMAIN ActionType                    
- 
- 
-      LOCAL IsValidAction(m) == 
-         /\ ContainValidActionID(m)
-         /\ ContainValidActionType(m)  
-     
-     
-      LOCAL ContainValidTranportLayerInfo(m) == 
-         /\ "transportLayerInformation" \in DOMAIN m
-         /\ m.address \in DOMAIN STRING
-         /\ m.port \in DOMAIN Nat
-           
-     
-      LOCAL ContainValidTnlAssociationUsage(m) == 
-         /\ "tnlAssociationUsage" \in DOMAIN m
-         /\ m.tnlAssociationUsage \in DOMAIN TnlAssociationUsage
-             
-     
-      LOCAL IsValidConnectionToAddItem(m) == 
-         /\ ContainValidTranportLayerInfo(m)
-         /\ ContainValidTnlAssociationUsage(m)
-     
-           
-        
-      LOCAL ContainValidConnectionToAddList(m) == 
-         /\ "connectionAddToList" \in DOMAIN m
-         /\ \A connectionToAddItem \in m.connectionToAddList : IsValidConnectionToAddItem(connectionToAddItem) 
+      Range(x, min, max) == x >= min /\ x <= max
       
+      ricRequestIDPrototype == [ricRequesterID |-> {id \in Nat : Range(id, 0, 65535)}, ricInstanceID |-> {id \in Nat : id > 0 /\ id < 65536}]
+      
+      ranFunctionIDPrototype == [ranFunctionID |-> {n \in Nat  : Range(n, 0, 4095)}]
+      
+      transactionIDPrototype ==  [transactionID |->  {n \in Nat : Range(n, 0, 255)}]
+      
+      causePrototype ==  [c \in failureCauses |-> c]
+      
+      
+       
+      
+      LOCAL ValidMessage(m, t) == 
+                  /\ \A k \in DOMAIN t :  k \in DOMAIN m /\ m[k] \in t[k]
+              
+      
+       e2SetupRequestPrototype == [
+         plmnId |-> Nat,
+         globalE2NodeId |-> STRING,
+         transactionID |-> transactionIDPrototype,
+         ranFunctionList |-> <<[ranFunctionID |-> Nat, 
+                              ranFunctionOID |-> STRING, 
+                              ranFunctionDescription |-> STRING,
+                              ranFunctionRevision |-> {n \in Nat : Range(n, 0, 4095)}]>>]      
+         
       
       LOCAL ValidE2SetupRequest(m) == 
-         /\ "globalE2NodeID" \in DOMAIN m /\ m.globalE2NodeID \in STRING
-         /\ "plmnID" \in DOMAIN m /\ m.plmnID \in Nat
-         /\ ContainValidRANFunctionList(m)
-         /\ ContainValidTransactionID(m)
+         /\ ValidMessage(m, e2SetupRequestPrototype)
+       
+      
+      e2SetupResponsePrototype == [transactionID |-> transactionIDPrototype] 
       
       LOCAL ValidE2SetupResponse(m) == 
-         /\ ContainValidTransactionID(m)
+         /\ ValidMessage(m, e2SetupResponsePrototype)
+         
+      
+
+      e2SetupFailurePrototype == [ 
+          transactionID |-> transactionIDPrototype,
+          cause |-> causePrototype ]
       
       LOCAL ValidE2SetupFailure(m) == 
-         /\ ContainValidTransactionID(m)
-         /\ ContainValidFailureCause(m)
+         /\ ValidMessage(m, e2SetupFailurePrototype)
+      
+      
+      resetRequestPrototype == [transactionID |->  transactionIDPrototype]
       
       LOCAL ValidResetRequest(m) == 
-         /\ ContainValidTransactionID(m)
+         /\ ValidMessage(m, resetRequestPrototype)
       
       
+      resetResponsePrototype == [transactionID |->  transactionIDPrototype]
+          
       LOCAL ValidResetResponse(m) == 
-         /\ ContainValidTransactionID(m)
+         /\ ValidMessage(m, resetResponsePrototype)
+      
+      
+      ricSubscriptionRequestPrototype == [
+         ranFunctionID |-> ranFunctionIDPrototype,
+         ricRequestID |-> ricRequestIDPrototype]
+         \* add subscription details
       
       LOCAL ValidRICSubscriptionRequest(m) == 
-         /\ ContainValidRANFunctionID(m)
-         /\ ContainValidRICRequestID(m)
-         /\ "subscriptionDetails" \in DOMAIN m
-         /\ \A action \in m.subscriptionDetails.actions : IsValidAction(action)
+         /\ ValidMessage(m,  ricSubscriptionRequestPrototype)
+        
+      
+      
+      ricSubscriptionResponsePrototype == [
+         ranFunctionID |-> ranFunctionIDPrototype,
+         ricRequestID |-> ricRequestIDPrototype]
       
       LOCAL ValidRICSubscriptionResponse(m) == 
-         /\ ContainValidRANFunctionID(m)
-         /\ ContainValidRICRequestID(m)
+         /\ ValidMessage(m, ricSubscriptionResponsePrototype)
       
+      
+      ricSubscriptionFailurePrototype == [
+          ranFunctionID |-> ranFunctionIDPrototype,
+          ricRequestID |-> ricRequestIDPrototype,
+          cause |-> causePrototype]
       LOCAL ValidRICSubscriptionFailure(m) == 
-         /\ ContainValidRANFunctionID(m)
-         /\ ContainValidRICRequestID(m)
-         /\ ContainValidFailureCause(m)
+         /\ ValidMessage(m,  ricSubscriptionFailurePrototype)
+      
+      
+      ricSubscriptionDeleteRequestPrototype == [
+         ranFunctionID |-> ranFunctionIDPrototype,
+         ricRequestID |-> ricRequestIDPrototype]
       
       LOCAL ValidRICSubscriptionDeleteRequest(m) == 
-         /\ ContainValidRANFunctionID(m)
-         /\ ContainValidRICRequestID(m)
+         /\ ValidMessage(m, ricSubscriptionDeleteRequestPrototype)
+      
+      
+      ricSubscriptionDeleteResponsePrototype == [
+         ranFunctionID |-> ranFunctionIDPrototype,
+         ricRequestID |-> ricRequestIDPrototype]
       
       LOCAL ValidRICSubscriptionDeleteResponse(m) == 
-         /\ ContainValidRANFunctionID(m)
-         /\ ContainValidRICRequestID(m)
+         /\ ValidMessage(m, ricSubscriptionDeleteResponsePrototype)
       
+      
+      ricSubscriptionDeleteFailurePrototype == [
+         ranFunctionID |-> ranFunctionIDPrototype,
+         ricRequestID |-> ricRequestIDPrototype,
+         cause |-> causePrototype]
+
       LOCAL ValidRICSubscriptionDeleteFailure(m) == 
-         /\ ContainValidRANFunctionID(m)
-         /\ ContainValidRICRequestID(m)
-         /\ ContainValidFailureCause(m)
+         /\ ValidMessage(m, ricSubscriptionDeleteFailurePrototype)
+      
+      
+      ricControlRequestPrototype == [
+         ranFunctionID |-> ranFunctionIDPrototype,
+         ricRequestID |-> ricRequestIDPrototype]
+         \* add control header and message
       
       LOCAL ValidRICControlRequest(m) == 
-         /\ ContainValidRANFunctionID(m)
-         /\ ContainValidRICRequestID(m)
-         /\ "controlHeader" \in DOMAIN m
-         /\ "controlMessage" \in DOMAIN m
+         /\ ValidMessage(m, ricControlRequestPrototype)
+      
+      ricControlResponsePrototype == [
+         ranFunctionID |-> ranFunctionIDPrototype,
+         ricRequestID |-> ricRequestIDPrototype]
       
       LOCAL ValidRICControlResponse(m) == 
-         /\ ContainValidRANFunctionID(m)
-         /\ ContainValidRICRequestID(m)
+        /\ ValidMessage(m, ricControlResponsePrototype)
       
+      
+      ricControlFailurePrototype == [
+         ranFunctionID |-> ranFunctionIDPrototype,
+         ricRequestID |-> ricRequestIDPrototype,
+         cause |-> causePrototype]
+         
       LOCAL ValidRICControlFailure(m) == 
-         /\ ContainValidRANFunctionID(m)
-         /\ ContainValidRICRequestID(m)
-         /\ ContainValidFailureCause(m)
+         /\ ValidMessage(m, ricControlFailurePrototype)
+      
+      
+      ricServiceUpdatePrototype == [transactionID |->  transactionIDPrototype]
       
       LOCAL ValidRICServiceUpdate(m) == 
-         /\ ContainValidTransactionID(m)
+         /\ ValidMessage(m, ricServiceUpdatePrototype)
+      
+      
+      e2ConnectionUpdatePrototype == [transactionID |-> transactionIDPrototype]
       
       LOCAL ValidE2ConnectionUpdate(m) ==   
-         /\ ContainValidTransactionID(m)
-         /\ ContainValidConnectionToAddList(m)
-       \*/\ ContainValidConnectionToRemoveList(m)
-       \*/\ ContainValidConnectionTomModifyList(m)
+         /\ ValidMessage(m, e2ConnectionUpdatePrototype)
+      
+      
+      e2ConnectionUpdateAcknowledgePrototype == [transactionID |-> transactionIDPrototype]
       
       LOCAL ValidE2ConnectionUpdateAcknowledge(m) == 
-         /\ IsE2ConnectionUpdateAcknowledge(m)
-         /\ ContainValidTransactionID(m)
+         /\ ValidMessage(m, e2ConnectionUpdateAcknowledgePrototype)
+      
+      
+      e2ConnectionUpdateFailurePrototype == [transactionID |-> transactionIDPrototype, 
+         cause |-> causePrototype]
       
       LOCAL ValidE2ConnectionUpdateFailure(m) == 
-         /\ ContainValidTransactionID(m) 
-         /\ ContainValidFailureCause(m)
+         /\ ValidMessage(m, e2ConnectionUpdateFailurePrototype)
+      
+      
+      
+      e2NodeConfigurationUpdatePrototype == [transactionID |-> transactionIDPrototype]
       
       LOCAL ValidE2NodeConfigurationUpdate(m) == 
-         /\ ContainValidTransactionID(m) 
+         /\ ValidMessage(m, e2NodeConfigurationUpdatePrototype)
       
+      
+      e2NodeConfigurationUpdateAcknowledgePrototype == [transactionID |-> transactionIDPrototype]
       LOCAL ValidE2NodeConfigurationUpdateAcknowledge(m) == 
-         /\ ContainValidTransactionID(m) 
+         /\ ValidMessage(m, e2NodeConfigurationUpdateAcknowledgePrototype)
       
+      e2NodeConfigurationUpdateFailurePrototype == [transactionID |-> transactionIDPrototype,
+         cause |-> causePrototype]
       LOCAL ValidE2NodeConfigurationUpdateFailure(m) == 
-         /\ ContainValidTransactionID(m)
-         /\ ContainValidFailureCause(m)
+        /\ ValidMessage(m, e2NodeConfigurationUpdateFailurePrototype)
       
       ----
       
@@ -1450,7 +1456,7 @@ Topo == INSTANCE TopoService WITH
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 18:02:02 PDT 2021 by adibrastegarnia
+\* Last modified Sat Aug 14 00:02:03 PDT 2021 by adibrastegarnia
 \* Last modified Fri Aug 13 17:42:40 PDT 2021 by jordanhalterman
 \* Last modified Fri Aug 13 17:14:37 PDT 2021 by adibrastegarnia
 \* Last modified Fri Aug 13 17:16:15 PDT 2021 by adibrastegarnia
