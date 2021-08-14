@@ -21,8 +21,6 @@ LOCAL Max(s) == CHOOSE x \in s : \A y \in s : x <= y
 VARIABLE servers
 
 VARIABLE conns
-
-vars == <<servers, conns>>
    
    ----------------------------- MODULE Client --------------------------
    
@@ -79,7 +77,6 @@ Servers == servers
 Server == INSTANCE Server
         
 Init == 
-   /\ servers = {}
    /\ conns = [c \in {} |-> [e2n |-> Nil, e2t |-> Nil, req |-> <<>>, res |-> <<>>]]
 
 Next == 
@@ -87,5 +84,6 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 17:39:15 PDT 2021 by jordanhalterman
+\* Last modified Sat Aug 14 13:08:52 PDT 2021 by adibrastegarnia
+\* Last modified Fri Aug 13 14:43:26 PDT 2021 by jordanhalterman
 \* Created Fri Aug 13 14:42:32 PDT 2021 by jordanhalterman

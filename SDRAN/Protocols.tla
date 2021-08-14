@@ -239,7 +239,9 @@ LOCAL INSTANCE TLC
       
       Range(x, min, max) == x >= min /\ x <= max
       
-      ricRequestIDPrototype == [ricRequesterID |-> {id \in Nat : Range(id, 0, 65535)}, ricInstanceID |-> {id \in Nat : id > 0 /\ id < 65536}]
+      ricRequestIDPrototype == [
+            ricRequesterID |-> {n \in Nat : Range(n, 0, 65535)}, 
+            ricInstanceID  |-> {n \in Nat : Range(n, 0, 65536)}]
       
       ranFunctionIDPrototype == [ranFunctionID |-> {n \in Nat  : Range(n, 0, 4095)}]
       
@@ -258,18 +260,26 @@ LOCAL INSTANCE TLC
       
        
       
-      LOCAL ValidMessage(m, t) == 
-                  /\ \A k \in DOMAIN t :  k \in DOMAIN m /\ m[k] \in t[k]
+      RECURSIVE ValidMessage(_, _)
+      ValidMessage(m, p) ==
+         /\ \A k \in DOMAIN p : 
+               /\ k \in DOMAIN m 
+               /\ \/ /\ IsFiniteSet(p[k])
+                     /\ IsFiniteSet(m[k])
+                     /\ m[k] \in p[k]
+                  \/ /\ ~IsFiniteSet(p[k])
+                     /\ ~IsFiniteSet(m[k])
+                     /\ ValidMessage(m[k], p[k])
               
       
        e2SetupRequestPrototype == [
          plmnId |-> Nat,
          globalE2NodeId |-> STRING,
          transactionID |-> transactionIDPrototype,
-         ranFunctionList |-> <<[ranFunctionID |-> {id \in Nat : Range(id, 0, 4095)}, 
+         ranFunctionList |-> [i \in Nat |-> [ranFunctionID |-> {n \in Nat : Range(n, 0, 4095)}, 
                               ranFunctionOID |-> STRING, 
                               ranFunctionDescription |-> STRING,
-                              ranFunctionRevision |-> {id \in Nat : Range(id, 0, 4095)}]>>]      
+                              ranFunctionRevision |-> {n \in Nat : Range(n, 0, 4095)}]]]    
          
       
       LOCAL ValidE2SetupRequest(m) == 
@@ -303,11 +313,10 @@ LOCAL INSTANCE TLC
          /\ ValidMessage(m, resetResponsePrototype)
       
       
-     
-      
+    
       subscriptionDetailsPrototype == [
          
-         actions |-> <<[actionID |-> {id \in Nat : Range(id, 0, 255)}, actionTypePrototype |-> actionTypePrototype ]>>]
+           actions |-> [i \in Nat |-> [actionID |-> {n \in Nat : Range(n, 0, 255)}, actionTypePrototype |-> actionTypePrototype ]]]
       
       ricSubscriptionRequestPrototype == [
          ranFunctionID |-> ranFunctionIDPrototype,
@@ -405,9 +414,9 @@ LOCAL INSTANCE TLC
       
       
       e2ConnectionUpdatePrototype == [transactionID |-> transactionIDPrototype,  
-         connectionToAddList |-> <<connectionToAddItemPrototype>>,
-         connectionTRemoveList |-> <<connectionToRemoveItemPrototype>>,
-         connectionToModifyList |-> <<connectionToModifyItemPrototype>>]
+         connectionToAddList |-> [i \in Nat |-> connectionToAddItemPrototype],
+         connectionTRemoveList |-> [i \in Nat |-> connectionToRemoveItemPrototype],
+         connectionToModifyList |-> [i \in Nat |-> connectionToModifyItemPrototype]]
       
       LOCAL ValidE2ConnectionUpdate(m) ==   
          /\ ValidMessage(m, e2ConnectionUpdatePrototype)
@@ -421,8 +430,8 @@ LOCAL INSTANCE TLC
          cause |-> causePrototype]   
       
       e2ConnectionUpdateAcknowledgePrototype == [transactionID |-> transactionIDPrototype,
-         e2ConnectionSetupList |-> <<e2ConnectionSetupItem>>, 
-         e2ConnectionFaileSetupList |-> <<e2ConnectionFailedSetupItem>>]
+         e2ConnectionSetupList |-> [i \in Nat |-> e2ConnectionSetupItem], 
+         e2ConnectionFaileSetupList |-> [i \in Nat |-> e2ConnectionFailedSetupItem]]
       
       LOCAL ValidE2ConnectionUpdateAcknowledge(m) == 
          /\ ValidMessage(m, e2ConnectionUpdateAcknowledgePrototype)
@@ -1495,7 +1504,7 @@ Topo == INSTANCE TopoService WITH
 
 =============================================================================
 \* Modification History
-\* Last modified Sat Aug 14 10:33:58 PDT 2021 by adibrastegarnia
+\* Last modified Sat Aug 14 13:31:47 PDT 2021 by adibrastegarnia
 \* Last modified Fri Aug 13 17:42:40 PDT 2021 by jordanhalterman
 \* Last modified Fri Aug 13 17:14:37 PDT 2021 by adibrastegarnia
 \* Last modified Fri Aug 13 17:16:15 PDT 2021 by adibrastegarnia
