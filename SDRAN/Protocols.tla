@@ -20,11 +20,11 @@ LOCAL INSTANCE TLC
 
    VARIABLE servers, conns
    
-   vars == <<servers, conns>>
-   
    \* The E2AP protocol is implemented on SCTP
    LOCAL SCTP == INSTANCE SCTP
    
+   vars == <<servers, conns>>
+         
    \* Message type constants
    CONSTANTS
       E2SetupRequestType,
@@ -591,11 +591,11 @@ E2AP == INSTANCE E2AP WITH
 
    VARIABLE servers, conns
       
-   vars == <<servers, conns>>
-      
    \* The E2T API is implemented as a gRPC service
    LOCAL GRPC == INSTANCE GRPC
          
+   vars == <<servers, conns>>
+      
    \* Message type constants
    CONSTANT 
       SubscribeRequestType,
@@ -882,10 +882,10 @@ E2T == INSTANCE E2TService WITH
    
    VARIABLES servers, conns
       
-   vars == <<servers, conns>>
-      
    \* The Topo API is implemented as a gRPC service
    LOCAL GRPC == INSTANCE GRPC
+      
+   vars == <<servers, conns>>
          
    \* Message type constants
    CONSTANT 
@@ -1293,5 +1293,5 @@ Topo == INSTANCE TopoService WITH
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 17:42:40 PDT 2021 by jordanhalterman
+\* Last modified Fri Aug 13 18:57:44 PDT 2021 by jordanhalterman
 \* Created Fri Aug 13 15:34:11 PDT 2021 by jordanhalterman

@@ -1,6 +1,6 @@
 ------------------------------- MODULE SDRAN -------------------------------
 
-EXTENDS API
+EXTENDS API, TLC
 
 LOCAL INSTANCE Sequences
 
@@ -44,21 +44,17 @@ Init ==
 
 Next ==
    \/ /\ API!E2AP!Next
-      /\ UNCHANGED <<API!E2T!vars, API!Topo!vars, Topo!vars, E2T!vars, E2Node!vars, xAppVars>>
+      /\ UNCHANGED <<e2tApiVars, topoApiVars>>
    \/ /\ API!E2T!Next
-      /\ UNCHANGED <<API!E2AP!vars, API!Topo!vars, Topo!vars, E2T!vars, E2Node!vars, xAppVars>>
+      /\ UNCHANGED <<e2apApiVars, topoApiVars>>
    \/ /\ API!Topo!Next
-      /\ UNCHANGED <<API!E2AP!vars, API!E2T!vars, Topo!vars, E2T!vars, E2Node!vars, xAppVars>>
-   \/ /\ Topo!Next
-      /\ UNCHANGED <<API!E2AP!vars, API!E2T!vars, API!Topo!vars, E2T!vars, E2Node!vars, xAppVars>>
-   \/ /\ E2T!Next
-      /\ UNCHANGED <<API!E2AP!vars, API!E2T!vars, API!Topo!vars, Topo!vars, E2Node!vars, xAppVars>>
-   \/ /\ E2Node!Next
-      /\ UNCHANGED <<API!E2AP!vars, API!E2T!vars, API!Topo!vars, Topo!vars, E2T!vars, xAppVars>>
-   \/ /\ \E app \in DOMAIN xApps : xApp(app, xApps[app])!Next
-      /\ UNCHANGED <<API!E2AP!vars, API!E2T!vars, API!Topo!vars, Topo!vars, E2T!vars, E2Node!vars>>
+      /\ UNCHANGED <<e2apApiVars, e2tApiVars>>
+   \/ Topo!Next
+   \/ E2T!Next
+   \/ E2Node!Next
+   \/ \E app \in DOMAIN xApps : xApp(app, xApps[app])!Next
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 17:43:45 PDT 2021 by jordanhalterman
+\* Last modified Sat Aug 14 13:35:33 PDT 2021 by jordanhalterman
 \* Created Tue Aug 10 04:53:48 PDT 2021 by jordanhalterman

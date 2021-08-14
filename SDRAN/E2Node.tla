@@ -29,9 +29,10 @@ LOCAL Store == INSTANCE Store
    
    SendE2SetupRequest(c) ==
       /\ API!E2AP!Client!Send!E2SetupRequest(c, [foo |-> "bar"])
+      /\ UNCHANGED <<e2tApiVars, topoApiVars>>
    
    HandleE2SetupResponse(c, m) ==
-      /\ UNCHANGED <<>>
+      /\ UNCHANGED <<e2tApiVars, topoApiVars>>
    
    Init ==
       /\ TRUE
@@ -39,6 +40,7 @@ LOCAL Store == INSTANCE Store
    Next ==
       \/ \E n \in Nodes, s \in API!E2AP!Servers : API!E2AP!Client!Connect(n, s)
       \/ \E c \in API!E2AP!Connections : API!E2AP!Client!Disconnect(c)
+      \/ \E c \in API!E2AP!Connections : SendE2SetupRequest(c)
       \/ \E c \in API!E2AP!Connections :
             \/ SendE2SetupRequest(c)
             \/ API!E2AP!Client!Receive!E2SetupResponse(c, HandleE2SetupResponse)
@@ -59,5 +61,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 16:36:37 PDT 2021 by jordanhalterman
+\* Last modified Sat Aug 14 12:20:15 PDT 2021 by jordanhalterman
 \* Created Tue Aug 10 04:55:53 PDT 2021 by jordanhalterman

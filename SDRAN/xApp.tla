@@ -31,17 +31,22 @@ LOCAL Store == INSTANCE Store
    
    ------------------------------- MODULE SB ------------------------------
    
+   subscriptionDetails == [
+      actions |-> [i \in Nat |-> [actionID |-> {n \in Nat : n > 0 /\ n < 256}]]]
+   
    SendSubscribeRequest(c) ==
       /\ API!E2T!Client!Send!SubscribeRequest(c, [foo |-> "bar"])
+      /\ UNCHANGED <<e2apApiVars, topoApiVars>>
    
    HandleSubscribeResponse(c, m) ==
-      /\ UNCHANGED <<>>
+      /\ UNCHANGED <<e2apApiVars, topoApiVars>>
    
    SendUnsubscribeRequest(c) ==
       /\ API!E2T!Client!Send!UnsubscribeRequest(c, [foo |-> "bar"])
+      /\ UNCHANGED <<e2apApiVars, topoApiVars>>
    
    HandleUnsubscribeResponse(c, m) ==
-      /\ UNCHANGED <<>>
+      /\ UNCHANGED <<e2apApiVars, topoApiVars>>
    
    Init ==
       /\ TRUE
@@ -49,9 +54,9 @@ LOCAL Store == INSTANCE Store
    Next ==
       \/ \E n \in Nodes, s \in API!E2T!Servers : API!E2T!Client!Connect(n, s)
       \/ \E c \in API!E2T!Connections : API!E2T!Client!Disconnect(c)
+      \/ \E c \in API!E2T!Connections : SendSubscribeRequest(c)
+      \/ \E c \in API!E2T!Connections : SendUnsubscribeRequest(c)
       \/ \E c \in API!E2T!Connections :
-            \/ SendSubscribeRequest(c)
-            \/ SendUnsubscribeRequest(c)
             \/ API!E2T!Client!Receive!SubscribeResponse(c, HandleSubscribeResponse)
             \/ API!E2T!Client!Receive!UnsubscribeResponse(c, HandleUnsubscribeResponse)
          
@@ -71,5 +76,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 16:35:43 PDT 2021 by jordanhalterman
+\* Last modified Sat Aug 14 12:43:39 PDT 2021 by jordanhalterman
 \* Created Tue Aug 10 04:55:35 PDT 2021 by jordanhalterman

@@ -34,17 +34,12 @@ LOCAL Store == INSTANCE Store
    HandleSubscribeRequest(c, m) ==
        /\ LET r == Store!CreateSubscription(m)
           IN API!E2T!Server!Send!SubscribeResponse(c, r)
-       /\ UNCHANGED <<>>
+       /\ UNCHANGED <<e2apApiVars, topoApiVars>>
    
    HandleUnsubscribeRequest(c, m) ==
        /\ LET r == Store!DeleteSubscription(m)
           IN API!E2T!Server!Send!UnsubscribeResponse(c, r)
-       /\ UNCHANGED <<>>
-   
-   HandleMessage(c, m) ==
-      /\ \/ API!E2T!Server!Receive!SubscribeRequest(c, HandleSubscribeRequest)
-         \/ API!E2T!Server!Receive!UnsubscribeRequest(c, HandleUnsubscribeRequest)
-      /\ UNCHANGED <<>>
+       /\ UNCHANGED <<e2apApiVars, topoApiVars>>
    
    Init ==
       /\ TRUE
@@ -93,5 +88,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 16:35:38 PDT 2021 by jordanhalterman
+\* Last modified Sat Aug 14 12:18:35 PDT 2021 by jordanhalterman
 \* Created Tue Aug 10 04:55:45 PDT 2021 by jordanhalterman

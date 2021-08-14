@@ -83,9 +83,10 @@ Init ==
    /\ conns = [c \in {} |-> [e2n |-> Nil, e2t |-> Nil, req |-> <<>>, res |-> <<>>]]
 
 Next == 
-   \/ TRUE
+   \/ /\ FALSE
+      /\ UNCHANGED <<servers, conns>>
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 17:39:15 PDT 2021 by jordanhalterman
+\* Last modified Sat Aug 14 12:16:08 PDT 2021 by jordanhalterman
 \* Created Fri Aug 13 14:42:32 PDT 2021 by jordanhalterman
