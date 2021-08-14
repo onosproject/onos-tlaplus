@@ -247,6 +247,14 @@ LOCAL INSTANCE TLC
       
       causePrototype ==  [c \in failureCauses |-> c]
       
+      actionTypePrototype == [t \in actionTypes |-> t]
+      
+     
+      
+      transportLayerInfoPrototype == [transportLayerAddress |->  STRING, transportLayerPort |-> Nat]
+      
+      tnlAssociationUsagePrototype == [u \in tnlAssociationUsage |-> u]
+      
       
        
       
@@ -295,8 +303,7 @@ LOCAL INSTANCE TLC
          /\ ValidMessage(m, resetResponsePrototype)
       
       
-      actionTypePrototype == [t \in actionTypes |-> t]
-      
+     
       
       subscriptionDetailsPrototype == [
          
@@ -385,13 +392,37 @@ LOCAL INSTANCE TLC
          /\ ValidMessage(m, ricServiceUpdatePrototype)
       
       
-      e2ConnectionUpdatePrototype == [transactionID |-> transactionIDPrototype]
+      
+      
+      connectionToAddItemPrototype == [transportLayerInfo |-> transportLayerInfoPrototype,
+         tnlAssociationUsage |-> tnlAssociationUsagePrototype]
+         
+      connectionToRemoveItemPrototype == [transportLayerInfo |-> transportLayerInfoPrototype,
+         tnlAssociationUsage |-> tnlAssociationUsagePrototype]
+         
+      connectionToModifyItemPrototype == [transportLayerInfo |-> transportLayerInfoPrototype,
+         tnlAssociationUsage |-> tnlAssociationUsagePrototype]      
+      
+      
+      e2ConnectionUpdatePrototype == [transactionID |-> transactionIDPrototype,  
+         connectionToAddList |-> <<connectionToAddItemPrototype>>,
+         connectionTRemoveList |-> <<connectionToRemoveItemPrototype>>,
+         connectionToModifyList |-> <<connectionToModifyItemPrototype>>]
       
       LOCAL ValidE2ConnectionUpdate(m) ==   
          /\ ValidMessage(m, e2ConnectionUpdatePrototype)
       
       
-      e2ConnectionUpdateAcknowledgePrototype == [transactionID |-> transactionIDPrototype]
+      
+      e2ConnectionSetupItem == [transportLayerInfo |-> transportLayerInfoPrototype,
+         tnlAssociationUsage |-> tnlAssociationUsagePrototype]
+         
+      e2ConnectionFailedSetupItem == [transportLayerInfo |-> transportLayerInfoPrototype,
+         cause |-> causePrototype]   
+      
+      e2ConnectionUpdateAcknowledgePrototype == [transactionID |-> transactionIDPrototype,
+         e2ConnectionSetupList |-> <<e2ConnectionSetupItem>>, 
+         e2ConnectionFaileSetupList |-> <<e2ConnectionFailedSetupItem>>]
       
       LOCAL ValidE2ConnectionUpdateAcknowledge(m) == 
          /\ ValidMessage(m, e2ConnectionUpdateAcknowledgePrototype)
@@ -1464,7 +1495,7 @@ Topo == INSTANCE TopoService WITH
 
 =============================================================================
 \* Modification History
-\* Last modified Sat Aug 14 10:14:54 PDT 2021 by adibrastegarnia
+\* Last modified Sat Aug 14 10:33:58 PDT 2021 by adibrastegarnia
 \* Last modified Fri Aug 13 17:42:40 PDT 2021 by jordanhalterman
 \* Last modified Fri Aug 13 17:14:37 PDT 2021 by adibrastegarnia
 \* Last modified Fri Aug 13 17:16:15 PDT 2021 by adibrastegarnia
