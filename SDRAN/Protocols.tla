@@ -317,88 +317,72 @@ LOCAL INSTANCE TLC
       
       
       LOCAL ValidE2SetupRequest(m) == 
-         /\ IsE2SetupRequest(m)
          /\ "globalE2NodeID" \in DOMAIN m /\ m.globalE2NodeID \in STRING
          /\ "plmnID" \in DOMAIN m /\ m.plmnID \in Nat
          /\ ContainValidRANFunctionList(m)
          /\ ContainValidTransactionID(m)
       
       LOCAL ValidE2SetupResponse(m) == 
-         /\ IsE2SetupResponse(m)
          /\ ContainValidTransactionID(m)
       
       LOCAL ValidE2SetupFailure(m) == 
-         /\ IsE2SetupFailure(m)
          /\ ContainValidTransactionID(m)
          /\ ContainValidFailureCause(m)
       
       LOCAL ValidResetRequest(m) == 
-         /\ IsResetRequest(m)
          /\ ContainValidTransactionID(m)
       
       
       LOCAL ValidResetResponse(m) == 
-         /\ IsResetResponse(m)
          /\ ContainValidTransactionID(m)
       
       LOCAL ValidRICSubscriptionRequest(m) == 
-         /\ IsRICSubscriptionRequest(m)
          /\ ContainValidRANFunctionID(m)
          /\ ContainValidRICRequestID(m)
          /\ "subscriptionDetails" \in DOMAIN m
          /\ \A action \in m.subscriptionDetails.actions : IsValidAction(action)
       
       LOCAL ValidRICSubscriptionResponse(m) == 
-         /\ IsRICSubscriptionResponse(m)
          /\ ContainValidRANFunctionID(m)
          /\ ContainValidRICRequestID(m)
       
       LOCAL ValidRICSubscriptionFailure(m) == 
-         /\ IsRICSubscriptionFailure(m)
          /\ ContainValidRANFunctionID(m)
          /\ ContainValidRICRequestID(m)
          /\ ContainValidFailureCause(m)
       
       LOCAL ValidRICSubscriptionDeleteRequest(m) == 
-         /\ IsRICSubscriptionDeleteRequest(m)
          /\ ContainValidRANFunctionID(m)
          /\ ContainValidRICRequestID(m)
       
       LOCAL ValidRICSubscriptionDeleteResponse(m) == 
-         /\ IsRICSubscriptionDeleteResponse(m)
          /\ ContainValidRANFunctionID(m)
          /\ ContainValidRICRequestID(m)
       
       LOCAL ValidRICSubscriptionDeleteFailure(m) == 
-         /\ IsRICSubscriptionDeleteFailure(m)
          /\ ContainValidRANFunctionID(m)
          /\ ContainValidRICRequestID(m)
          /\ ContainValidFailureCause(m)
       
       LOCAL ValidRICControlRequest(m) == 
-         /\ IsRICControlRequest(m)
          /\ ContainValidRANFunctionID(m)
          /\ ContainValidRICRequestID(m)
          /\ "controlHeader" \in DOMAIN m
          /\ "controlMessage" \in DOMAIN m
       
       LOCAL ValidRICControlResponse(m) == 
-         /\ IsRICControlResponse(m)
          /\ ContainValidRANFunctionID(m)
          /\ ContainValidRICRequestID(m)
       
       LOCAL ValidRICControlFailure(m) == 
-         /\ IsRICControlFailure(m)
          /\ ContainValidRANFunctionID(m)
          /\ ContainValidRICRequestID(m)
          /\ ContainValidFailureCause(m)
       
       LOCAL ValidRICServiceUpdate(m) == 
-         /\ IsRICServiceUpdate(m)
          /\ ContainValidTransactionID(m)
       
-      LOCAL ValidE2ConnectionUpdate(m) == 
-         /\ IsE2ConnectionUpdate(m)  
+      LOCAL ValidE2ConnectionUpdate(m) ==   
          /\ ContainValidTransactionID(m)
          /\ ContainValidConnectionToAddList(m)
        \*/\ ContainValidConnectionToRemoveList(m)
@@ -409,20 +393,16 @@ LOCAL INSTANCE TLC
          /\ ContainValidTransactionID(m)
       
       LOCAL ValidE2ConnectionUpdateFailure(m) == 
-         /\ IsE2ConnectionUpdateFailure(m)
          /\ ContainValidTransactionID(m) 
          /\ ContainValidFailureCause(m)
       
       LOCAL ValidE2NodeConfigurationUpdate(m) == 
-         /\ IsE2NodeConfigurationUpdate(m)
          /\ ContainValidTransactionID(m) 
       
       LOCAL ValidE2NodeConfigurationUpdateAcknowledge(m) == 
-         /\ IsE2NodeConfigurationUpdateAcknowledge(m)
          /\ ContainValidTransactionID(m) 
       
       LOCAL ValidE2NodeConfigurationUpdateFailure(m) == 
-         /\ IsE2NodeConfigurationUpdateFailure(m)
          /\ ContainValidTransactionID(m)
          /\ ContainValidFailureCause(m)
       
@@ -1470,7 +1450,8 @@ Topo == INSTANCE TopoService WITH
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 18:00:43 PDT 2021 by adibrastegarnia
+\* Last modified Fri Aug 13 18:01:26 PDT 2021 by adibrastegarnia
 \* Last modified Fri Aug 13 17:42:40 PDT 2021 by jordanhalterman
+\* Last modified Fri Aug 13 17:14:37 PDT 2021 by adibrastegarnia
 \* Last modified Fri Aug 13 15:56:13 PDT 2021 by jordanhalterman
 \* Created Fri Aug 13 15:34:11 PDT 2021 by jordanhalterman
