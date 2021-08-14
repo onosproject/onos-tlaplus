@@ -1,0 +1,389 @@
+@!@!@STARTMSG 2262:0 @!@!@
+TLC2 Version 2.16 of Day Month 20?? (rev: f56cf14)
+@!@!@ENDMSG 2262 @!@!@
+@!@!@STARTMSG 2188:0 @!@!@
+Running Random Simulation with seed -3977553251549845205 with 8 workers on 16 cores with 2428MB heap and 5460MB offheap memory [pid: 25551] (Mac OS X 10.16 x86_64, AdoptOpenJDK 14.0.1 x86_64).
+@!@!@ENDMSG 2188 @!@!@
+@!@!@STARTMSG 2220:0 @!@!@
+Starting SANY...
+@!@!@ENDMSG 2220 @!@!@
+Parsing file /Users/jordanhalterman/Projects/uonos-tlaplus/SDRAN/SDRAN.toolbox/SDRAN/MC.tla
+Parsing file /Users/jordanhalterman/Projects/uonos-tlaplus/SDRAN/SDRAN.toolbox/SDRAN/SDRAN.tla
+Parsing file /Applications/TLA+ Toolbox.app/Contents/Eclipse/plugins/org.lamport.tlatools_1.0.0.202108042323/tla2sany/StandardModules/TLC.tla
+Parsing file /Users/jordanhalterman/Projects/uonos-tlaplus/SDRAN/SDRAN.toolbox/SDRAN/API.tla
+Parsing file /Users/jordanhalterman/Projects/uonos-tlaplus/SDRAN/SDRAN.toolbox/SDRAN/Topo.tla
+Parsing file /Users/jordanhalterman/Projects/uonos-tlaplus/SDRAN/SDRAN.toolbox/SDRAN/E2T.tla
+Parsing file /Users/jordanhalterman/Projects/uonos-tlaplus/SDRAN/SDRAN.toolbox/SDRAN/E2Node.tla
+Parsing file /Users/jordanhalterman/Projects/uonos-tlaplus/SDRAN/SDRAN.toolbox/SDRAN/xApp.tla
+Parsing file /Users/jordanhalterman/Projects/uonos-tlaplus/SDRAN/SDRAN.toolbox/SDRAN/Protocols.tla
+Parsing file /Applications/TLA+ Toolbox.app/Contents/Eclipse/plugins/org.lamport.tlatools_1.0.0.202108042323/tla2sany/StandardModules/Naturals.tla
+Parsing file /Applications/TLA+ Toolbox.app/Contents/Eclipse/plugins/org.lamport.tlatools_1.0.0.202108042323/tla2sany/StandardModules/Sequences.tla
+Parsing file /Applications/TLA+ Toolbox.app/Contents/Eclipse/plugins/org.lamport.tlatools_1.0.0.202108042323/tla2sany/StandardModules/FiniteSets.tla
+Parsing file /Users/jordanhalterman/Projects/uonos-tlaplus/SDRAN/SDRAN.toolbox/SDRAN/SCTP.tla
+Parsing file /Users/jordanhalterman/Projects/uonos-tlaplus/SDRAN/SDRAN.toolbox/SDRAN/GRPC.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module SCTP
+Semantic processing of module GRPC
+Semantic processing of module Protocols
+Semantic processing of module API
+Semantic processing of module Topo
+Semantic processing of module E2T
+Semantic processing of module E2Node
+Semantic processing of module xApp
+Semantic processing of module SDRAN
+Semantic processing of module MC
+@!@!@STARTMSG 2219:0 @!@!@
+SANY finished.
+@!@!@ENDMSG 2219 @!@!@
+@!@!@STARTMSG 2185:0 @!@!@
+Starting... (2021-08-13 16:22:57)
+@!@!@ENDMSG 2185 @!@!@
+@!@!@STARTMSG 2269:0 @!@!@
+Computed 1 initial states...
+@!@!@ENDMSG 2269 @!@!@
+@!@!@STARTMSG 2109:1 @!@!@
+Successor state is not completely specified by the next-state action.
+
+@!@!@ENDMSG 2109 @!@!@
+@!@!@STARTMSG 2121:1 @!@!@
+The behavior up to this point is:
+@!@!@ENDMSG 2121 @!@!@
+@!@!@STARTMSG 2217:4 @!@!@
+1: <Init line 22, col 4 to line 28, col 58 of module SDRAN>
+/\ e2tServers = {}
+/\ e2apServers = {}
+/\ e2apConns = << >>
+/\ topoServers = {}
+/\ topoConns = << >>
+/\ e2tConns = << >>
+
+@!@!@ENDMSG 2217 @!@!@
+@!@!@STARTMSG 2217:4 @!@!@
+2: <API!E2T!Next line 32, col 7 to line 32, col 18 of module SDRAN>
+/\ e2tServers = null
+/\ e2apServers = null
+/\ e2apConns = null
+/\ topoServers = null
+/\ topoConns = null
+/\ e2tConns = null
+
+@!@!@ENDMSG 2217 @!@!@
+@!@!@STARTMSG 2201:0 @!@!@
+The coverage statistics at 2021-08-13 16:22:57
+@!@!@ENDMSG 2201 @!@!@
+@!@!@STARTMSG 2773:0 @!@!@
+<Init line 21, col 1 to line 21, col 4 of module SDRAN>: 1:1
+@!@!@ENDMSG 2773 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 22, col 7 to line 22, col 19 of module SDRAN: 1
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 23, col 7 to line 23, col 18 of module SDRAN: 1
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 24, col 7 to line 24, col 19 of module SDRAN: 1
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 25, col 7 to line 25, col 15 of module SDRAN: 1
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 26, col 7 to line 26, col 14 of module SDRAN: 1
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 27, col 7 to line 27, col 17 of module SDRAN: 1
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 28, col 7 to line 28, col 58 of module SDRAN: 1
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 28, col 33 to line 28, col 58 of module SDRAN: 2
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 28, col 18 to line 28, col 29 of module SDRAN: 1
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2772:0 @!@!@
+<Topo!Next line 7, col 7 to line 7, col 10 of module SDRAN>: 0:0
+@!@!@ENDMSG 2772 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 7, col 1 to line 7, col 51 of module SDRAN: 88
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 7, col 43 to line 7, col 51 of module SDRAN: 90
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 55, col 10 to line 55, col 36 of module GRPC: 90
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 56, col 10 to line 56, col 28 of module GRPC: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 1247, col 37 to line 1247, col 37 of module Protocols: 111
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 74, col 49 to line 74, col 49 of module Topo: 112
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 74, col 19 to line 74, col 23 of module Topo: 113
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 43, col 11 to line 43, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 43, col 11 to line 43, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 43, col 11 to line 43, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 48, col 11 to line 48, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 48, col 11 to line 48, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 48, col 11 to line 48, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 53, col 11 to line 53, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 53, col 11 to line 53, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 53, col 11 to line 53, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 58, col 11 to line 58, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 58, col 11 to line 58, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 58, col 11 to line 58, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 63, col 11 to line 63, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 63, col 11 to line 63, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 63, col 11 to line 63, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 68, col 11 to line 68, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 68, col 11 to line 68, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 68, col 11 to line 68, col 24 of module Topo: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 76, col 19 to line 76, col 38 of module Topo: 110
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2772:0 @!@!@
+<E2T!Next line 11, col 7 to line 11, col 9 of module SDRAN>: 0:0
+@!@!@ENDMSG 2772 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 11, col 1 to line 11, col 48 of module SDRAN: 189
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 11, col 41 to line 11, col 48 of module SDRAN: 189
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 55, col 10 to line 55, col 36 of module SCTP: 189
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 56, col 10 to line 56, col 28 of module SCTP: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 502, col 37 to line 502, col 37 of module Protocols: 198
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 71, col 49 to line 71, col 49 of module E2T: 199
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 71, col 19 to line 71, col 23 of module E2T: 200
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 65, col 11 to line 65, col 24 of module E2T: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 65, col 11 to line 65, col 24 of module E2T: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 65, col 11 to line 65, col 24 of module E2T: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 56, col 10 to line 56, col 28 of module GRPC: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 35, col 11 to line 35, col 24 of module E2T: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 35, col 11 to line 35, col 24 of module E2T: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 35, col 11 to line 35, col 24 of module E2T: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 40, col 11 to line 40, col 24 of module E2T: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 40, col 11 to line 40, col 24 of module E2T: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 40, col 11 to line 40, col 24 of module E2T: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2772:0 @!@!@
+<E2Node!Next line 15, col 7 to line 15, col 12 of module SDRAN>: 0:0
+@!@!@ENDMSG 2772 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 15, col 1 to line 15, col 53 of module SDRAN: 311
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 15, col 1 to line 15, col 53 of module SDRAN: 157
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 15, col 47 to line 15, col 53 of module SDRAN: 158
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 38, col 19 to line 38, col 23 of module E2Node: 162
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 38, col 32 to line 38, col 47 of module E2Node: 162
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 39, col 10 to line 39, col 70 of module E2Node: 158
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 32, col 10 to line 32, col 23 of module E2Node: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 32, col 10 to line 32, col 23 of module E2Node: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 32, col 10 to line 32, col 23 of module E2Node: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 40, col 19 to line 40, col 38 of module E2Node: 163
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 527, col 15 to line 527, col 25 of module Protocols: 386
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 528, col 13 to line 528, col 21 of module Protocols: 330
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 516, col 19 to line 516, col 34 of module Protocols: 166
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||line 24, col 4 to line 24, col 30 of module Protocols: 332
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||line 24, col 4 to line 24, col 30 of module Protocols: 390
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2775:0 @!@!@
+  ||line 50, col 16 to line 50, col 46 of module SCTP: 168:167
+@!@!@ENDMSG 2775 @!@!@
+@!@!@STARTMSG 2772:0 @!@!@
+<xApp!Next line 19, col 7 to line 19, col 22 of module SDRAN>: 0:0
+@!@!@ENDMSG 2772 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 19, col 1 to line 19, col 71 of module SDRAN: 747
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 19, col 1 to line 19, col 71 of module SDRAN: 377
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 19, col 67 to line 19, col 71 of module SDRAN: 379
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 48, col 10 to line 48, col 77 of module xApp: 381
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 49, col 10 to line 49, col 68 of module xApp: 381
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 36, col 10 to line 36, col 23 of module xApp: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 36, col 10 to line 36, col 23 of module xApp: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 36, col 10 to line 36, col 23 of module xApp: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 42, col 10 to line 42, col 23 of module xApp: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 42, col 10 to line 42, col 23 of module xApp: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 42, col 10 to line 42, col 23 of module xApp: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 50, col 19 to line 50, col 37 of module xApp: 395
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 11, col 1 to line 11, col 25 of module API: 794
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 11, col 1 to line 11, col 25 of module API: 155
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 11, col 1 to line 11, col 25 of module API: 357
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 11, col 1 to line 11, col 25 of module API: 417
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 11, col 1 to line 11, col 25 of module API: 403
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 859, col 15 to line 859, col 24 of module Protocols: 404
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 860, col 13 to line 860, col 20 of module Protocols: 808
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 848, col 19 to line 848, col 34 of module Protocols: 404
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||line 593, col 4 to line 593, col 30 of module Protocols: 810
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||line 593, col 4 to line 593, col 30 of module Protocols: 407
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2775:0 @!@!@
+  ||line 50, col 16 to line 50, col 46 of module GRPC: 406:405
+@!@!@ENDMSG 2775 @!@!@
+@!@!@STARTMSG 2772:0 @!@!@
+<API!E2AP!Next line 11, col 1 to line 11, col 3 of module API (31 7 31 19)>: 0:0
+@!@!@ENDMSG 2772 @!@!@
+@!@!@STARTMSG 2772:0 @!@!@
+<API!E2T!Next line 11, col 1 to line 11, col 3 of module API (32 7 32 18)>: 0:0
+@!@!@ENDMSG 2772 @!@!@
+@!@!@STARTMSG 2772:0 @!@!@
+<API!Topo!Next line 11, col 1 to line 11, col 3 of module API (33 7 33 19)>: 0:0
+@!@!@ENDMSG 2772 @!@!@
+@!@!@STARTMSG 2202:0 @!@!@
+End of statistics.
+@!@!@ENDMSG 2202 @!@!@
+@!@!@STARTMSG 2209:0 @!@!@
+Progress(%2%) at 2021-08-13 16:22:57: 1069 states generated, -1 distinct states found, -1 states left on queue.
+@!@!@ENDMSG 2209 @!@!@
+@!@!@STARTMSG 2210:0 @!@!@
+The number of states generated: 1074
+Simulation using seed -3977553251549845205 and aril 0
+@!@!@ENDMSG 2210 @!@!@
+@!@!@STARTMSG 2209:0 @!@!@
+Progress(1145) at 2021-08-13 16:22:57: 1146 states generated, -1 distinct states found, -1 states left on queue.
+@!@!@ENDMSG 2209 @!@!@
+@!@!@STARTMSG 2186:0 @!@!@
+Finished in 675ms at (2021-08-13 16:22:57)
+@!@!@ENDMSG 2186 @!@!@
