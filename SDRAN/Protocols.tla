@@ -258,10 +258,10 @@ LOCAL INSTANCE TLC
          plmnId |-> Nat,
          globalE2NodeId |-> STRING,
          transactionID |-> transactionIDPrototype,
-         ranFunctionList |-> <<[ranFunctionID |-> Nat, 
+         ranFunctionList |-> <<[ranFunctionID |-> {id \in Nat : Range(id, 0, 4095)}, 
                               ranFunctionOID |-> STRING, 
                               ranFunctionDescription |-> STRING,
-                              ranFunctionRevision |-> {n \in Nat : Range(n, 0, 4095)}]>>]      
+                              ranFunctionRevision |-> {id \in Nat : Range(id, 0, 4095)}]>>]      
          
       
       LOCAL ValidE2SetupRequest(m) == 
@@ -295,10 +295,18 @@ LOCAL INSTANCE TLC
          /\ ValidMessage(m, resetResponsePrototype)
       
       
+      actionTypePrototype == [t \in actionTypes |-> t]
+      
+      
+      subscriptionDetailsPrototype == [
+         
+         actions |-> <<[actionID |-> {id \in Nat : Range(id, 0, 255)}, actionTypePrototype |-> actionTypePrototype ]>>]
+      
       ricSubscriptionRequestPrototype == [
          ranFunctionID |-> ranFunctionIDPrototype,
-         ricRequestID |-> ricRequestIDPrototype]
-         \* add subscription details
+         ricRequestID |-> ricRequestIDPrototype,
+         subscriptionDetails |-> subscriptionDetailsPrototype]
+         
       
       LOCAL ValidRICSubscriptionRequest(m) == 
          /\ ValidMessage(m,  ricSubscriptionRequestPrototype)
@@ -1456,7 +1464,7 @@ Topo == INSTANCE TopoService WITH
 
 =============================================================================
 \* Modification History
-\* Last modified Sat Aug 14 00:02:03 PDT 2021 by adibrastegarnia
+\* Last modified Sat Aug 14 10:14:54 PDT 2021 by adibrastegarnia
 \* Last modified Fri Aug 13 17:42:40 PDT 2021 by jordanhalterman
 \* Last modified Fri Aug 13 17:14:37 PDT 2021 by adibrastegarnia
 \* Last modified Fri Aug 13 17:16:15 PDT 2021 by adibrastegarnia
