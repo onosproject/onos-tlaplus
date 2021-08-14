@@ -153,9 +153,9 @@ LOCAL INSTANCE TLC
       Policy
       
    CONSTANTS
-      ricService,
-      supportFunction,
-      both   
+      RicService,
+      SupportFunction,
+      Both   
  
    LOCAL actionTypes == {
          Report,
@@ -163,9 +163,9 @@ LOCAL INSTANCE TLC
          Policy}
          
    LOCAL tnlAssociationUsage == {
-      ricService,
-      supportFunction,
-      both}    
+      RicService,
+      SupportFunction,
+      Both}    
    
    \* Failure causes should be defined as strings to simplify debugging
    ASSUME \A c \in failureCauses : c \in STRING
@@ -732,9 +732,9 @@ E2AP == INSTANCE E2AP WITH
    Report <- "Report",
    Insert <- "Insert",
    Policy <- "Policy",
-   ricService <- "RicService",
-   supportFunction <- "SupportFunction",
-   both <- "Both"
+   RicService <- "RicService",
+   SupportFunction <- "SupportFunction",
+   Both <- "Both"
 
    --------------------------- MODULE E2TService ---------------------------
    
@@ -1450,8 +1450,9 @@ Topo == INSTANCE TopoService WITH
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 18:01:26 PDT 2021 by adibrastegarnia
+\* Last modified Fri Aug 13 18:02:02 PDT 2021 by adibrastegarnia
 \* Last modified Fri Aug 13 17:42:40 PDT 2021 by jordanhalterman
 \* Last modified Fri Aug 13 17:14:37 PDT 2021 by adibrastegarnia
+\* Last modified Fri Aug 13 17:16:15 PDT 2021 by adibrastegarnia
 \* Last modified Fri Aug 13 15:56:13 PDT 2021 by jordanhalterman
 \* Created Fri Aug 13 15:34:11 PDT 2021 by jordanhalterman
