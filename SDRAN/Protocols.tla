@@ -20,6 +20,8 @@ LOCAL INSTANCE TLC
 
    VARIABLE servers, conns
    
+   vars == <<servers, conns>>
+   
    \* The E2AP protocol is implemented on SCTP
    LOCAL SCTP == INSTANCE SCTP
    
@@ -521,7 +523,7 @@ LOCAL INSTANCE TLC
 
    =========================================================================
 
-VARIABLE e2apServers, e2apConns
+VARIABLES e2apServers, e2apConns
 
 E2AP == INSTANCE E2AP WITH
    servers <- e2apServers,
@@ -588,6 +590,8 @@ E2AP == INSTANCE E2AP WITH
    CONSTANT Nil
 
    VARIABLE servers, conns
+      
+   vars == <<servers, conns>>
       
    \* The E2T API is implemented as a gRPC service
    LOCAL GRPC == INSTANCE GRPC
@@ -853,7 +857,7 @@ E2AP == INSTANCE E2AP WITH
 
    =========================================================================
 
-VARIABLE e2tServers, e2tConns
+VARIABLES e2tServers, e2tConns
 
 E2T == INSTANCE E2TService WITH
    servers <- e2tServers,
@@ -876,7 +880,9 @@ E2T == INSTANCE E2TService WITH
    
    CONSTANT Nil
    
-   VARIABLE servers, conns
+   VARIABLES servers, conns
+      
+   vars == <<servers, conns>>
       
    \* The Topo API is implemented as a gRPC service
    LOCAL GRPC == INSTANCE GRPC
@@ -1263,7 +1269,7 @@ E2T == INSTANCE E2TService WITH
    Init == GRPC!Init
    
    Next == GRPC!Next
-
+   
    =========================================================================
 
 VARIABLE topoServers, topoConns
@@ -1287,5 +1293,5 @@ Topo == INSTANCE TopoService WITH
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 15:56:13 PDT 2021 by jordanhalterman
+\* Last modified Fri Aug 13 17:42:40 PDT 2021 by jordanhalterman
 \* Created Fri Aug 13 15:34:11 PDT 2021 by jordanhalterman

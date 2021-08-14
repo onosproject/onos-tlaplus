@@ -10,10 +10,10 @@ LOCAL INSTANCE FiniteSets
 
 CONSTANT Nodes
 
-CONSTANT OK, Error
-
 ASSUME /\ IsFiniteSet(Nodes) 
        /\ \A n \in Nodes : n \in STRING
+
+vars == <<>>
 
    ------------------------------ MODULE Store -----------------------------
    
@@ -99,5 +99,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 15:49:50 PDT 2021 by jordanhalterman
+\* Last modified Fri Aug 13 16:35:46 PDT 2021 by jordanhalterman
 \* Created Fri Aug 13 09:50:50 PDT 2021 by jordanhalterman

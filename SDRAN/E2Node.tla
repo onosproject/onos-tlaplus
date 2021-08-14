@@ -13,6 +13,8 @@ CONSTANT Nodes
 ASSUME /\ IsFiniteSet(Nodes) 
        /\ \A n \in Nodes : n \in STRING
 
+vars == <<>>
+
    ------------------------------ MODULE Store -----------------------------
    
    Init == TRUE
@@ -57,5 +59,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 13 15:55:06 PDT 2021 by jordanhalterman
+\* Last modified Fri Aug 13 16:36:37 PDT 2021 by jordanhalterman
 \* Created Tue Aug 10 04:55:53 PDT 2021 by jordanhalterman
