@@ -16,20 +16,6 @@ CONSTANT OK
 
 CONSTANT Error
 
-CONSTANT
-   Unknown,
-   Canceled,
-   NotFound,
-   AlreadyExists,
-   Unauthorized,
-   Forbidden,
-   Conflict,
-   Invalid,
-   Unavailable,
-   NotSupported,
-   Timeout,
-   Internal
-
 ----
 
 LOCAL Min(s) == CHOOSE x \in s : \A y \in s : x >= y
@@ -40,7 +26,53 @@ VARIABLE conns
 
 vars == <<conns>>
 
-   ------------------------------ MODULE Client -------------------------
+   -------------------------------- MODULE Errors ---------------------------
+
+   CONSTANT
+      Unknown,
+      Canceled,
+      NotFound,
+      AlreadyExists,
+      Unauthorized,
+      Forbidden,
+      Conflict,
+      Invalid,
+      Unavailable,
+      NotSupported,
+      Timeout,
+      Internal
+
+   IsOK(m) == m.status = OK
+   IsUnknown(m) == m.status = Error /\ m.error = Unknown
+   IsCanceled(m) == m.status = Error /\ m.error = Canceled
+   IsNotFound(m) == m.status = Error /\ m.error = NotFound
+   IsAlreadyExists(m) == m.status = Error /\ m.error = AlreadyExists
+   IsUnauthorized(m) == m.status = Error /\ m.error = Unauthorized
+   IsForbidden(m) == m.status = Error /\ m.error = Forbidden
+   IsConflict(m) == m.status = Error /\ m.error = Conflict
+   IsInvalid(m) == m.status = Error /\ m.error = Invalid
+   IsUnavailable(m) == m.status = Error /\ m.error = Unavailable
+   IsNotSupported(m) == m.status = Error /\ m.error = NotSupported
+   IsTimeout(m) == m.status = Error /\ m.error = Timeout
+   IsInternal(m) == m.status = Error /\ m.error = Internal
+
+   ==========================================================================
+
+Errors == INSTANCE Errors WITH
+   Unknown <- "Unknown",
+   Canceled <- "Canceled",
+   NotFound <- "NotFound",
+   AlreadyExists <- "AlreadyExists",
+   Unauthorized <- "Unauthorized",
+   Forbidden <- "Forbidden",
+   Conflict <- "Conflict",
+   Invalid <- "Invalid",
+   Unavailable <- "Unavailable",
+   NotSupported <- "NotSupported",
+   Timeout <- "Timeout",
+   Internal <- "Internal"
+
+   -------------------------------- MODULE Client ---------------------------
 
    Connect(src, dst) ==
       LET maxId == Max(DOMAIN conns)
@@ -61,13 +93,13 @@ vars == <<conns>>
 
    Handle(c, f(_, _)) == Len(c.res) > 0 /\ f(c, c.res[1])
 
-   ======================================================================
+   ==========================================================================
 
 Client == INSTANCE Client
 
 Connections == {conns[c] : c \in DOMAIN conns}
 
-   ----------------------------- MODULE Server --------------------------
+   ------------------------------- MODULE Server ----------------------------
 
    Send(c, m) ==
       conns' = [conns EXCEPT ![c.id] = [conns[c.id] EXCEPT !.res = Append(conns[c.id].res, m)]]
@@ -80,7 +112,7 @@ Connections == {conns[c] : c \in DOMAIN conns}
 
    Handle(c, f(_, _)) == Len(c.req) > 0 /\ f(c, c.req[1])
 
-   ======================================================================
+   ==========================================================================
 
 Server == INSTANCE Server
 
@@ -92,5 +124,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 13 15:12:09 PDT 2021 by jordanhalterman
+\* Last modified Mon Sep 13 15:28:02 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 12:23:50 PDT 2021 by jordanhalterman
