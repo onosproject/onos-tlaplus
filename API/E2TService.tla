@@ -1,7 +1,7 @@
--------------------------------- MODULE E2T ---------------------------------
+----------------------------- MODULE E2TService -----------------------------
 
 (*
-The E2AP module provides a formal specification of the E2T service. The
+The E2TService module provides a formal specification of the E2T service. The
 spec defines the client and server interfaces for E2T and provides helpers
 for managing and operating on connections.
 *)
@@ -278,5 +278,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 13 15:34:44 PDT 2021 by jordanhalterman
-\* Created Mon Sep 13 14:04:44 PDT 2021 by jordanhalterman
+\* Last modified Mon Sep 13 16:23:37 PDT 2021 by jordanhalterman
+\* Created Mon Sep 13 16:23:16 PDT 2021 by jordanhalterman

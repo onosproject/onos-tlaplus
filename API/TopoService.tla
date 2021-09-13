@@ -1,7 +1,7 @@
---------------------------------- MODULE Topo --------------------------------
+---------------------------- MODULE TopoService ----------------------------
 
 (*
-The Topo module provides a formal specification of the µONOS topology 
+The TopoService module provides a formal specification of the µONOS topology 
 service. The spec defines the client and server interfaces for µONOS Topo
 and provides helpers for managing and operating on connections.
 *)
@@ -408,5 +408,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 13 15:38:22 PDT 2021 by jordanhalterman
-\* Created Mon Sep 13 15:07:05 PDT 2021 by jordanhalterman
+\* Last modified Mon Sep 13 16:24:17 PDT 2021 by jordanhalterman
+\* Created Mon Sep 13 16:24:05 PDT 2021 by jordanhalterman
