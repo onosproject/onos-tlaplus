@@ -8,31 +8,11 @@ for managing and operating on connections.
 
 CONSTANT Nil
 
-\* Message type constants
-CONSTANT 
-   SubscribeRequestType,
-   SubscribeResponseType
-CONSTANTS
-   UnsubscribeRequestType,
-   UnsubscribeResponseType
-CONSTANTS
-   ControlRequestType,
-   ControlResponseType
-
-LOCAL messageTypes == 
-   {SubscribeRequestType, 
-    SubscribeResponseType,
-    UnsubscribeRequestType,
-    UnsubscribeResponseType,
-    ControlRequestType,
-    ControlResponseType}
-
-\* Message types should be defined as strings to simplify debugging
-ASSUME \A m \in messageTypes : m \in STRING
-
 VARIABLE conns
 
-LOCAL INSTANCE API
+gRPC == INSTANCE gRPC WITH
+   OK <- "OK",
+   Error <- "Error"
 
 LOCAL INSTANCE TLC
 
@@ -45,6 +25,28 @@ vars == <<conns>>
    verifying all the messages supported by E2T.
    *)
    
+   \* Message type constants
+   CONSTANT 
+      SubscribeRequest,
+      SubscribeResponse
+   CONSTANTS
+      UnsubscribeRequest,
+      UnsubscribeResponse
+   CONSTANTS
+      ControlRequest,
+      ControlResponse
+      
+   LOCAL messageTypes == 
+      {SubscribeRequest, 
+       SubscribeResponse,
+       UnsubscribeRequest,
+       UnsubscribeResponse,
+       ControlRequest,
+       ControlResponse}
+   
+   \* Message types should be defined as strings to simplify debugging
+   ASSUME \A m \in messageTypes : m \in STRING
+         
    ----
    
    (*
@@ -52,17 +54,17 @@ vars == <<conns>>
    the network.
    *)
    
-   IsSubscribeRequest(m) == m.type = SubscribeRequestType
+   IsSubscribeRequest(m) == m.type = SubscribeRequest
+  
+   IsSubscribeResponse(m) == m.type = SubscribeResponse
    
-   IsSubscribeResponse(m) == m.type = SubscribeResponseType
+   IsUnsubscribeRequest(m) == m.type = UnsubscribeRequest
    
-   IsUnsubscribeRequest(m) == m.type = UnsubscribeRequestType
+   IsUnsubscribeResponse(m) == m.type = UnsubscribeResponse
    
-   IsUnsubscribeResponse(m) == m.type = UnsubscribeResponseType
+   IsControlRequest(m) == m.type = ControlRequest
    
-   IsControlRequest(m) == m.type = ControlRequestType
-   
-   IsControlResponse(m) == m.type = ControlResponseType
+   IsControlResponse(m) == m.type = ControlResponse
    
    ----
       
@@ -92,41 +94,47 @@ vars == <<conns>>
    
    LOCAL SetType(m, t) == [m EXCEPT !.type = t]
    
-   SubscribeRequest(m) ==
+   WithSubscribeRequest(m) ==
       IF Assert(ValidSubscribeRequest(m), "Invalid SubscribeRequest") 
-      THEN SetType(m, SubscribeRequestType) 
+      THEN SetType(m, SubscribeRequest) 
       ELSE Nil
    
-   SubscribeResponse(m) ==
+   WithSubscribeResponse(m) ==
       IF Assert(ValidSubscribeResponse(m), "Invalid SubscribeResponse") 
-      THEN SetType(m, SubscribeResponseType) 
+      THEN SetType(m, SubscribeResponse) 
       ELSE Nil
    
-   UnsubscribeRequest(m) == 
+   WithUnsubscribeRequest(m) == 
       IF Assert(ValidUnsubscribeRequest(m), "Invalid UnsubscribeRequest") 
-      THEN SetType(m, UnsubscribeRequestType) 
+      THEN SetType(m, UnsubscribeRequest) 
       ELSE Nil
    
-   UnsubscribeResponse(m) == 
+   WithUnsubscribeResponse(m) == 
       IF Assert(ValidUnsubscribeResponse(m), "Invalid UnsubscribeResponse") 
-      THEN SetType(m, UnsubscribeResponseType) 
+      THEN SetType(m, UnsubscribeResponse) 
       ELSE Nil
    
-   ControlRequest(m) == 
+   WithControlRequest(m) == 
       IF Assert(ValidControlRequest(m), "Invalid ControlRequest") 
-      THEN SetType(m, ControlRequestType) 
+      THEN SetType(m, ControlRequest) 
       ELSE Nil
    
-   ControlResponse(m) == 
+   WithControlResponse(m) == 
       IF Assert(ValidControlResponse(m), "Invalid ControlResponse") 
-      THEN SetType(m, ControlResponseType) 
+      THEN SetType(m, ControlResponse) 
       ELSE Nil
       
    ==========================================================================
 
 \* The Messages module is instantiated locally to avoid access from outside
 \* the module.
-LOCAL Messages == INSTANCE Messages
+LOCAL Messages == INSTANCE Messages WITH
+   SubscribeRequest <- "SubscribeRequest", 
+   SubscribeResponse <- "SubscribeResponse",
+   UnsubscribeRequest <- "UnsubscribeRequest",
+   UnsubscribeResponse <- "UnsubscribeResponse",
+   ControlRequest <- "ControlRequest",
+   ControlResponse <- "ControlResponse"
 
    ------------------------------ MODULE Client -----------------------------
    
@@ -144,13 +152,13 @@ LOCAL Messages == INSTANCE Messages
       *)
       
       SubscribeRequest(c, m) == 
-         /\ gRPC!Client!Send(c, Messages!SubscribeRequest(m))
+         /\ gRPC!Client!Send(c, Messages!WithSubscribeRequest(m))
       
       UnsubscribeRequest(c, m) ==
-         /\ gRPC!Client!Send(c, Messages!UnsubscribeRequest(m))
+         /\ gRPC!Client!Send(c, Messages!WithUnsubscribeRequest(m))
       
       ControlRequest(c, m) ==
-         /\ gRPC!Client!Send(c, Messages!ControlRequest(m))
+         /\ gRPC!Client!Send(c, Messages!WithControlRequest(m))
       
       =======================================================================
    
@@ -211,13 +219,13 @@ Client == INSTANCE Client
       *)
       
       SubscribeResponse(c, m) == 
-         /\ gRPC!Server!Reply(c, Messages!SubscribeResponse(m))
+         /\ gRPC!Server!Reply(c, Messages!WithSubscribeResponse(m))
       
       UnsubscribeResponse(c, m) ==
-         /\ gRPC!Server!Reply(c, Messages!UnsubscribeResponse(m))
+         /\ gRPC!Server!Reply(c, Messages!WithUnsubscribeResponse(m))
       
       ControlResponse(c, m) ==
-         /\ gRPC!Server!Reply(c, Messages!ControlResponse(m))
+         /\ gRPC!Server!Reply(c, Messages!WithControlResponse(m))
       
       =======================================================================
    
@@ -262,7 +270,13 @@ Server == INSTANCE Server
 \* The set of all open E2T connections
 Connections == gRPC!Connections
 
+Init ==
+   /\ gRPC!Init
+
+Next ==
+   /\ gRPC!Next
+
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 13 15:16:49 PDT 2021 by jordanhalterman
+\* Last modified Mon Sep 13 15:34:44 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 14:04:44 PDT 2021 by jordanhalterman

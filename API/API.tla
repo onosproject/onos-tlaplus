@@ -1,31 +1,14 @@
 -------------------------------- MODULE API --------------------------------
 
+CONSTANT Nil
+
 VARIABLE conns
 
-gRPC == INSTANCE gRPC WITH
-   Nil <- "<nil>",
-   OK <- "OK",
-   Error <- "Error",
-   Unknown <- "Unknown",
-   Canceled <- "Canceled",
-   NotFound <- "NotFound",
-   AlreadyExists <- "AlreadyExists",
-   Unauthorized <- "Unauthorized",
-   Forbidden <- "Forbidden",
-   Conflict <- "Conflict",
-   Invalid <- "Invalid",
-   Unavailable <- "Unavailable",
-   NotSupported <- "NotSupported",
-   Timeout <- "Timeout",
-   Internal <- "Internal"
+E2T == INSTANCE E2T
 
-Init ==
-   /\ gRPC!Init
-
-Next ==
-   /\ gRPC!Next
+Topo == INSTANCE Topo
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 13 15:12:27 PDT 2021 by jordanhalterman
+\* Last modified Mon Sep 13 15:34:54 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 03:26:39 PDT 2021 by jordanhalterman

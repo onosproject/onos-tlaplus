@@ -8,46 +8,11 @@ and provides helpers for managing and operating on connections.
 
 CONSTANT Nil
 
-\* Message type constants
-CONSTANT 
-   CreateRequestType,
-   CreateResponseType
-CONSTANTS
-   UpdateRequestType,
-   UpdateResponseType
-CONSTANTS
-   DeleteRequestType,
-   DeleteResponseType
-CONSTANT 
-   GetRequestType,
-   GetResponseType
-CONSTANT 
-   ListRequestType,
-   ListResponseType
-CONSTANT 
-   WatchRequestType,
-   WatchResponseType
-
-LOCAL messageTypes == 
-   {CreateRequestType,
-    CreateResponseType,
-    UpdateRequestType,
-    UpdateResponseType,
-    DeleteRequestType,
-    DeleteResponseType,
-    GetRequestType,
-    GetResponseType,
-    ListRequestType,
-    ListResponseType,
-    WatchRequestType,
-    WatchResponseType}
-
-\* Message types should be defined as strings to simplify debugging
-ASSUME \A m \in messageTypes : m \in STRING
-
 VARIABLE conns
 
-LOCAL INSTANCE API
+gRPC == INSTANCE gRPC WITH
+   OK <- "OK",
+   Error <- "Error"
 
 LOCAL INSTANCE TLC
 
@@ -60,6 +25,43 @@ vars == <<conns>>
    verifying all the messages supported by µONOS Topo.
    *)
    
+   \* Message type constants
+   CONSTANT 
+      CreateRequest,
+      CreateResponse
+   CONSTANTS
+      UpdateRequest,
+      UpdateResponse
+   CONSTANTS
+      DeleteRequest,
+      DeleteResponse
+   CONSTANT 
+      GetRequest,
+      GetResponse
+   CONSTANT 
+      ListRequest,
+      ListResponse
+   CONSTANT 
+      WatchRequest,
+      WatchResponse
+   
+   LOCAL messageTypes == 
+      {CreateRequest,
+       CreateResponse,
+       UpdateRequest,
+       UpdateResponse,
+       DeleteRequest,
+       DeleteResponse,
+       GetRequest,
+       GetResponse,
+       ListRequest,
+       ListResponse,
+       WatchRequest,
+       WatchResponse}
+   
+   \* Message types should be defined as strings to simplify debugging
+   ASSUME \A m \in messageTypes : m \in STRING
+      
    ----
    
    (*
@@ -67,29 +69,29 @@ vars == <<conns>>
    types on the network.
    *)
    
-   IsCreateRequest(m) == m.type = CreateRequestType
+   IsCreateRequest(m) == m.type = CreateRequest
    
-   IsCreateResponse(m) == m.type = CreateResponseType
+   IsCreateResponse(m) == m.type = CreateResponse
    
-   IsUpdateRequest(m) == m.type = UpdateRequestType
+   IsUpdateRequest(m) == m.type = UpdateRequest
    
-   IsUpdateResponse(m) == m.type = UpdateResponseType
+   IsUpdateResponse(m) == m.type = UpdateResponse
    
-   IsDeleteRequest(m) == m.type = DeleteRequestType
+   IsDeleteRequest(m) == m.type = DeleteRequest
    
-   IsDeleteResponse(m) == m.type = DeleteResponseType
+   IsDeleteResponse(m) == m.type = DeleteResponse
    
-   IsGetRequest(m) == m.type = GetRequestType
+   IsGetRequest(m) == m.type = GetRequest
    
-   IsGetResponse(m) == m.type = GetResponseType
+   IsGetResponse(m) == m.type = GetResponse
    
-   IsListRequest(m) == m.type = ListRequestType
+   IsListRequest(m) == m.type = ListRequest
    
-   IsListResponse(m) == m.type = ListResponseType
+   IsListResponse(m) == m.type = ListResponse
    
-   IsWatchRequest(m) == m.type = WatchRequestType
+   IsWatchRequest(m) == m.type = WatchRequest
    
-   IsWatchResponse(m) == m.type = WatchResponseType
+   IsWatchResponse(m) == m.type = WatchResponse
    
    ----
       
@@ -132,71 +134,83 @@ vars == <<conns>>
    
    LOCAL SetType(m, t) == [m EXCEPT !.type = t]
    
-   CreateRequest(m) == 
+   WithCreateRequest(m) == 
       IF Assert(ValidCreateRequest(m), "Invalid CreateRequest") 
-      THEN SetType(m, CreateRequestType) 
+      THEN SetType(m, CreateRequest) 
       ELSE Nil
    
-   CreateResponse(m) == 
+   WithCreateResponse(m) == 
       IF Assert(ValidCreateResponse(m), "Invalid CreateResponse") 
-      THEN SetType(m, CreateResponseType) 
+      THEN SetType(m, CreateResponse) 
       ELSE Nil
    
-   UpdateRequest(m) == 
+   WithUpdateRequest(m) == 
       IF Assert(ValidUpdateRequest(m), "Invalid UpdateRequest") 
-      THEN SetType(m, UpdateRequestType) 
+      THEN SetType(m, UpdateRequest) 
       ELSE Nil
    
-   UpdateResponse(m) == 
+   WithUpdateResponse(m) == 
       IF Assert(ValidUpdateResponse(m), "Invalid UpdateResponse") 
-      THEN SetType(m, UpdateResponseType) 
+      THEN SetType(m, UpdateResponse) 
       ELSE Nil
    
-   DeleteRequest(m) == 
+   WithDeleteRequest(m) == 
       IF Assert(ValidDeleteRequest(m), "Invalid DeleteRequest") 
-      THEN SetType(m, DeleteRequestType) 
+      THEN SetType(m, DeleteRequest) 
       ELSE Nil
    
-   DeleteResponse(m) == 
+   WithDeleteResponse(m) == 
       IF Assert(ValidDeleteResponse(m), "Invalid DeleteResponse") 
-      THEN SetType(m, DeleteResponseType) 
+      THEN SetType(m, DeleteResponse) 
       ELSE Nil
    
-   GetRequest(m) == 
+   WithGetRequest(m) == 
       IF Assert(ValidGetRequest(m), "Invalid GetRequest") 
-      THEN SetType(m, GetRequestType) 
+      THEN SetType(m, GetRequest) 
       ELSE Nil
    
-   GetResponse(m) == 
+   WithGetResponse(m) == 
       IF Assert(ValidGetResponse(m), "Invalid GetResponse") 
-      THEN SetType(m, GetResponseType) 
+      THEN SetType(m, GetResponse) 
       ELSE Nil
    
-   ListRequest(m) == 
+   WithListRequest(m) == 
       IF Assert(ValidListRequest(m), "Invalid ListRequest") 
-      THEN SetType(m, ListRequestType) 
+      THEN SetType(m, ListRequest) 
       ELSE Nil
    
-   ListResponse(m) == 
+   WithListResponse(m) == 
       IF Assert(ValidListResponse(m), "Invalid ListResponse") 
-      THEN SetType(m, ListResponseType) 
+      THEN SetType(m, ListResponse) 
       ELSE Nil
    
-   WatchRequest(m) == 
+   WithWatchRequest(m) == 
       IF Assert(ValidWatchRequest(m), "Invalid WatchRequest") 
-      THEN SetType(m, WatchRequestType) 
+      THEN SetType(m, WatchRequest) 
       ELSE Nil
    
-   WatchResponse(m) == 
+   WithWatchResponse(m) == 
       IF Assert(ValidWatchResponse(m), "Invalid WatchResponse") 
-      THEN SetType(m, WatchResponseType) 
+      THEN SetType(m, WatchResponse) 
       ELSE Nil
    
    ======================================================================
 
 \* The Messages module is instantiated locally to avoid access from outside
 \* the module.
-LOCAL Messages == INSTANCE Messages
+LOCAL Messages == INSTANCE Messages WITH
+   CreateRequest <- "CreateRequest",
+   CreateResponse <- "CreateResponse",
+   UpdateRequest <- "UpdateRequest",
+   UpdateResponse <- "UpdateResponse",
+   DeleteRequest <- "DeleteRequest",
+   DeleteResponse <- "DeleteResponse",
+   GetRequest <- "GetRequest",
+   GetResponse <- "GetResponse",
+   ListRequest <- "ListRequest",
+   ListResponse <- "ListResponse",
+   WatchRequest <- "WatchRequest",
+   WatchResponse <- "WatchResponse"
 
    ------------------------------ MODULE Client -----------------------------
    
@@ -214,22 +228,22 @@ LOCAL Messages == INSTANCE Messages
       *)
       
       CreateRequest(c, m) == 
-         /\ gRPC!Client!Send(c, Messages!CreateRequest(m))
+         /\ gRPC!Client!Send(c, Messages!WithCreateRequest(m))
       
       UpdateRequest(c, m) ==
-         /\ gRPC!Client!Send(c, Messages!UpdateRequest(m))
+         /\ gRPC!Client!Send(c, Messages!WithUpdateRequest(m))
       
       DeleteRequest(c, m) ==
-         /\ gRPC!Client!Send(c, Messages!DeleteRequest(m))
+         /\ gRPC!Client!Send(c, Messages!WithDeleteRequest(m))
       
       GetRequest(c, m) == 
-         /\ gRPC!Client!Send(c, Messages!GetRequest(m))
+         /\ gRPC!Client!Send(c, Messages!WithGetRequest(m))
       
       ListRequest(c, m) == 
-         /\ gRPC!Client!Send(c, Messages!ListRequest(m))
+         /\ gRPC!Client!Send(c, Messages!WithListRequest(m))
       
       WatchRequest(c, m) == 
-         /\ gRPC!Client!Send(c, Messages!WatchRequest(m))
+         /\ gRPC!Client!Send(c, Messages!WithWatchRequest(m))
       
       =======================================================================
    
@@ -308,22 +322,22 @@ Client == INSTANCE Client
       *)
       
       CreateResponse(c, m) == 
-         /\ gRPC!Server!Reply(c, Messages!CreateResponse(m))
+         /\ gRPC!Server!Reply(c, Messages!WithCreateResponse(m))
       
       UpdateResponse(c, m) ==
-         /\ gRPC!Server!Reply(c, Messages!UpdateResponse(m))
+         /\ gRPC!Server!Reply(c, Messages!WithUpdateResponse(m))
       
       DeleteResponse(c, m) ==
-         /\ gRPC!Server!Reply(c, Messages!DeleteResponse(m))
+         /\ gRPC!Server!Reply(c, Messages!WithDeleteResponse(m))
       
       GetResponse(c, m) == 
-         /\ gRPC!Server!Reply(c, Messages!GetResponse(m))
+         /\ gRPC!Server!Reply(c, Messages!WithGetResponse(m))
       
       ListResponse(c, m) ==
-         /\ gRPC!Server!Reply(c, Messages!ListResponse(m))
+         /\ gRPC!Server!Reply(c, Messages!WithListResponse(m))
       
       WatchResponse(c, m) ==
-         /\ gRPC!Server!Reply(c, Messages!WatchResponse(m))
+         /\ gRPC!Server!Reply(c, Messages!WithWatchResponse(m))
       
       =======================================================================
    
@@ -386,7 +400,13 @@ Server == INSTANCE Server
 \* The set of all open Topo connections
 Connections == gRPC!Connections
 
+Init ==
+   /\ gRPC!Init
+
+Next ==
+   /\ gRPC!Next
+
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 13 15:16:04 PDT 2021 by jordanhalterman
+\* Last modified Mon Sep 13 15:38:22 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 15:07:05 PDT 2021 by jordanhalterman
