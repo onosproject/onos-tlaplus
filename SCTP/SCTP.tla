@@ -18,18 +18,16 @@ LOCAL Min(s) == CHOOSE x \in s : \A y \in s : x >= y
 
 LOCAL Max(s) == CHOOSE x \in s : \A y \in s : x <= y
 
-VARIABLE servers
-
 VARIABLE conns
 
-vars == <<servers, conns>>
+vars == <<conns>>
 
    ----------------------------- MODULE Client --------------------------
 
-   Connect(c, s) ==
+   Connect(src, dst) ==
       LET maxId == Max(DOMAIN conns)
           connId == Min({i \in 1..(maxId+1) : i \notin DOMAIN conns})
-      IN conns' = conns @@ (connId :> [id |-> connId, src |-> c, dst |-> s, req |-> <<>>, res |-> <<>>])
+      IN conns' = conns @@ (connId :> [id |-> connId, src |-> src, dst |-> dst, req |-> <<>>, res |-> <<>>])
 
    Disconnect(c) ==
       conns' = [x \in DOMAIN conns \ {c.id} |-> conns[x]]
@@ -53,14 +51,6 @@ Connections == {conns[c] : c \in DOMAIN conns}
 
    ----------------------------- MODULE Server --------------------------
 
-   Start(s) ==
-      /\ servers' = servers \cup {s}
-      /\ UNCHANGED <<conns>>
-
-   Stop(s) ==
-      /\ servers' = servers \ {s}
-      /\ conns' = [c \in DOMAIN conns \ {c \in conns : conns[c].dst # s} |-> conns[c]]
-
    Send(c, m) ==
       conns' = [conns EXCEPT ![c.id] = [conns[c.id] EXCEPT !.res = Append(conns[c.id].res, m)]]
 
@@ -74,19 +64,15 @@ Connections == {conns[c] : c \in DOMAIN conns}
 
    ======================================================================
 
-Servers == servers
-
 Server == INSTANCE Server
 
 Init ==
-   /\ servers = {}
    /\ conns = [c \in {} |-> [e2n |-> Nil, e2t |-> Nil, req |-> <<>>, res |-> <<>>]]
 
 Next ==
-   \/ /\ FALSE
-      /\ UNCHANGED <<servers, conns>>
+   \/ UNCHANGED <<conns>>
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 13 12:21:28 PDT 2021 by jordanhalterman
+\* Last modified Mon Sep 13 15:19:55 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 12:21:16 PDT 2021 by jordanhalterman
