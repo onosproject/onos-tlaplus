@@ -16,144 +16,76 @@ LOCAL INSTANCE TLC
 
 CONSTANT Nil
 
-VARIABLE servers, conns
+VARIABLE conns
 
 \* The E2AP protocol is implemented on SCTP
 LOCAL SCTP == INSTANCE SCTP
 
-vars == <<servers, conns>>
+vars == <<conns>>
       
-\* Message type constants
-CONSTANTS
-   E2SetupRequestType,
-   E2SetupResponseType,
-   E2SetupFailureType
-CONSTANTS
-   ResetRequestType,
-   ResetResponseType
-CONSTANTS
-   RICSubscriptionRequestType,
-   RICSubscriptionResponseType,
-   RICSubscriptionFailureType
-CONSTANTS
-   RICSubscriptionDeleteRequestType,
-   RICSubscriptionDeleteResponseType,
-   RICSubscriptionDeleteFailureType
-CONSTANTS
-   RICControlRequestType,
-   RICControlResponseType,
-   RICControlFailureType,
-   RICServiceUpdateType
-CONSTANTS
-   E2ConnectionUpdateType,
-   E2ConnectionUpdateAcknowledgeType,
-   E2ConnectionUpdateFailureType
-CONSTANTS
-   E2NodeConfigurationUpdateType,
-   E2NodeConfigurationUpdateAcknowledgeType,
-   E2NodeConfigurationUpdateFailureType
-
-LOCAL messageTypes == 
-   {E2SetupRequestType, 
-    E2SetupResponseType,
-    E2SetupFailureType,
-    ResetRequestType,
-    ResetResponseType,
-    RICSubscriptionRequestType,
-    RICSubscriptionResponseType,
-    RICSubscriptionFailureType,
-    RICSubscriptionDeleteRequestType,
-    RICSubscriptionDeleteResponseType,
-    RICSubscriptionDeleteFailureType,
-    RICControlRequestType,
-    RICControlResponseType,
-    RICControlFailureType,
-    RICServiceUpdateType,
-    E2ConnectionUpdateType,
-    E2ConnectionUpdateAcknowledgeType,
-    E2ConnectionUpdateFailureType,
-    E2NodeConfigurationUpdateType,
-    E2NodeConfigurationUpdateAcknowledgeType,
-    E2NodeConfigurationUpdateFailureType}
-
-\* Message types should be defined as strings to simplify debugging
-ASSUME \A m \in messageTypes : m \in STRING
-
-\* Failure cause constants
-CONSTANTS
-   MiscFailureUnspecified,
-   MiscFailureControlProcessingOverload,
-   MiscFailureHardwareFailure,
-   MiscFailureOMIntervention
-CONSTANTS
-   ProtocolFailureUnspecified,
-   ProtocolFailureTransferSyntaxError,
-   ProtocolFailureAbstractSyntaxErrorReject,
-   ProtocolFailureAbstractSyntaxErrorIgnoreAndNotify,
-   ProtocolFailureMessageNotCompatibleWithReceiverState,
-   ProtocolFailureSemanticError,
-   ProtocolFailureAbstractSyntaxErrorFalselyConstructedMessage
-CONSTANTS
-   RICFailureUnspecified,
-   RICFailureRANFunctionIDInvalid,
-   RICFailureActionNotSupported,
-   RICFailureExcessiveActions,
-   RICFailureDuplicateAction,
-   RICFailureDuplicateEvent,
-   RICFailureFunctionResourceLimit,
-   RICFailureRequestIDUnknown,
-   RICFailureInconsistentActionSubsequentActionSequence,
-   RICFailureControlMessageInvalid,
-   RICFailureCallProcessIDInvalid
-CONSTANTS
-   RICServiceFailureUnspecified,
-   RICServiceFailureFunctionNotRequired,
-   RICServiceFailureExcessiveFunctions,
-   RICServiceFailureRICResourceLimit
-CONSTANTS
-   TransportFailureUnspecified,
-   TransportFailureTransportResourceUnavailable
-
-LOCAL failureCauses ==
-   {MiscFailureUnspecified,
-    MiscFailureControlProcessingOverload,
-    MiscFailureHardwareFailure,
-    MiscFailureOMIntervention,
-    ProtocolFailureUnspecified,
-    ProtocolFailureTransferSyntaxError,
-    ProtocolFailureAbstractSyntaxErrorReject,
-    ProtocolFailureAbstractSyntaxErrorIgnoreAndNotify,
-    ProtocolFailureMessageNotCompatibleWithReceiverState,
-    ProtocolFailureSemanticError,
-    ProtocolFailureAbstractSyntaxErrorFalselyConstructedMessage,
-    RICFailureUnspecified,
-    RICFailureRANFunctionIDInvalid,
-    RICFailureActionNotSupported,
-    RICFailureExcessiveActions,
-    RICFailureDuplicateAction,
-    RICFailureDuplicateEvent,
-    RICFailureFunctionResourceLimit,
-    RICFailureRequestIDUnknown,
-    RICFailureInconsistentActionSubsequentActionSequence,
-    RICFailureControlMessageInvalid,
-    RICFailureCallProcessIDInvalid,
-    RICServiceFailureUnspecified,
-    RICServiceFailureFunctionNotRequired,
-    RICServiceFailureExcessiveFunctions,
-    RICServiceFailureRICResourceLimit,
-    TransportFailureUnspecified,
-    TransportFailureTransportResourceUnavailable}
-
-\* Failure causes should be defined as strings to simplify debugging
-ASSUME \A c \in failureCauses : c \in STRING
-
-   --------------------------- MODULE Messages --------------------------
+   ----------------------------- MODULE Messages ----------------------------
    
    (*
    The Messages module defines predicates for receiving, sending, and
    verifying all the messages supported by E2AP.
    *)
    
+   \* Message type constants
+   CONSTANTS
+      E2SetupRequest,
+      E2SetupResponse,
+      E2SetupFailure
+   CONSTANTS
+      ResetRequest,
+      ResetResponse
+   CONSTANTS
+      RICSubscriptionRequest,
+      RICSubscriptionResponse,
+      RICSubscriptionFailure
+   CONSTANTS
+      RICSubscriptionDeleteRequest,
+      RICSubscriptionDeleteResponse,
+      RICSubscriptionDeleteFailure
+   CONSTANTS
+      RICControlRequest,
+      RICControlResponse,
+      RICControlFailure,
+      RICServiceUpdate
+   CONSTANTS
+      E2ConnectionUpdate,
+      E2ConnectionUpdateAcknowledge,
+      E2ConnectionUpdateFailure
+   CONSTANTS
+      E2NodeConfigurationUpdate,
+      E2NodeConfigurationUpdateAcknowledge,
+      E2NodeConfigurationUpdateFailure
+   
+   LOCAL messageTypes == 
+      {E2SetupRequest, 
+       E2SetupResponse,
+       E2SetupFailure,
+       ResetRequest,
+       ResetResponse,
+       RICSubscriptionRequest,
+       RICSubscriptionResponse,
+       RICSubscriptionFailure,
+       RICSubscriptionDeleteRequest,
+       RICSubscriptionDeleteResponse,
+       RICSubscriptionDeleteFailure,
+       RICControlRequest,
+       RICControlResponse,
+       RICControlFailure,
+       RICServiceUpdate,
+       E2ConnectionUpdate,
+       E2ConnectionUpdateAcknowledge,
+       E2ConnectionUpdateFailure,
+       E2NodeConfigurationUpdate,
+       E2NodeConfigurationUpdateAcknowledge,
+       E2NodeConfigurationUpdateFailure}
+   
+   \* Message types should be defined as strings to simplify debugging
+   ASSUME \A m \in messageTypes : m \in STRING
+      
    ----
    
    (*
@@ -161,47 +93,47 @@ ASSUME \A c \in failureCauses : c \in STRING
    the network.
    *)
    
-   IsE2SetupRequest(m) == m.type = E2SetupRequestType
+   IsE2SetupRequest(m) == m.type = E2SetupRequest
    
-   IsE2SetupResponse(m) == m.type = E2SetupResponseType
+   IsE2SetupResponse(m) == m.type = E2SetupResponse
    
-   IsE2SetupFailure(m) == m.type = E2SetupFailureType
+   IsE2SetupFailure(m) == m.type = E2SetupFailure
    
-   IsResetRequest(m) == m.type = ResetRequestType
+   IsResetRequest(m) == m.type = ResetRequest
    
-   IsResetResponse(m) == m.type = ResetResponseType
+   IsResetResponse(m) == m.type = ResetResponse
    
-   IsRICSubscriptionRequest(m) == m.type = RICSubscriptionRequestType
+   IsRICSubscriptionRequest(m) == m.type = RICSubscriptionRequest
    
-   IsRICSubscriptionResponse(m) == m.type = RICSubscriptionResponseType
+   IsRICSubscriptionResponse(m) == m.type = RICSubscriptionResponse
    
-   IsRICSubscriptionFailure(m) == m.type = RICSubscriptionFailureType
+   IsRICSubscriptionFailure(m) == m.type = RICSubscriptionFailure
    
-   IsRICSubscriptionDeleteRequest(m) == m.type = RICSubscriptionDeleteRequestType
+   IsRICSubscriptionDeleteRequest(m) == m.type = RICSubscriptionDeleteRequest
    
-   IsRICSubscriptionDeleteResponse(m) == m.type = RICSubscriptionDeleteResponseType
+   IsRICSubscriptionDeleteResponse(m) == m.type = RICSubscriptionDeleteResponse
    
-   IsRICSubscriptionDeleteFailure(m) == m.type = RICSubscriptionDeleteFailureType
+   IsRICSubscriptionDeleteFailure(m) == m.type = RICSubscriptionDeleteFailure
    
-   IsRICControlRequest(m) == m.type = RICControlRequestType
+   IsRICControlRequest(m) == m.type = RICControlRequest
    
-   IsRICControlResponse(m) == m.type = RICControlResponseType
+   IsRICControlResponse(m) == m.type = RICControlResponse
    
-   IsRICControlFailure(m) == m.type = RICControlFailureType
+   IsRICControlFailure(m) == m.type = RICControlFailure
    
-   IsRICServiceUpdate(m) == m.type = RICServiceUpdateType
+   IsRICServiceUpdate(m) == m.type = RICServiceUpdate
    
-   IsE2ConnectionUpdate(m) == m.type = E2ConnectionUpdateType
+   IsE2ConnectionUpdate(m) == m.type = E2ConnectionUpdate
    
-   IsE2ConnectionUpdateAcknowledge(m) == m.type = E2ConnectionUpdateAcknowledgeType
+   IsE2ConnectionUpdateAcknowledge(m) == m.type = E2ConnectionUpdateAcknowledge
    
-   IsE2ConnectionUpdateFailure(m) == m.type = E2ConnectionUpdateFailureType
+   IsE2ConnectionUpdateFailure(m) == m.type = E2ConnectionUpdateFailure
    
-   IsE2NodeConfigurationUpdate(m) == m.type = E2NodeConfigurationUpdateType
+   IsE2NodeConfigurationUpdate(m) == m.type = E2NodeConfigurationUpdate
    
-   IsE2NodeConfigurationUpdateAcknowledge(m) == m.type = E2NodeConfigurationUpdateAcknowledgeType
+   IsE2NodeConfigurationUpdateAcknowledge(m) == m.type = E2NodeConfigurationUpdateAcknowledge
    
-   IsE2NodeConfigurationUpdateFailure(m) == m.type = E2NodeConfigurationUpdateFailureType
+   IsE2NodeConfigurationUpdateFailure(m) == m.type = E2NodeConfigurationUpdateFailure
       
    ----
       
@@ -261,118 +193,335 @@ ASSUME \A c \in failureCauses : c \in STRING
    
    LOCAL SetType(m, t) == [m EXCEPT !.type = t]
    
-   E2SetupRequest(m) ==
+   LOCAL SetFailureCause(m, c) == [m EXCEPT !.cause = c]
+   
+   WithE2SetupRequest(m) ==
       IF Assert(ValidE2SetupRequest(m), "Invalid E2SetupRequest") 
-      THEN SetType(m, E2SetupRequestType) 
+      THEN SetType(m, E2SetupRequest)
       ELSE Nil
    
-   E2SetupResponse(m) ==
+   WithE2SetupResponse(m) ==
       IF Assert(ValidE2SetupResponse(m), "Invalid E2SetupResponse") 
-      THEN SetType(m, E2SetupResponseType) 
+      THEN SetType(m, E2SetupResponse) 
       ELSE Nil
    
-   E2SetupFailure(m) == 
+   WithE2SetupFailure(m, c) == 
       IF Assert(ValidE2SetupFailure(m), "Invalid E2SetupFailure") 
-      THEN SetType(m, E2SetupFailureType) 
+      THEN SetType(m, SetFailureCause(E2SetupFailure, c))
       ELSE Nil
    
-   ResetRequest(m) == 
+   WithResetRequest(m) == 
       IF Assert(ValidResetRequest(m), "Invalid ResetRequest") 
-      THEN SetType(m, ResetRequestType) 
+      THEN SetType(m, ResetRequest) 
       ELSE Nil
    
-   ResetResponse(m) == 
+   WithResetResponse(m) == 
       IF Assert(ValidResetResponse(m), "Invalid ResetResponse") 
-      THEN SetType(m, ResetResponseType) 
+      THEN SetType(m, ResetResponse) 
       ELSE Nil
    
-   RICSubscriptionRequest(m) == 
+   WithRICSubscriptionRequest(m) == 
       IF Assert(ValidRICSubscriptionRequest(m), "Invalid RICSubscriptionRequest") 
-      THEN SetType(m, RICSubscriptionRequestType) 
+      THEN SetType(m, RICSubscriptionRequest) 
       ELSE Nil
    
-   RICSubscriptionResponse(m) == 
+   WithRICSubscriptionResponse(m) == 
       IF Assert(ValidRICSubscriptionResponse(m), "Invalid RICSubscriptionResponse") 
-      THEN SetType(m, RICSubscriptionResponseType) 
+      THEN SetType(m, RICSubscriptionResponse) 
       ELSE Nil
    
-   RICSubscriptionFailure(m) == 
+   WithRICSubscriptionFailure(m, c) == 
       IF Assert(ValidRICSubscriptionFailure(m), "Invalid RICSubscriptionFailure") 
-      THEN SetType(m, RICSubscriptionFailureType) 
+      THEN SetType(m, SetFailureCause(RICSubscriptionFailure, c)) 
       ELSE Nil
    
-   RICSubscriptionDeleteRequest(m) == 
+   WithRICSubscriptionDeleteRequest(m) == 
       IF Assert(ValidRICSubscriptionDeleteRequest(m), "Invalid RICSubscriptionDeleteRequest") 
-      THEN SetType(m, RICSubscriptionDeleteRequestType) 
+      THEN SetType(m, RICSubscriptionDeleteRequest) 
       ELSE Nil
    
-   RICSubscriptionDeleteResponse(m) == 
+   WithRICSubscriptionDeleteResponse(m) == 
       IF Assert(ValidRICSubscriptionDeleteResponse(m), "Invalid RICSubscriptionDeleteResponse") 
-      THEN SetType(m, RICSubscriptionDeleteResponseType) 
+      THEN SetType(m, RICSubscriptionDeleteResponse) 
       ELSE Nil
    
-   RICSubscriptionDeleteFailure(m) == 
+   WithRICSubscriptionDeleteFailure(m, c) == 
       IF Assert(ValidRICSubscriptionDeleteFailure(m), "Invalid RICSubscriptionDeleteFailure") 
-      THEN SetType(m, RICSubscriptionDeleteFailureType) 
+      THEN SetType(m, SetFailureCause(RICSubscriptionDeleteFailure, c)) 
       ELSE Nil
    
-   RICControlRequest(m) == 
+   WithRICControlRequest(m) == 
       IF Assert(ValidRICControlRequest(m), "Invalid RICControlRequest") 
-      THEN SetType(m, RICControlRequestType) 
+      THEN SetType(m, RICControlRequest) 
       ELSE Nil
    
-   RICControlResponse(m) == 
+   WithRICControlResponse(m) == 
       IF Assert(ValidRICControlResponse(m), "Invalid RICControlResponse") 
-      THEN SetType(m, RICControlResponseType) 
+      THEN SetType(m, RICControlResponse) 
       ELSE Nil
    
-   RICControlFailure(m) == 
+   WithRICControlFailure(m, c) == 
       IF Assert(ValidRICControlFailure(m), "Invalid RICControlFailure") 
-      THEN SetType(m, RICControlFailureType) 
+      THEN SetType(m, SetFailureCause(RICControlFailure, c)) 
       ELSE Nil
    
-   RICServiceUpdate(m) == 
+   WithRICServiceUpdate(m) == 
       IF Assert(ValidRICServiceUpdate(m), "Invalid RICServiceUpdate") 
-      THEN SetType(m, RICServiceUpdateType) 
+      THEN SetType(m, RICServiceUpdate) 
       ELSE Nil
    
-   E2ConnectionUpdate(m) == 
+   WithE2ConnectionUpdate(m) == 
       IF Assert(ValidE2ConnectionUpdate(m), "Invalid E2ConnectionUpdate") 
-      THEN SetType(m, E2ConnectionUpdateType) 
+      THEN SetType(m, E2ConnectionUpdate) 
       ELSE Nil
    
-   E2ConnectionUpdateAcknowledge(m) == 
+   WithE2ConnectionUpdateAcknowledge(m) == 
       IF Assert(ValidE2ConnectionUpdateAcknowledge(m), "Invalid E2ConnectionUpdateAcknowledge") 
-      THEN SetType(m, E2ConnectionUpdateAcknowledgeType) 
+      THEN SetType(m, E2ConnectionUpdateAcknowledge) 
       ELSE Nil
    
-   E2ConnectionUpdateFailure(m) == 
+   WithE2ConnectionUpdateFailure(m, c) == 
       IF Assert(ValidE2ConnectionUpdateFailure(m), "Invalid E2ConnectionUpdateFailure") 
-      THEN SetType(m, E2ConnectionUpdateFailureType) 
+      THEN SetType(m, SetFailureCause(E2ConnectionUpdateFailure, c)) 
       ELSE Nil
    
-   E2NodeConfigurationUpdate(m) == 
+   WithE2NodeConfigurationUpdate(m) == 
       IF Assert(ValidE2NodeConfigurationUpdate(m), "Invalid E2NodeConfigurationUpdate") 
-      THEN SetType(m, E2NodeConfigurationUpdateType) 
+      THEN SetType(m, E2NodeConfigurationUpdate) 
       ELSE Nil
    
-   E2NodeConfigurationUpdateAcknowledge(m) == 
+   WithE2NodeConfigurationUpdateAcknowledge(m) == 
       IF Assert(ValidE2NodeConfigurationUpdateAcknowledge(m), "Invalid E2NodeConfigurationUpdateAcknowledge") 
-      THEN SetType(m, E2NodeConfigurationUpdateAcknowledgeType) 
+      THEN SetType(m, E2NodeConfigurationUpdateAcknowledge) 
       ELSE Nil
    
-   E2NodeConfigurationUpdateFailure(m) == 
+   WithE2NodeConfigurationUpdateFailure(m, c) == 
       IF Assert(ValidE2NodeConfigurationUpdateFailure(m), "Invalid E2NodeConfigurationUpdateFailure") 
-      THEN SetType(m, E2NodeConfigurationUpdateFailureType) 
+      THEN SetType(m, SetFailureCause(E2NodeConfigurationUpdateFailure, c)) 
       ELSE Nil
       
-   ======================================================================
+   ==========================================================================
 
 \* The Messages module is instantiated locally to avoid access from outside
 \* the module.
-LOCAL Messages == INSTANCE Messages
+LOCAL Messages == INSTANCE Messages WITH
+   E2SetupRequest <- "E2SetupRequest",
+   E2SetupResponse <- "E2SetupResponse",
+   E2SetupFailure <- "E2SetupFailure",
+   ResetRequest <- "ResetRequest",
+   ResetResponse <- "ResetResponse",
+   RICSubscriptionRequest <- "RICSubscriptionRequest",
+   RICSubscriptionResponse <- "RICSubscriptionResponse",
+   RICSubscriptionFailure <- "RICSubscriptionFailure",
+   RICSubscriptionDeleteRequest <- "RICSubscriptionDeleteRequest",
+   RICSubscriptionDeleteResponse <- "RICSubscriptionDeleteResponse",
+   RICSubscriptionDeleteFailure <- "RICSubscriptionDeleteFailure",
+   RICControlRequest <- "RICControlRequest",
+   RICControlResponse <- "RICControlResponse",
+   RICControlFailure <- "RICControlFailure",
+   RICServiceUpdate <- "RICServiceUpdate",
+   E2ConnectionUpdate <- "E2ConnectionUpdate",
+   E2ConnectionUpdateAcknowledge <- "E2ConnectionUpdateAcknowledge",
+   E2ConnectionUpdateFailure <- "E2ConnectionUpdateFailure",
+   E2NodeConfigurationUpdate <- "E2NodeConfigurationUpdate",
+   E2NodeConfigurationUpdateAcknowledge <- "E2NodeConfigurationUpdateAcknowledge",
+   E2NodeConfigurationUpdateFailure <- "E2NodeConfigurationUpdateFailure"
 
-   ---------------------------- MODULE Client ---------------------------
+   ------------------------------ MODULE Cause ------------------------------
+   
+   (*
+   The Messages module defines predicates for receiving, sending, and
+   verifying all the messages supported by E2AP.
+   *)
+   
+      ------------------------------ MODULE Misc ----------------------------
+
+      CONSTANTS
+         Unspecified,
+         ControlProcessingOverload,
+         HardwareFailure,
+         OMIntervention
+         
+      LOCAL failureCauses ==
+         {Unspecified,
+          ControlProcessingOverload,
+          HardwareFailure,
+          OMIntervention}
+      
+      ASSUME \A c \in failureCauses : c \in STRING
+            
+      IsUnspecified(m) == m.cause = Unspecified
+      IsControlProcessingOverload(m) == m.cause = ControlProcessingOverload
+      IsHardwareFailure(m) == m.cause = HardwareFailure
+      IsOMIntervention(m) == m.cause = OMIntervention
+      
+      =======================================================================
+   
+   Misc == INSTANCE Misc WITH
+      Unspecified <- "Unspecified",
+      ControlProcessingOverload <- "ControlProcessingOverload",
+      HardwareFailure <- "HardwareFailure",
+      OMIntervention <- "OMIntervention"
+   
+      ---------------------------- MODULE Protocol --------------------------
+
+      CONSTANTS
+         Unspecified,
+         TransferSyntaxError,
+         AbstractSyntaxErrorReject,
+         AbstractSyntaxErrorIgnoreAndNotify,
+         MessageNotCompatibleWithReceiverState,
+         SemanticError,
+         AbstractSyntaxErrorFalselyConstructedMessage
+         
+      LOCAL failureCauses ==
+         {Unspecified,
+          TransferSyntaxError,
+          AbstractSyntaxErrorReject,
+          AbstractSyntaxErrorIgnoreAndNotify,
+          MessageNotCompatibleWithReceiverState,
+          SemanticError,
+          AbstractSyntaxErrorFalselyConstructedMessage}
+      
+      ASSUME \A c \in failureCauses : c \in STRING
+            
+      IsUnspecified(m) == m.cause = Unspecified
+      IsTransferSyntaxError(m) == m.cause = TransferSyntaxError
+      IsAbstractSyntaxErrorReject(m) == m.cause = AbstractSyntaxErrorReject
+      IsAbstractSyntaxErrorIgnoreAndNotify(m) == m.cause = AbstractSyntaxErrorIgnoreAndNotify
+      IsMessageNotCompatibleWithReceiverState(m) == m.cause = MessageNotCompatibleWithReceiverState
+      IsSemanticError(m) == m.cause = SemanticError
+      IsAbstractSyntaxErrorFalselyConstructedMessage(m) == m.cause = AbstractSyntaxErrorFalselyConstructedMessage
+      
+      =======================================================================
+   
+   Protocol == INSTANCE Protocol WITH
+      Unspecified <- "Unspecified",
+      TransferSyntaxError <- "TransferSyntaxError",
+      AbstractSyntaxErrorReject <- "AbstractSyntaxErrorReject",
+      AbstractSyntaxErrorIgnoreAndNotify <- "AbstractSyntaxErrorIgnoreAndNotify",
+      MessageNotCompatibleWithReceiverState <- "MessageNotCompatibleWithReceiverState",
+      SemanticError <- "SemanticError",
+      AbstractSyntaxErrorFalselyConstructedMessage <- "AbstractSyntaxErrorFalselyConstructedMessage"
+   
+      ------------------------------ MODULE RIC -----------------------------
+
+      CONSTANTS
+         Unspecified,
+         RANFunctionIDInvalid,
+         ActionNotSupported,
+         ExcessiveActions,
+         DuplicateAction,
+         DuplicateEvent,
+         FunctionResourceLimit,
+         RequestIDUnknown,
+         InconsistentActionSubsequentActionSequence,
+         ControlMessageInvalid,
+         CallProcessIDInvalid
+         
+      LOCAL failureCauses ==
+         {Unspecified,
+          RANFunctionIDInvalid,
+          ActionNotSupported,
+          ExcessiveActions,
+          DuplicateAction,
+          DuplicateEvent,
+          FunctionResourceLimit,
+          RequestIDUnknown,
+          InconsistentActionSubsequentActionSequence,
+          ControlMessageInvalid,
+          CallProcessIDInvalid}
+      
+      ASSUME \A c \in failureCauses : c \in STRING
+            
+      IsUnspecified(m) == m.cause = Unspecified
+      IsRANFunctionIDInvalid(m) == m.cause = RANFunctionIDInvalid
+      IsActionNotSupported(m) == m.cause = ActionNotSupported
+      IsExcessiveActions(m) == m.cause = ExcessiveActions
+      IsDuplicateAction(m) == m.cause = DuplicateAction
+      IsDuplicateEvent(m) == m.cause = DuplicateEvent
+      IsFunctionResourceLimit(m) == m.cause = FunctionResourceLimit
+      IsRequestIDUnknown(m) == m.cause = RequestIDUnknown
+      IsInconsistentActionSubsequentActionSequence(m) == m.cause = InconsistentActionSubsequentActionSequence
+      IsControlMessageInvalid(m) == m.cause = ControlMessageInvalid
+      IsCallProcessIDInvalid(m) == m.cause = CallProcessIDInvalid
+      
+      =======================================================================
+   
+   RIC == INSTANCE RIC WITH
+      Unspecified <- "Unspecified",
+      RANFunctionIDInvalid <- "RANFunctionIDInvalid",
+      ActionNotSupported <- "ActionNotSupported",
+      ExcessiveActions <- "ExcessiveActions",
+      DuplicateAction <- "DuplicateAction",
+      DuplicateEvent <- "DuplicateEvent",
+      FunctionResourceLimit <- "FunctionResourceLimit",
+      RequestIDUnknown <- "RequestIDUnknown",
+      InconsistentActionSubsequentActionSequence <- "InconsistentActionSubsequentActionSequence",
+      ControlMessageInvalid <- "ControlMessageInvalid",
+      CallProcessIDInvalid <- "CallProcessIDInvalid"
+   
+      --------------------------- MODULE RICService -------------------------
+
+      CONSTANTS
+         Unspecified,
+         FunctionNotRequired,
+         ExcessiveFunctions,
+         RICResourceLimit
+         
+      LOCAL failureCauses ==
+         {Unspecified,
+          FunctionNotRequired,
+          ExcessiveFunctions,
+          RICResourceLimit}
+      
+      ASSUME \A c \in failureCauses : c \in STRING
+      
+      IsUnspecified(m) == m.cause = Unspecified
+      IsFunctionNotRequired(m) == m.cause = FunctionNotRequired
+      IsExcessiveFunctions(m) == m.cause = ExcessiveFunctions
+      IsRICResourceLimit(m) == m.cause = RICResourceLimit
+            
+      =======================================================================
+   
+   RICService == INSTANCE RICService WITH
+      Unspecified <- "Unspecified",
+      FunctionNotRequired <- "FunctionNotRequired",
+      ExcessiveFunctions <- "ExcessiveFunctions",
+      RICResourceLimit <- "RICResourceLimit"
+   
+      --------------------------- MODULE Transport --------------------------
+
+      CONSTANTS
+         Unspecified,
+         TransportResourceUnavailable
+         
+      LOCAL failureCauses ==
+         {Unspecified,
+          TransportResourceUnavailable}
+      
+      ASSUME \A c \in failureCauses : c \in STRING
+            
+      IsUnspecified(m) == m.cause = Unspecified
+      IsTransportResourceUnavailable(m) == m.cause = TransportResourceUnavailable
+      
+      =======================================================================
+   
+   Transport == INSTANCE Transport WITH
+         Unspecified <- "Unspecified",
+         TransportResourceUnavailable <- "TransportResourceUnavailable"
+      
+   (*
+   This section defines predicates for identifying E2AP message types on
+   the network.
+   *)
+   
+   ==========================================================================
+
+\* The Cause module provides failure causes
+Cause == INSTANCE Cause
+
+   ------------------------------ MODULE Client -----------------------------
    
    (*
    The Client module provides operators for managing and operating on E2AP
@@ -380,7 +529,7 @@ LOCAL Messages == INSTANCE Messages
    client.
    *)
    
-      ---------------------------- MODULE Send --------------------------
+      ---------------------------- MODULE Requests --------------------------
       
       (*
       This module provides message type operators for the message types that
@@ -388,20 +537,20 @@ LOCAL Messages == INSTANCE Messages
       *)
       
       E2SetupRequest(c, m) == 
-         /\ SCTP!Client!Send(c, Messages!E2SetupResponse(m))
+         /\ SCTP!Client!Send(c, Messages!WithE2SetupResponse(m))
       
       ResetRequest(c, m) ==
-         /\ SCTP!Client!Send(c, Messages!ResetRequest(m))
+         /\ SCTP!Client!Send(c, Messages!WithResetRequest(m))
       
       ResetResponse(c, m) ==
-         /\ SCTP!Client!Reply(c, Messages!ResetResponse(m))
+         /\ SCTP!Client!Reply(c, Messages!WithResetResponse(m))
       
-      ===================================================================
+      =======================================================================
    
    \* Instantiate the E2AP!Client!Send module
-   Send == INSTANCE Send
+   Send == INSTANCE Requests
    
-      ---------------------------- MODULE Receive --------------------------
+      --------------------------- MODULE Responses --------------------------
       
       (* 
       This module provides predicates for the types of messages that can be 
@@ -426,28 +575,28 @@ LOCAL Messages == INSTANCE Messages
             /\ SCTP!Client!Receive(c)
             /\ h(c, m))
       
-      ===================================================================
+      =======================================================================
    
    \* Instantiate the E2AP!Client!Receive module
-   Receive == INSTANCE Receive
+   Receive == INSTANCE Responses
    
    Connect(s, d) == SCTP!Client!Connect(s, d)
    
    Disconnect(c) == SCTP!Client!Disconnect(c)
    
-   ======================================================================
+   ==========================================================================
 
 \* Provides operators for the E2AP client
 Client == INSTANCE Client
       
-   ---------------------------- MODULE Server ---------------------------
+   ------------------------------ MODULE Server -----------------------------
    
    (*
    The Server module provides operators for managing and operating on E2AP
    servers and specifies the message types supported for the server.
    *)
    
-      ---------------------------- MODULE Send --------------------------
+      --------------------------- MODULE Responses --------------------------
       
       (*
       This module provides message type operators for the message types that
@@ -455,20 +604,20 @@ Client == INSTANCE Client
       *)
       
       E2SetupResponse(c, m) == 
-         /\ SCTP!Server!Reply(c, Messages!E2SetupResponse(m))
+         /\ SCTP!Server!Reply(c, Messages!WithE2SetupResponse(m))
       
       ResetRequest(c, m) ==
-         /\ SCTP!Server!Send(c, Messages!ResetRequest(m))
+         /\ SCTP!Server!Send(c, Messages!WithResetRequest(m))
       
       ResetResponse(c, m) ==
-         /\ SCTP!Server!Reply(c, Messages!ResetResponse(m))
+         /\ SCTP!Server!Reply(c, Messages!WithResetResponse(m))
       
-      ===================================================================
+      =======================================================================
    
    \* Instantiate the E2AP!Server!Send module
-   Send == INSTANCE Send
+   Send == INSTANCE Responses
    
-      ---------------------------- MODULE Receive --------------------------
+      ---------------------------- MODULE Requests --------------------------
       
       (* 
       This module provides predicates for the types of messages that can be 
@@ -493,24 +642,15 @@ Client == INSTANCE Client
             /\ SCTP!Server!Receive(c)
             /\ h(c, m))
       
-      ===================================================================
+      =======================================================================
    
    \* Instantiate the E2AP!Server!Receive module
-   Receive == INSTANCE Receive
+   Receive == INSTANCE Requests
    
-   \* Starts a new E2AP server
-   Serve(s) == SCTP!Server!Start(s)
-   
-   \* Stops the given E2AP server
-   Stop(s) == SCTP!Server!Stop(s)
-   
-   ======================================================================
+   ==========================================================================
 
 \* Provides operators for the E2AP server
 Server == INSTANCE Server
-
-\* The set of all running E2AP servers
-Servers == SCTP!Servers
 
 \* The set of all open E2AP connections
 Connections == SCTP!Connections
@@ -521,5 +661,5 @@ Next == SCTP!Next
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 13 12:35:51 PDT 2021 by jordanhalterman
+\* Last modified Mon Sep 13 16:15:39 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 10:53:17 PDT 2021 by jordanhalterman
