@@ -74,16 +74,22 @@ HandleSubscribeRequest(n, c, r) ==
          /\ UNCHANGED <<streams>>
    /\ UNCHANGED <<chans, subs>>
 
+SendSubscribeResponse(n, c, s) ==
+   /\ Len(streams[n][s]) > 0
+   /\ API!Server!Send!SubscribeResponse(c, [indication |-> streams[n][s][1]])
+   /\ streams' = [streams EXCEPT ![n] = [streams[n] EXCEPT ![s] = SubSeq(streams[n][s], 2, Len(streams[n][s]))]]
+   /\ UNCHANGED <<chans, subs>>
+
 HandleUnsubscribeRequest(n, c, r) ==
    /\ \/ /\ r.sub.id \notin streams[n]
          /\ streams' = [streams EXCEPT ![n] = [i \in {subId \in DOMAIN streams[n] : subId # r.id} |-> streams[n][i]]]
       \/ /\ r.sub.id \in streams[n]
          /\ UNCHANGED <<streams>>
-   /\ API!Server!Send!SubscribeResponse(c, [id |-> r.id])
+   /\ API!Server!Reply!UnsubscribeResponse(c, [id |-> r.id])
    /\ UNCHANGED <<chans, subs>>
 
 HandleControlRequest(n, c, r) ==
-   /\ API!Server!Send!ControlResponse(c, [foo |-> "bar", bar |-> "baz"])
+   /\ API!Server!Reply!ControlResponse(c, [foo |-> "bar", bar |-> "baz"])
    /\ UNCHANGED <<chans, subs>>
 
 HandleE2TRequest(n, c) ==
@@ -116,6 +122,7 @@ ReconcileSubscription(n, s) ==
 ----
 
 HandleE2SetupRequest(node, conn, res) ==
+   /\ E2AP!RIC!Reply!E2SetupResponse(conn, [foo |-> "bar", bar |-> "baz"])
    /\ UNCHANGED <<chans, subs>>
 
 HandleRICControlResponse(node, conn, res) ==
@@ -152,13 +159,14 @@ Next ==
    \/ \E n \in E2TNodes : StartNode(n)
    \/ \E n \in E2TNodes : StopNode(n)
    \/ \E n \in E2TNodes, c \in API!Connections : HandleE2TRequest(n, c)
+   \/ \E n \in E2TNodes, c \in API!Connections : \E s \in DOMAIN streams[n] : SendSubscribeResponse(n, c, s)
    \/ \E n \in E2TNodes, c \in E2AP!Connections : HandleE2APRequest(n, c)
    \/ \E n \in E2TNodes, e \in E2Nodes : ReconcileMastership(n, e)
-   \/ \E n \in E2TNodes : \E s \in streams[n] : ReconcileStream(n, s)
+   \/ \E n \in E2TNodes : \E s \in DOMAIN streams[n] : ReconcileStream(n, s)
    \/ \E n \in E2TNodes, c \in chans : ReconcileChannel(n, c)
    \/ \E n \in E2TNodes, s \in subs : ReconcileSubscription(n, s)
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 13 19:08:57 PDT 2021 by jordanhalterman
+\* Last modified Mon Sep 13 19:25:13 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 03:23:39 PDT 2021 by jordanhalterman
