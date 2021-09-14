@@ -172,28 +172,28 @@ LOCAL Messages == INSTANCE Messages WITH
       received by an E2T client.
       *)
       
-      SubscribeResponse(c, h(_, _)) == 
+      SubscribeResponse(c, h(_)) == 
          gRPC!Client!Handle(c, LAMBDA x, m : 
             /\ Messages!IsSubscribeResponse(m) 
             /\ gRPC!Client!Receive(c)
-            /\ h(c, m))
+            /\ h(m))
       
-      UnsubscribeResponse(c, h(_, _)) == 
+      UnsubscribeResponse(c, h(_)) == 
          gRPC!Client!Handle(c, LAMBDA x, m : 
             /\ Messages!IsUnsubscribeResponse(m) 
             /\ gRPC!Client!Receive(c)
-            /\ h(c, m))
+            /\ h(m))
       
-      ControlResponse(c, h(_, _)) == 
+      ControlResponse(c, h(_)) == 
          gRPC!Client!Handle(c, LAMBDA x, m : 
             /\ Messages!IsControlResponse(m) 
             /\ gRPC!Client!Receive(c)
-            /\ h(c, m))
+            /\ h(m))
       
       =======================================================================
    
    \* Instantiate the E2T!Client!Responses module
-   Receive == INSTANCE Responses
+   Handle == INSTANCE Responses
    
    Connect(s, d) == gRPC!Client!Connect(s, d)
    
@@ -239,28 +239,28 @@ Client == INSTANCE Client
       received by an E2T server.
       *)
       
-      SubscribeRequest(c, h(_, _)) == 
+      SubscribeRequest(c, h(_)) == 
          gRPC!Server!Handle(c, LAMBDA x, m : 
             /\ Messages!IsSubscribeRequest(m) 
             /\ gRPC!Server!Receive(c)
-            /\ h(c, m))
+            /\ h(m))
       
-      UnsubscribeRequest(c, h(_, _)) == 
+      UnsubscribeRequest(c, h(_)) == 
          gRPC!Server!Handle(c, LAMBDA x, m : 
             /\ Messages!IsUnsubscribeRequest(m) 
             /\ gRPC!Server!Receive(c)
-            /\ h(c, m))
+            /\ h(m))
       
-      ControlRequest(c, h(_, _)) == 
+      ControlRequest(c, h(_)) == 
          gRPC!Server!Handle(c, LAMBDA x, m : 
             /\ Messages!IsControlRequest(m) 
             /\ gRPC!Server!Receive(c)
-            /\ h(c, m))
+            /\ h(m))
       
       =======================================================================
    
    \* Instantiate the E2T!Server!Requests module
-   Receive == INSTANCE Requests
+   Handle == INSTANCE Requests
    
    ==========================================================================
 
@@ -278,5 +278,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 13 16:23:37 PDT 2021 by jordanhalterman
+\* Last modified Mon Sep 13 18:18:42 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 16:23:16 PDT 2021 by jordanhalterman
