@@ -220,7 +220,7 @@ LOCAL Messages == INSTANCE Messages WITH
    client.
    *)
    
-      ---------------------------- MODULE Requests --------------------------
+      ------------------------------ MODULE Send ----------------------------
       
       (*
       This module provides message type operators for the message types that
@@ -248,9 +248,9 @@ LOCAL Messages == INSTANCE Messages WITH
       =======================================================================
    
    \* Instantiate the Topo!Client!Send module
-   Send == INSTANCE Requests
+   Send == INSTANCE Send
    
-      --------------------------- MODULE Responses --------------------------
+      ---------------------------- MODULE Receive ---------------------------
       
       (* 
       This module provides predicates for the types of messages that can be 
@@ -296,7 +296,7 @@ LOCAL Messages == INSTANCE Messages WITH
       =======================================================================
    
    \* Instantiate the Topo!Client!Receive module
-   Receive == INSTANCE Responses
+   Receive == INSTANCE Receive
    
    Connect(s, d) == gRPC!Client!Connect(s, d)
    
@@ -314,7 +314,37 @@ Client == INSTANCE Client
    servers and specifies the message types supported for the server.
    *)
    
-      --------------------------- MODULE Responses --------------------------
+      ----------------------------- MODULE Send -----------------------------
+      
+      (*
+      This module provides message type operators for the message types that
+      can be send by the Topo server.
+      *)
+      
+      CreateResponse(c, m) == 
+         /\ gRPC!Server!Send(c, Messages!WithCreateResponse(m))
+      
+      UpdateResponse(c, m) ==
+         /\ gRPC!Server!Send(c, Messages!WithUpdateResponse(m))
+      
+      DeleteResponse(c, m) ==
+         /\ gRPC!Server!Send(c, Messages!WithDeleteResponse(m))
+      
+      GetResponse(c, m) == 
+         /\ gRPC!Server!Send(c, Messages!WithGetResponse(m))
+      
+      ListResponse(c, m) ==
+         /\ gRPC!Server!Send(c, Messages!WithListResponse(m))
+      
+      WatchResponse(c, m) ==
+         /\ gRPC!Server!Send(c, Messages!WithWatchResponse(m))
+      
+      =======================================================================
+   
+   \* Instantiate the Topo!Server!Send module
+   Send == INSTANCE Send
+   
+      ----------------------------- MODULE Reply -----------------------------
       
       (*
       This module provides message type operators for the message types that
@@ -341,10 +371,10 @@ Client == INSTANCE Client
       
       =======================================================================
    
-   \* Instantiate the Topo!Server!Send module
-   Send == INSTANCE Responses
+   \* Instantiate the Topo!Server!Reply module
+   Reply == INSTANCE Reply
    
-      --------------------------- MODULE Requests ---------------------------
+      --------------------------- MODULE Receive ----------------------------
       
       (* 
       This module provides predicates for the types of messages that can be 
@@ -390,7 +420,7 @@ Client == INSTANCE Client
       =======================================================================
    
    \* Instantiate the Topo!Server!Receive module
-   Receive == INSTANCE Requests
+   Handle == INSTANCE Receive
    
    ==========================================================================
 
@@ -408,5 +438,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 13 16:24:17 PDT 2021 by jordanhalterman
+\* Last modified Mon Sep 13 19:22:31 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 16:24:05 PDT 2021 by jordanhalterman

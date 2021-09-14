@@ -144,7 +144,7 @@ LOCAL Messages == INSTANCE Messages WITH
    client.
    *)
    
-      ---------------------------- MODULE Requests --------------------------
+      ------------------------------ MODULE Send ----------------------------
       
       (*
       This module provides message type operators for the message types that
@@ -163,9 +163,9 @@ LOCAL Messages == INSTANCE Messages WITH
       =======================================================================
    
    \* Instantiate the E2T!Client!Requests module
-   Send == INSTANCE Requests
+   Send == INSTANCE Send
    
-      ---------------------------- MODULE Responses -------------------------
+      ----------------------------- MODULE Receive --------------------------
       
       (* 
       This module provides predicates for the types of messages that can be 
@@ -193,7 +193,7 @@ LOCAL Messages == INSTANCE Messages WITH
       =======================================================================
    
    \* Instantiate the E2T!Client!Responses module
-   Handle == INSTANCE Responses
+   Handle == INSTANCE Receive
    
    Connect(s, d) == gRPC!Client!Connect(s, d)
    
@@ -211,7 +211,28 @@ Client == INSTANCE Client
    servers and specifies the message types supported for the server.
    *)
    
-      ---------------------------- MODULE Responses -------------------------
+      ------------------------------- MODULE Send ---------------------------
+      
+      (*
+      This module provides message type operators for the message types that
+      can be send by the E2T server.
+      *)
+      
+      SubscribeResponse(c, m) == 
+         /\ gRPC!Server!Send(c, Messages!WithSubscribeResponse(m))
+      
+      UnsubscribeResponse(c, m) ==
+         /\ gRPC!Server!Send(c, Messages!WithUnsubscribeResponse(m))
+      
+      ControlResponse(c, m) ==
+         /\ gRPC!Server!Send(c, Messages!WithControlResponse(m))
+      
+      =======================================================================
+   
+   \* Instantiate the E2T!Server!Responses module
+   Send == INSTANCE Send
+   
+      ------------------------------ MODULE Reply ---------------------------
       
       (*
       This module provides message type operators for the message types that
@@ -229,10 +250,10 @@ Client == INSTANCE Client
       
       =======================================================================
    
-   \* Instantiate the E2T!Server!Responses module
-   Send == INSTANCE Responses
+   \* Instantiate the E2T!Server!Reply module
+   Reply == INSTANCE Reply
    
-      ---------------------------- MODULE Requests --------------------------
+      ---------------------------- MODULE Receive ---------------------------
       
       (* 
       This module provides predicates for the types of messages that can be 
@@ -260,7 +281,7 @@ Client == INSTANCE Client
       =======================================================================
    
    \* Instantiate the E2T!Server!Requests module
-   Handle == INSTANCE Requests
+   Handle == INSTANCE Receive
    
    ==========================================================================
 
@@ -278,5 +299,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 13 18:18:42 PDT 2021 by jordanhalterman
+\* Last modified Mon Sep 13 19:20:57 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 16:23:16 PDT 2021 by jordanhalterman
