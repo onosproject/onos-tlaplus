@@ -398,10 +398,25 @@ Cause == INSTANCE Cause
    LOCAL ValidE2ConnectionUpdate(m) ==  
       /\ /\ "transactionId" \in DOMAIN m 
          /\ m["transactionId"] \in Nat
+      /\ /\ "add" \in DOMAIN m => 
+            /\ IsFiniteSet(m["add"])
+            /\ \A a \in m["add"] : a \in STRING
+         /\ "update" \in DOMAIN m =>
+            /\ IsFiniteSet(m["update"])
+            /\ \A a \in m["update"] : a \in STRING
+         /\ "remove" \in DOMAIN m =>
+            /\ IsFiniteSet(m["remove"])
+            /\ \A a \in m["remove"] : a \in STRING
    
    LOCAL ValidE2ConnectionUpdateAcknowledge(m) ==  
       /\ /\ "transactionId" \in DOMAIN m 
          /\ m["transactionId"] \in Nat
+      /\ /\ "succeeded" \in DOMAIN m =>
+            /\ IsFiniteSet(m["succeeded"])
+            /\ \A a \in m["succeeded"] : a \in STRING
+         /\ "failed" \in DOMAIN m =>
+            /\ IsFiniteSet(m["failed"])
+            /\ \A a \in m["failed"] : a \in STRING
    
    LOCAL ValidE2ConnectionUpdateFailure(m) ==  
       /\ /\ "transactionId" \in DOMAIN m 
@@ -414,16 +429,22 @@ Cause == INSTANCE Cause
          /\ m["transactionId"] \in Nat
       /\ /\ "globalE2NodeId" \in DOMAIN m 
          /\ m["globalE2NodeId"] \in Nat
-      /\ "add" \in DOMAIN m => IsFiniteSet(m["add"])
-      /\ "update" \in DOMAIN m => IsFiniteSet(m["update"])
-      /\ "remove" \in DOMAIN m => IsFiniteSet(m["remove"])
+      /\ /\ "add" \in DOMAIN m => 
+            /\ IsFiniteSet(m["add"])
+         /\ "update" \in DOMAIN m => 
+            /\ IsFiniteSet(m["update"])
+         /\ "remove" \in DOMAIN m => 
+            /\ IsFiniteSet(m["remove"])
    
    LOCAL ValidE2NodeConfigurationUpdateAcknowledge(m) ==  
       /\ /\ "transactionId" \in DOMAIN m 
          /\ m["transactionId"] \in Nat
-      /\ "add" \in DOMAIN m => IsFiniteSet(m["add"])
-      /\ "update" \in DOMAIN m => IsFiniteSet(m["update"])
-      /\ "remove" \in DOMAIN m => IsFiniteSet(m["remove"])
+      /\ /\ "add" \in DOMAIN m => 
+            /\ IsFiniteSet(m["add"])
+         /\ "update" \in DOMAIN m => 
+            /\ IsFiniteSet(m["update"])
+         /\ "remove" \in DOMAIN m => 
+            /\ IsFiniteSet(m["remove"])
    
    LOCAL ValidE2NodeConfigurationUpdateFailure(m) ==  
       /\ /\ "transactionId" \in DOMAIN m 
@@ -1026,5 +1047,5 @@ Next == SCTP!Next
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 21 00:26:48 PDT 2021 by jordanhalterman
+\* Last modified Tue Sep 21 00:39:05 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 10:53:17 PDT 2021 by jordanhalterman
