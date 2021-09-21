@@ -23,6 +23,204 @@ LOCAL SCTP == INSTANCE SCTP
 
 vars == <<conns>>
       
+   ------------------------------ MODULE Cause ------------------------------
+   
+   (*
+   The Messages module defines predicates for receiving, sending, and
+   verifying all the messages supported by E2AP.
+   *)
+   
+      ------------------------------ MODULE Misc ----------------------------
+
+      CONSTANTS
+         Unspecified,
+         ControlProcessingOverload,
+         HardwareFailure,
+         OMIntervention
+         
+      All ==
+         {Unspecified,
+          ControlProcessingOverload,
+          HardwareFailure,
+          OMIntervention}
+      
+      ASSUME \A c \in All : c \in STRING
+            
+      IsUnspecified(m) == m.cause = Unspecified
+      IsControlProcessingOverload(m) == m.cause = ControlProcessingOverload
+      IsHardwareFailure(m) == m.cause = HardwareFailure
+      IsOMIntervention(m) == m.cause = OMIntervention
+      
+      =======================================================================
+   
+   Misc == INSTANCE Misc WITH
+      Unspecified <- "Unspecified",
+      ControlProcessingOverload <- "ControlProcessingOverload",
+      HardwareFailure <- "HardwareFailure",
+      OMIntervention <- "OMIntervention"
+   
+      ---------------------------- MODULE Protocol --------------------------
+
+      CONSTANTS
+         Unspecified,
+         TransferSyntaxError,
+         AbstractSyntaxErrorReject,
+         AbstractSyntaxErrorIgnoreAndNotify,
+         MessageNotCompatibleWithReceiverState,
+         SemanticError,
+         AbstractSyntaxErrorFalselyConstructedMessage
+         
+      All ==
+         {Unspecified,
+          TransferSyntaxError,
+          AbstractSyntaxErrorReject,
+          AbstractSyntaxErrorIgnoreAndNotify,
+          MessageNotCompatibleWithReceiverState,
+          SemanticError,
+          AbstractSyntaxErrorFalselyConstructedMessage}
+      
+      ASSUME \A c \in All : c \in STRING
+            
+      IsUnspecified(m) == m.cause = Unspecified
+      IsTransferSyntaxError(m) == m.cause = TransferSyntaxError
+      IsAbstractSyntaxErrorReject(m) == m.cause = AbstractSyntaxErrorReject
+      IsAbstractSyntaxErrorIgnoreAndNotify(m) == m.cause = AbstractSyntaxErrorIgnoreAndNotify
+      IsMessageNotCompatibleWithReceiverState(m) == m.cause = MessageNotCompatibleWithReceiverState
+      IsSemanticError(m) == m.cause = SemanticError
+      IsAbstractSyntaxErrorFalselyConstructedMessage(m) == m.cause = AbstractSyntaxErrorFalselyConstructedMessage
+      
+      =======================================================================
+   
+   Protocol == INSTANCE Protocol WITH
+      Unspecified <- "Unspecified",
+      TransferSyntaxError <- "TransferSyntaxError",
+      AbstractSyntaxErrorReject <- "AbstractSyntaxErrorReject",
+      AbstractSyntaxErrorIgnoreAndNotify <- "AbstractSyntaxErrorIgnoreAndNotify",
+      MessageNotCompatibleWithReceiverState <- "MessageNotCompatibleWithReceiverState",
+      SemanticError <- "SemanticError",
+      AbstractSyntaxErrorFalselyConstructedMessage <- "AbstractSyntaxErrorFalselyConstructedMessage"
+   
+      ------------------------------ MODULE RIC -----------------------------
+
+      CONSTANTS
+         Unspecified,
+         RANFunctionIDInvalid,
+         ActionNotSupported,
+         ExcessiveActions,
+         DuplicateAction,
+         DuplicateEvent,
+         FunctionResourceLimit,
+         RequestIDUnknown,
+         InconsistentActionSubsequentActionSequence,
+         ControlMessageInvalid,
+         CallProcessIDInvalid
+         
+      All ==
+         {Unspecified,
+          RANFunctionIDInvalid,
+          ActionNotSupported,
+          ExcessiveActions,
+          DuplicateAction,
+          DuplicateEvent,
+          FunctionResourceLimit,
+          RequestIDUnknown,
+          InconsistentActionSubsequentActionSequence,
+          ControlMessageInvalid,
+          CallProcessIDInvalid}
+      
+      ASSUME \A c \in All : c \in STRING
+            
+      IsUnspecified(m) == m.cause = Unspecified
+      IsRANFunctionIDInvalid(m) == m.cause = RANFunctionIDInvalid
+      IsActionNotSupported(m) == m.cause = ActionNotSupported
+      IsExcessiveActions(m) == m.cause = ExcessiveActions
+      IsDuplicateAction(m) == m.cause = DuplicateAction
+      IsDuplicateEvent(m) == m.cause = DuplicateEvent
+      IsFunctionResourceLimit(m) == m.cause = FunctionResourceLimit
+      IsRequestIDUnknown(m) == m.cause = RequestIDUnknown
+      IsInconsistentActionSubsequentActionSequence(m) == m.cause = InconsistentActionSubsequentActionSequence
+      IsControlMessageInvalid(m) == m.cause = ControlMessageInvalid
+      IsCallProcessIDInvalid(m) == m.cause = CallProcessIDInvalid
+      
+      =======================================================================
+   
+   RIC == INSTANCE RIC WITH
+      Unspecified <- "Unspecified",
+      RANFunctionIDInvalid <- "RANFunctionIDInvalid",
+      ActionNotSupported <- "ActionNotSupported",
+      ExcessiveActions <- "ExcessiveActions",
+      DuplicateAction <- "DuplicateAction",
+      DuplicateEvent <- "DuplicateEvent",
+      FunctionResourceLimit <- "FunctionResourceLimit",
+      RequestIDUnknown <- "RequestIDUnknown",
+      InconsistentActionSubsequentActionSequence <- "InconsistentActionSubsequentActionSequence",
+      ControlMessageInvalid <- "ControlMessageInvalid",
+      CallProcessIDInvalid <- "CallProcessIDInvalid"
+   
+      --------------------------- MODULE RICService -------------------------
+
+      CONSTANTS
+         Unspecified,
+         FunctionNotRequired,
+         ExcessiveFunctions,
+         RICResourceLimit
+         
+      All ==
+         {Unspecified,
+          FunctionNotRequired,
+          ExcessiveFunctions,
+          RICResourceLimit}
+      
+      ASSUME \A c \in All : c \in STRING
+      
+      IsUnspecified(m) == m.cause = Unspecified
+      IsFunctionNotRequired(m) == m.cause = FunctionNotRequired
+      IsExcessiveFunctions(m) == m.cause = ExcessiveFunctions
+      IsRICResourceLimit(m) == m.cause = RICResourceLimit
+            
+      =======================================================================
+   
+   RICService == INSTANCE RICService WITH
+      Unspecified <- "Unspecified",
+      FunctionNotRequired <- "FunctionNotRequired",
+      ExcessiveFunctions <- "ExcessiveFunctions",
+      RICResourceLimit <- "RICResourceLimit"
+   
+      --------------------------- MODULE Transport --------------------------
+
+      CONSTANTS
+         Unspecified,
+         TransportResourceUnavailable
+         
+      All ==
+         {Unspecified,
+          TransportResourceUnavailable}
+      
+      ASSUME \A c \in All : c \in STRING
+            
+      IsUnspecified(m) == m.cause = Unspecified
+      IsTransportResourceUnavailable(m) == m.cause = TransportResourceUnavailable
+      
+      =======================================================================
+   
+   Transport == INSTANCE Transport WITH
+         Unspecified <- "Unspecified",
+         TransportResourceUnavailable <- "TransportResourceUnavailable"
+      
+   All == Misc!All \cup Protocol!All \cup RIC!All \cup RICService!All \cup Transport!All
+   
+   IsCause(c) == c \in All
+      
+   (*
+   This section defines predicates for identifying E2AP message types on
+   the network.
+   *)
+   
+   ==========================================================================
+
+\* The Cause module provides failure causes
+Cause == INSTANCE Cause
+
    ----------------------------- MODULE Messages ----------------------------
    
    (*
@@ -157,53 +355,127 @@ vars == <<conns>>
    to verify that steps adhere to the E2AP protocol specification.
    *)
    
-   LOCAL ValidE2SetupRequest(m) == TRUE
+   LOCAL ValidE2SetupRequest(m) == 
+      /\ /\ "transactionId" \in DOMAIN m 
+         /\ m["transactionId"] \in Nat
+      /\ /\ "globalE2NodeId" \in DOMAIN m 
+         /\ m["globalE2NodeId"] \in Nat
    
-   LOCAL ValidE2SetupResponse(m) == TRUE
+   LOCAL ValidE2SetupResponse(m) == 
+      /\ /\ "transactionId" \in DOMAIN m 
+         /\ m["transactionId"] \in Nat
+      /\ /\ "globalRicId" \in DOMAIN m    
+         /\ m["globalRicId"] \in Nat
    
-   LOCAL ValidE2SetupFailure(m) == TRUE
+   LOCAL ValidE2SetupFailure(m) == 
+      /\ /\ "transactionId" \in DOMAIN m 
+         /\ m["transactionId"] \in Nat
+      /\ /\ "cause" \in DOMAIN m
+         /\ m["cause"] \in Cause!All
    
-   LOCAL ValidRICServiceUpdate(m) == TRUE
+   LOCAL ValidRICServiceUpdate(m) ==  
+      /\ /\ "transactionId" \in DOMAIN m 
+         /\ m["transactionId"] \in Nat
    
-   LOCAL ValidRICServiceUpdateAcknowledge(m) == TRUE
+   LOCAL ValidRICServiceUpdateAcknowledge(m) ==  
+      /\ /\ "transactionId" \in DOMAIN m 
+         /\ m["transactionId"] \in Nat
    
-   LOCAL ValidRICServiceUpdateFailure(m) == TRUE
+   LOCAL ValidRICServiceUpdateFailure(m) ==  
+      /\ /\ "transactionId" \in DOMAIN m 
+         /\ m["transactionId"] \in Nat
+      /\ /\ "cause" \in DOMAIN m
+         /\ m["cause"] \in Cause!All
    
-   LOCAL ValidResetRequest(m) == TRUE
+   LOCAL ValidResetRequest(m) ==  
+      /\ /\ "transactionId" \in DOMAIN m 
+         /\ m["transactionId"] \in Nat
    
-   LOCAL ValidResetResponse(m) == TRUE
+   LOCAL ValidResetResponse(m) ==  
+      /\ /\ "transactionId" \in DOMAIN m 
+         /\ m["transactionId"] \in Nat
    
-   LOCAL ValidRICSubscriptionRequest(m) == TRUE
+   LOCAL ValidE2ConnectionUpdate(m) ==  
+      /\ /\ "transactionId" \in DOMAIN m 
+         /\ m["transactionId"] \in Nat
    
-   LOCAL ValidRICSubscriptionResponse(m) == TRUE
+   LOCAL ValidE2ConnectionUpdateAcknowledge(m) ==  
+      /\ /\ "transactionId" \in DOMAIN m 
+         /\ m["transactionId"] \in Nat
    
-   LOCAL ValidRICSubscriptionFailure(m) == TRUE
+   LOCAL ValidE2ConnectionUpdateFailure(m) ==  
+      /\ /\ "transactionId" \in DOMAIN m 
+         /\ m["transactionId"] \in Nat
+      /\ /\ "cause" \in DOMAIN m
+         /\ m["cause"] \in Cause!All
    
-   LOCAL ValidRICSubscriptionDeleteRequest(m) == TRUE
+   LOCAL ValidE2NodeConfigurationUpdate(m) ==  
+      /\ /\ "transactionId" \in DOMAIN m 
+         /\ m["transactionId"] \in Nat
+      /\ /\ "globalE2NodeId" \in DOMAIN m 
+         /\ m["globalE2NodeId"] \in Nat
+      /\ "add" \in DOMAIN m => IsFiniteSet(m["add"])
+      /\ "update" \in DOMAIN m => IsFiniteSet(m["update"])
+      /\ "remove" \in DOMAIN m => IsFiniteSet(m["remove"])
    
-   LOCAL ValidRICSubscriptionDeleteResponse(m) == TRUE
+   LOCAL ValidE2NodeConfigurationUpdateAcknowledge(m) ==  
+      /\ /\ "transactionId" \in DOMAIN m 
+         /\ m["transactionId"] \in Nat
+      /\ "add" \in DOMAIN m => IsFiniteSet(m["add"])
+      /\ "update" \in DOMAIN m => IsFiniteSet(m["update"])
+      /\ "remove" \in DOMAIN m => IsFiniteSet(m["remove"])
    
-   LOCAL ValidRICSubscriptionDeleteFailure(m) == TRUE
+   LOCAL ValidE2NodeConfigurationUpdateFailure(m) ==  
+      /\ /\ "transactionId" \in DOMAIN m 
+         /\ m["transactionId"] \in Nat
+      /\ /\ "cause" \in DOMAIN m
+         /\ m["cause"] \in Cause!All
    
-   LOCAL ValidRICIndication(m) == TRUE
+   LOCAL ValidRICSubscriptionRequest(m) ==  
+      /\ /\ "requestId" \in DOMAIN m 
+         /\ m["requestId"] \in Nat
    
-   LOCAL ValidRICControlRequest(m) == TRUE
+   LOCAL ValidRICSubscriptionResponse(m) == 
+      /\ /\ "requestId" \in DOMAIN m 
+         /\ m["requestId"] \in Nat
    
-   LOCAL ValidRICControlResponse(m) == TRUE
+   LOCAL ValidRICSubscriptionFailure(m) == 
+      /\ /\ "requestId" \in DOMAIN m 
+         /\ m["requestId"] \in Nat
+      /\ /\ "cause" \in DOMAIN m
+         /\ m["cause"] \in Cause!All
    
-   LOCAL ValidRICControlFailure(m) == TRUE
+   LOCAL ValidRICSubscriptionDeleteRequest(m) == 
+      /\ /\ "requestId" \in DOMAIN m 
+         /\ m["requestId"] \in Nat
    
-   LOCAL ValidE2ConnectionUpdate(m) == TRUE
+   LOCAL ValidRICSubscriptionDeleteResponse(m) == 
+      /\ /\ "requestId" \in DOMAIN m 
+         /\ m["requestId"] \in Nat
    
-   LOCAL ValidE2ConnectionUpdateAcknowledge(m) == TRUE
+   LOCAL ValidRICSubscriptionDeleteFailure(m) == 
+      /\ /\ "requestId" \in DOMAIN m 
+         /\ m["requestId"] \in Nat
+      /\ /\ "cause" \in DOMAIN m
+         /\ m["cause"] \in Cause!All
    
-   LOCAL ValidE2ConnectionUpdateFailure(m) == TRUE
+   LOCAL ValidRICIndication(m) ==
+      /\ /\ "requestId" \in DOMAIN m 
+         /\ m["requestId"] \in Nat
    
-   LOCAL ValidE2NodeConfigurationUpdate(m) == TRUE
+   LOCAL ValidRICControlRequest(m) == 
+      /\ /\ "requestId" \in DOMAIN m 
+         /\ m["requestId"] \in Nat
    
-   LOCAL ValidE2NodeConfigurationUpdateAcknowledge(m) == TRUE
+   LOCAL ValidRICControlAcknowledge(m) == 
+      /\ /\ "requestId" \in DOMAIN m 
+         /\ m["requestId"] \in Nat
    
-   LOCAL ValidE2NodeConfigurationUpdateFailure(m) == TRUE
+   LOCAL ValidRICControlFailure(m) == 
+      /\ /\ "requestId" \in DOMAIN m 
+         /\ m["requestId"] \in Nat
+      /\ /\ "cause" \in DOMAIN m
+         /\ m["cause"] \in Cause!All
    
    ----
    
@@ -295,8 +567,8 @@ vars == <<conns>>
       THEN SetType(m, RICControlRequest) 
       ELSE Nil
    
-   WithRICControlResponse(m) == 
-      IF Assert(ValidRICControlResponse(m), "Invalid RICControlResponse") 
+   WithRICControlAcknowledge(m) == 
+      IF Assert(ValidRICControlAcknowledge(m), "Invalid RICControlAcknowledge") 
       THEN SetType(m, RICControlResponse) 
       ELSE Nil
    
@@ -365,200 +637,6 @@ LOCAL Messages == INSTANCE Messages WITH
    E2NodeConfigurationUpdateAcknowledge <- "E2NodeConfigurationUpdateAcknowledge",
    E2NodeConfigurationUpdateFailure <- "E2NodeConfigurationUpdateFailure"
 
-   ------------------------------ MODULE Cause ------------------------------
-   
-   (*
-   The Messages module defines predicates for receiving, sending, and
-   verifying all the messages supported by E2AP.
-   *)
-   
-      ------------------------------ MODULE Misc ----------------------------
-
-      CONSTANTS
-         Unspecified,
-         ControlProcessingOverload,
-         HardwareFailure,
-         OMIntervention
-         
-      LOCAL failureCauses ==
-         {Unspecified,
-          ControlProcessingOverload,
-          HardwareFailure,
-          OMIntervention}
-      
-      ASSUME \A c \in failureCauses : c \in STRING
-            
-      IsUnspecified(m) == m.cause = Unspecified
-      IsControlProcessingOverload(m) == m.cause = ControlProcessingOverload
-      IsHardwareFailure(m) == m.cause = HardwareFailure
-      IsOMIntervention(m) == m.cause = OMIntervention
-      
-      =======================================================================
-   
-   Misc == INSTANCE Misc WITH
-      Unspecified <- "Unspecified",
-      ControlProcessingOverload <- "ControlProcessingOverload",
-      HardwareFailure <- "HardwareFailure",
-      OMIntervention <- "OMIntervention"
-   
-      ---------------------------- MODULE Protocol --------------------------
-
-      CONSTANTS
-         Unspecified,
-         TransferSyntaxError,
-         AbstractSyntaxErrorReject,
-         AbstractSyntaxErrorIgnoreAndNotify,
-         MessageNotCompatibleWithReceiverState,
-         SemanticError,
-         AbstractSyntaxErrorFalselyConstructedMessage
-         
-      LOCAL failureCauses ==
-         {Unspecified,
-          TransferSyntaxError,
-          AbstractSyntaxErrorReject,
-          AbstractSyntaxErrorIgnoreAndNotify,
-          MessageNotCompatibleWithReceiverState,
-          SemanticError,
-          AbstractSyntaxErrorFalselyConstructedMessage}
-      
-      ASSUME \A c \in failureCauses : c \in STRING
-            
-      IsUnspecified(m) == m.cause = Unspecified
-      IsTransferSyntaxError(m) == m.cause = TransferSyntaxError
-      IsAbstractSyntaxErrorReject(m) == m.cause = AbstractSyntaxErrorReject
-      IsAbstractSyntaxErrorIgnoreAndNotify(m) == m.cause = AbstractSyntaxErrorIgnoreAndNotify
-      IsMessageNotCompatibleWithReceiverState(m) == m.cause = MessageNotCompatibleWithReceiverState
-      IsSemanticError(m) == m.cause = SemanticError
-      IsAbstractSyntaxErrorFalselyConstructedMessage(m) == m.cause = AbstractSyntaxErrorFalselyConstructedMessage
-      
-      =======================================================================
-   
-   Protocol == INSTANCE Protocol WITH
-      Unspecified <- "Unspecified",
-      TransferSyntaxError <- "TransferSyntaxError",
-      AbstractSyntaxErrorReject <- "AbstractSyntaxErrorReject",
-      AbstractSyntaxErrorIgnoreAndNotify <- "AbstractSyntaxErrorIgnoreAndNotify",
-      MessageNotCompatibleWithReceiverState <- "MessageNotCompatibleWithReceiverState",
-      SemanticError <- "SemanticError",
-      AbstractSyntaxErrorFalselyConstructedMessage <- "AbstractSyntaxErrorFalselyConstructedMessage"
-   
-      ------------------------------ MODULE RIC -----------------------------
-
-      CONSTANTS
-         Unspecified,
-         RANFunctionIDInvalid,
-         ActionNotSupported,
-         ExcessiveActions,
-         DuplicateAction,
-         DuplicateEvent,
-         FunctionResourceLimit,
-         RequestIDUnknown,
-         InconsistentActionSubsequentActionSequence,
-         ControlMessageInvalid,
-         CallProcessIDInvalid
-         
-      LOCAL failureCauses ==
-         {Unspecified,
-          RANFunctionIDInvalid,
-          ActionNotSupported,
-          ExcessiveActions,
-          DuplicateAction,
-          DuplicateEvent,
-          FunctionResourceLimit,
-          RequestIDUnknown,
-          InconsistentActionSubsequentActionSequence,
-          ControlMessageInvalid,
-          CallProcessIDInvalid}
-      
-      ASSUME \A c \in failureCauses : c \in STRING
-            
-      IsUnspecified(m) == m.cause = Unspecified
-      IsRANFunctionIDInvalid(m) == m.cause = RANFunctionIDInvalid
-      IsActionNotSupported(m) == m.cause = ActionNotSupported
-      IsExcessiveActions(m) == m.cause = ExcessiveActions
-      IsDuplicateAction(m) == m.cause = DuplicateAction
-      IsDuplicateEvent(m) == m.cause = DuplicateEvent
-      IsFunctionResourceLimit(m) == m.cause = FunctionResourceLimit
-      IsRequestIDUnknown(m) == m.cause = RequestIDUnknown
-      IsInconsistentActionSubsequentActionSequence(m) == m.cause = InconsistentActionSubsequentActionSequence
-      IsControlMessageInvalid(m) == m.cause = ControlMessageInvalid
-      IsCallProcessIDInvalid(m) == m.cause = CallProcessIDInvalid
-      
-      =======================================================================
-   
-   RIC == INSTANCE RIC WITH
-      Unspecified <- "Unspecified",
-      RANFunctionIDInvalid <- "RANFunctionIDInvalid",
-      ActionNotSupported <- "ActionNotSupported",
-      ExcessiveActions <- "ExcessiveActions",
-      DuplicateAction <- "DuplicateAction",
-      DuplicateEvent <- "DuplicateEvent",
-      FunctionResourceLimit <- "FunctionResourceLimit",
-      RequestIDUnknown <- "RequestIDUnknown",
-      InconsistentActionSubsequentActionSequence <- "InconsistentActionSubsequentActionSequence",
-      ControlMessageInvalid <- "ControlMessageInvalid",
-      CallProcessIDInvalid <- "CallProcessIDInvalid"
-   
-      --------------------------- MODULE RICService -------------------------
-
-      CONSTANTS
-         Unspecified,
-         FunctionNotRequired,
-         ExcessiveFunctions,
-         RICResourceLimit
-         
-      LOCAL failureCauses ==
-         {Unspecified,
-          FunctionNotRequired,
-          ExcessiveFunctions,
-          RICResourceLimit}
-      
-      ASSUME \A c \in failureCauses : c \in STRING
-      
-      IsUnspecified(m) == m.cause = Unspecified
-      IsFunctionNotRequired(m) == m.cause = FunctionNotRequired
-      IsExcessiveFunctions(m) == m.cause = ExcessiveFunctions
-      IsRICResourceLimit(m) == m.cause = RICResourceLimit
-            
-      =======================================================================
-   
-   RICService == INSTANCE RICService WITH
-      Unspecified <- "Unspecified",
-      FunctionNotRequired <- "FunctionNotRequired",
-      ExcessiveFunctions <- "ExcessiveFunctions",
-      RICResourceLimit <- "RICResourceLimit"
-   
-      --------------------------- MODULE Transport --------------------------
-
-      CONSTANTS
-         Unspecified,
-         TransportResourceUnavailable
-         
-      LOCAL failureCauses ==
-         {Unspecified,
-          TransportResourceUnavailable}
-      
-      ASSUME \A c \in failureCauses : c \in STRING
-            
-      IsUnspecified(m) == m.cause = Unspecified
-      IsTransportResourceUnavailable(m) == m.cause = TransportResourceUnavailable
-      
-      =======================================================================
-   
-   Transport == INSTANCE Transport WITH
-         Unspecified <- "Unspecified",
-         TransportResourceUnavailable <- "TransportResourceUnavailable"
-      
-   (*
-   This section defines predicates for identifying E2AP message types on
-   the network.
-   *)
-   
-   ==========================================================================
-
-\* The Cause module provides failure causes
-Cause == INSTANCE Cause
-
    ------------------------------ MODULE E2Node -----------------------------
    
    (*
@@ -601,8 +679,8 @@ Cause == INSTANCE Cause
       RICIndication(conn, msg) ==
          /\ SCTP!Client!Send(conn, Messages!WithRICIndication(msg))
       
-      RICControlResponse(conn, msg) ==
-         /\ SCTP!Client!Send(conn, Messages!WithRICControlResponse(msg))
+      RICControlAcknowledge(conn, msg) ==
+         /\ SCTP!Client!Send(conn, Messages!WithRICControlAcknowledge(msg))
       
       RICControlFailure(conn, msg, cause) ==
          /\ SCTP!Client!Send(conn, Messages!WithRICControlFailure(msg, cause))
@@ -649,8 +727,8 @@ Cause == INSTANCE Cause
       RICIndication(conn, msg) ==
          /\ SCTP!Client!Reply(conn, Messages!WithRICIndication(msg))
       
-      RICControlResponse(conn, msg) ==
-         /\ SCTP!Client!Reply(conn, Messages!WithRICControlResponse(msg))
+      RICControlAcknowledge(conn, msg) ==
+         /\ SCTP!Client!Reply(conn, Messages!WithRICControlAcknowledge(msg))
       
       RICControlFailure(conn, msg, cause) ==
          /\ SCTP!Client!Reply(conn, Messages!WithRICControlFailure(msg, cause))
@@ -948,5 +1026,5 @@ Next == SCTP!Next
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 13 19:04:07 PDT 2021 by jordanhalterman
+\* Last modified Tue Sep 21 00:26:48 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 10:53:17 PDT 2021 by jordanhalterman
