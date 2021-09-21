@@ -299,53 +299,53 @@ Cause == INSTANCE Cause
    the network.
    *)
    
-   IsE2SetupRequest(m) == m.type = E2SetupRequest
+   IsE2SetupRequest(msg) == msg.type = E2SetupRequest
    
-   IsE2SetupResponse(m) == m.type = E2SetupResponse
+   IsE2SetupResponse(msg) == msg.type = E2SetupResponse
    
-   IsE2SetupFailure(m) == m.type = E2SetupFailure
+   IsE2SetupFailure(msg) == msg.type = E2SetupFailure
    
-   IsRICServiceUpdate(m) == m.type = RICServiceUpdate
+   IsRICServiceUpdate(msg) == msg.type = RICServiceUpdate
    
-   IsRICServiceUpdateAcknowledge(m) == m.type = RICServiceUpdateAcknowledge
+   IsRICServiceUpdateAcknowledge(msg) == msg.type = RICServiceUpdateAcknowledge
    
-   IsRICServiceUpdateFailure(m) == m.type = RICServiceUpdateFailure
+   IsRICServiceUpdateFailure(msg) == msg.type = RICServiceUpdateFailure
    
-   IsResetRequest(m) == m.type = ResetRequest
+   IsResetRequest(msg) == msg.type = ResetRequest
    
-   IsResetResponse(m) == m.type = ResetResponse
+   IsResetResponse(msg) == msg.type = ResetResponse
    
-   IsRICSubscriptionRequest(m) == m.type = RICSubscriptionRequest
+   IsRICSubscriptionRequest(msg) == msg.type = RICSubscriptionRequest
    
-   IsRICSubscriptionResponse(m) == m.type = RICSubscriptionResponse
+   IsRICSubscriptionResponse(msg) == msg.type = RICSubscriptionResponse
    
-   IsRICSubscriptionFailure(m) == m.type = RICSubscriptionFailure
+   IsRICSubscriptionFailure(msg) == msg.type = RICSubscriptionFailure
    
-   IsRICSubscriptionDeleteRequest(m) == m.type = RICSubscriptionDeleteRequest
+   IsRICSubscriptionDeleteRequest(msg) == msg.type = RICSubscriptionDeleteRequest
    
-   IsRICSubscriptionDeleteResponse(m) == m.type = RICSubscriptionDeleteResponse
+   IsRICSubscriptionDeleteResponse(msg) == msg.type = RICSubscriptionDeleteResponse
    
-   IsRICSubscriptionDeleteFailure(m) == m.type = RICSubscriptionDeleteFailure
+   IsRICSubscriptionDeleteFailure(msg) == msg.type = RICSubscriptionDeleteFailure
    
-   IsRICIndication(m) == m.type = RICIndication
+   IsRICIndication(msg) == msg.type = RICIndication
    
-   IsRICControlRequest(m) == m.type = RICControlRequest
+   IsRICControlRequest(msg) == msg.type = RICControlRequest
    
-   IsRICControlResponse(m) == m.type = RICControlResponse
+   IsRICControlResponse(msg) == msg.type = RICControlResponse
    
-   IsRICControlFailure(m) == m.type = RICControlFailure
+   IsRICControlFailure(msg) == msg.type = RICControlFailure
    
-   IsE2ConnectionUpdate(m) == m.type = E2ConnectionUpdate
+   IsE2ConnectionUpdate(msg) == msg.type = E2ConnectionUpdate
    
-   IsE2ConnectionUpdateAcknowledge(m) == m.type = E2ConnectionUpdateAcknowledge
+   IsE2ConnectionUpdateAcknowledge(msg) == msg.type = E2ConnectionUpdateAcknowledge
    
-   IsE2ConnectionUpdateFailure(m) == m.type = E2ConnectionUpdateFailure
+   IsE2ConnectionUpdateFailure(msg) == msg.type = E2ConnectionUpdateFailure
    
-   IsE2NodeConfigurationUpdate(m) == m.type = E2NodeConfigurationUpdate
+   IsE2NodeConfigurationUpdate(msg) == msg.type = E2NodeConfigurationUpdate
    
-   IsE2NodeConfigurationUpdateAcknowledge(m) == m.type = E2NodeConfigurationUpdateAcknowledge
+   IsE2NodeConfigurationUpdateAcknowledge(msg) == msg.type = E2NodeConfigurationUpdateAcknowledge
    
-   IsE2NodeConfigurationUpdateFailure(m) == m.type = E2NodeConfigurationUpdateFailure
+   IsE2NodeConfigurationUpdateFailure(msg) == msg.type = E2NodeConfigurationUpdateFailure
       
    ----
       
@@ -355,148 +355,148 @@ Cause == INSTANCE Cause
    to verify that steps adhere to the E2AP protocol specification.
    *)
    
-   LOCAL ValidE2SetupRequest(m) == 
-      /\ /\ "transactionId" \in DOMAIN m 
-         /\ m["transactionId"] \in Nat
-      /\ /\ "globalE2NodeId" \in DOMAIN m 
-         /\ m["globalE2NodeId"] \in Nat
+   LOCAL ValidE2SetupRequest(msg) == 
+      /\ /\ "transactionId" \in DOMAIN msg 
+         /\ msg["transactionId"] \in Nat
+      /\ /\ "globalE2NodeId" \in DOMAIN msg 
+         /\ msg["globalE2NodeId"] \in Nat
    
-   LOCAL ValidE2SetupResponse(m) == 
-      /\ /\ "transactionId" \in DOMAIN m 
-         /\ m["transactionId"] \in Nat
-      /\ /\ "globalRicId" \in DOMAIN m    
-         /\ m["globalRicId"] \in Nat
+   LOCAL ValidE2SetupResponse(msg) == 
+      /\ /\ "transactionId" \in DOMAIN msg 
+         /\ msg["transactionId"] \in Nat
+      /\ /\ "globalRicId" \in DOMAIN msg    
+         /\ msg["globalRicId"] \in Nat
    
-   LOCAL ValidE2SetupFailure(m) == 
-      /\ /\ "transactionId" \in DOMAIN m 
-         /\ m["transactionId"] \in Nat
-      /\ /\ "cause" \in DOMAIN m
-         /\ m["cause"] \in Cause!All
+   LOCAL ValidE2SetupFailure(msg) == 
+      /\ /\ "transactionId" \in DOMAIN msg 
+         /\ msg["transactionId"] \in Nat
+      /\ /\ "cause" \in DOMAIN msg
+         /\ msg["cause"] \in Cause!All
    
-   LOCAL ValidRICServiceUpdate(m) ==  
-      /\ /\ "transactionId" \in DOMAIN m 
-         /\ m["transactionId"] \in Nat
+   LOCAL ValidRICServiceUpdate(msg) ==  
+      /\ /\ "transactionId" \in DOMAIN msg 
+         /\ msg["transactionId"] \in Nat
    
-   LOCAL ValidRICServiceUpdateAcknowledge(m) ==  
-      /\ /\ "transactionId" \in DOMAIN m 
-         /\ m["transactionId"] \in Nat
+   LOCAL ValidRICServiceUpdateAcknowledge(msg) ==  
+      /\ /\ "transactionId" \in DOMAIN msg 
+         /\ msg["transactionId"] \in Nat
    
-   LOCAL ValidRICServiceUpdateFailure(m) ==  
-      /\ /\ "transactionId" \in DOMAIN m 
-         /\ m["transactionId"] \in Nat
-      /\ /\ "cause" \in DOMAIN m
-         /\ m["cause"] \in Cause!All
+   LOCAL ValidRICServiceUpdateFailure(msg) ==  
+      /\ /\ "transactionId" \in DOMAIN msg 
+         /\ msg["transactionId"] \in Nat
+      /\ /\ "cause" \in DOMAIN msg
+         /\ msg["cause"] \in Cause!All
    
-   LOCAL ValidResetRequest(m) ==  
-      /\ /\ "transactionId" \in DOMAIN m 
-         /\ m["transactionId"] \in Nat
+   LOCAL ValidResetRequest(msg) ==  
+      /\ /\ "transactionId" \in DOMAIN msg 
+         /\ msg["transactionId"] \in Nat
    
-   LOCAL ValidResetResponse(m) ==  
-      /\ /\ "transactionId" \in DOMAIN m 
-         /\ m["transactionId"] \in Nat
+   LOCAL ValidResetResponse(msg) ==  
+      /\ /\ "transactionId" \in DOMAIN msg 
+         /\ msg["transactionId"] \in Nat
    
-   LOCAL ValidE2ConnectionUpdate(m) ==  
-      /\ /\ "transactionId" \in DOMAIN m 
-         /\ m["transactionId"] \in Nat
-      /\ /\ "add" \in DOMAIN m => 
-            /\ IsFiniteSet(m["add"])
-            /\ \A a \in m["add"] : a \in STRING
-         /\ "update" \in DOMAIN m =>
-            /\ IsFiniteSet(m["update"])
-            /\ \A a \in m["update"] : a \in STRING
-         /\ "remove" \in DOMAIN m =>
-            /\ IsFiniteSet(m["remove"])
-            /\ \A a \in m["remove"] : a \in STRING
+   LOCAL ValidE2ConnectionUpdate(msg) ==  
+      /\ /\ "transactionId" \in DOMAIN msg 
+         /\ msg["transactionId"] \in Nat
+      /\ /\ "add" \in DOMAIN msg => 
+            /\ IsFiniteSet(msg["add"])
+            /\ \A a \in msg["add"] : a \in STRING
+         /\ "update" \in DOMAIN msg =>
+            /\ IsFiniteSet(msg["update"])
+            /\ \A a \in msg["update"] : a \in STRING
+         /\ "remove" \in DOMAIN msg =>
+            /\ IsFiniteSet(msg["remsgove"])
+            /\ \A a \in msg["remove"] : a \in STRING
    
-   LOCAL ValidE2ConnectionUpdateAcknowledge(m) ==  
-      /\ /\ "transactionId" \in DOMAIN m 
-         /\ m["transactionId"] \in Nat
-      /\ /\ "succeeded" \in DOMAIN m =>
-            /\ IsFiniteSet(m["succeeded"])
-            /\ \A a \in m["succeeded"] : a \in STRING
-         /\ "failed" \in DOMAIN m =>
-            /\ IsFiniteSet(m["failed"])
-            /\ \A a \in m["failed"] : a \in STRING
+   LOCAL ValidE2ConnectionUpdateAcknowledge(msg) ==  
+      /\ /\ "transactionId" \in DOMAIN msg 
+         /\ msg["transactionId"] \in Nat
+      /\ /\ "succeeded" \in DOMAIN msg =>
+            /\ IsFiniteSet(msg["succeeded"])
+            /\ \A a \in msg["succeeded"] : a \in STRING
+         /\ "failed" \in DOMAIN msg =>
+            /\ IsFiniteSet(msg["failed"])
+            /\ \A a \in msg["failed"] : a \in STRING
    
-   LOCAL ValidE2ConnectionUpdateFailure(m) ==  
-      /\ /\ "transactionId" \in DOMAIN m 
-         /\ m["transactionId"] \in Nat
-      /\ /\ "cause" \in DOMAIN m
-         /\ m["cause"] \in Cause!All
+   LOCAL ValidE2ConnectionUpdateFailure(msg) ==  
+      /\ /\ "transactionId" \in DOMAIN msg 
+         /\ msg["transactionId"] \in Nat
+      /\ /\ "cause" \in DOMAIN msg
+         /\ msg["cause"] \in Cause!All
    
-   LOCAL ValidE2NodeConfigurationUpdate(m) ==  
-      /\ /\ "transactionId" \in DOMAIN m 
-         /\ m["transactionId"] \in Nat
-      /\ /\ "globalE2NodeId" \in DOMAIN m 
-         /\ m["globalE2NodeId"] \in Nat
-      /\ /\ "add" \in DOMAIN m => 
-            /\ IsFiniteSet(m["add"])
-         /\ "update" \in DOMAIN m => 
-            /\ IsFiniteSet(m["update"])
-         /\ "remove" \in DOMAIN m => 
-            /\ IsFiniteSet(m["remove"])
+   LOCAL ValidE2NodeConfigurationUpdate(msg) ==  
+      /\ /\ "transactionId" \in DOMAIN msg 
+         /\ msg["transactionId"] \in Nat
+      /\ /\ "globalE2NodeId" \in DOMAIN msg 
+         /\ msg["globalE2NodeId"] \in Nat
+      /\ /\ "add" \in DOMAIN msg => 
+            /\ IsFiniteSet(msg["add"])
+         /\ "update" \in DOMAIN msg => 
+            /\ IsFiniteSet(msg["update"])
+         /\ "remove" \in DOMAIN msg => 
+            /\ IsFiniteSet(msg["remove"])
    
-   LOCAL ValidE2NodeConfigurationUpdateAcknowledge(m) ==  
-      /\ /\ "transactionId" \in DOMAIN m 
-         /\ m["transactionId"] \in Nat
-      /\ /\ "add" \in DOMAIN m => 
-            /\ IsFiniteSet(m["add"])
-         /\ "update" \in DOMAIN m => 
-            /\ IsFiniteSet(m["update"])
-         /\ "remove" \in DOMAIN m => 
-            /\ IsFiniteSet(m["remove"])
+   LOCAL ValidE2NodeConfigurationUpdateAcknowledge(msg) ==  
+      /\ /\ "transactionId" \in DOMAIN msg 
+         /\ msg["transactionId"] \in Nat
+      /\ /\ "add" \in DOMAIN msg => 
+            /\ IsFiniteSet(msg["add"])
+         /\ "update" \in DOMAIN msg => 
+            /\ IsFiniteSet(msg["update"])
+         /\ "remove" \in DOMAIN msg => 
+            /\ IsFiniteSet(msg["remove"])
    
-   LOCAL ValidE2NodeConfigurationUpdateFailure(m) ==  
-      /\ /\ "transactionId" \in DOMAIN m 
-         /\ m["transactionId"] \in Nat
-      /\ /\ "cause" \in DOMAIN m
-         /\ m["cause"] \in Cause!All
+   LOCAL ValidE2NodeConfigurationUpdateFailure(msg) ==  
+      /\ /\ "transactionId" \in DOMAIN msg 
+         /\ msg["transactionId"] \in Nat
+      /\ /\ "cause" \in DOMAIN msg
+         /\ msg["cause"] \in Cause!All
    
-   LOCAL ValidRICSubscriptionRequest(m) ==  
-      /\ /\ "requestId" \in DOMAIN m 
-         /\ m["requestId"] \in Nat
+   LOCAL ValidRICSubscriptionRequest(msg) ==  
+      /\ /\ "requestId" \in DOMAIN msg 
+         /\ msg["requestId"] \in Nat
    
-   LOCAL ValidRICSubscriptionResponse(m) == 
-      /\ /\ "requestId" \in DOMAIN m 
-         /\ m["requestId"] \in Nat
+   LOCAL ValidRICSubscriptionResponse(msg) == 
+      /\ /\ "requestId" \in DOMAIN msg 
+         /\ msg["requestId"] \in Nat
    
-   LOCAL ValidRICSubscriptionFailure(m) == 
-      /\ /\ "requestId" \in DOMAIN m 
-         /\ m["requestId"] \in Nat
-      /\ /\ "cause" \in DOMAIN m
-         /\ m["cause"] \in Cause!All
+   LOCAL ValidRICSubscriptionFailure(msg) == 
+      /\ /\ "requestId" \in DOMAIN msg 
+         /\ msg["requestId"] \in Nat
+      /\ /\ "cause" \in DOMAIN msg
+         /\ msg["cause"] \in Cause!All
    
-   LOCAL ValidRICSubscriptionDeleteRequest(m) == 
-      /\ /\ "requestId" \in DOMAIN m 
-         /\ m["requestId"] \in Nat
+   LOCAL ValidRICSubscriptionDeleteRequest(msg) == 
+      /\ /\ "requestId" \in DOMAIN msg 
+         /\ msg["requestId"] \in Nat
    
-   LOCAL ValidRICSubscriptionDeleteResponse(m) == 
-      /\ /\ "requestId" \in DOMAIN m 
-         /\ m["requestId"] \in Nat
+   LOCAL ValidRICSubscriptionDeleteResponse(msg) == 
+      /\ /\ "requestId" \in DOMAIN msg 
+         /\ msg["requestId"] \in Nat
    
-   LOCAL ValidRICSubscriptionDeleteFailure(m) == 
-      /\ /\ "requestId" \in DOMAIN m 
-         /\ m["requestId"] \in Nat
-      /\ /\ "cause" \in DOMAIN m
-         /\ m["cause"] \in Cause!All
+   LOCAL ValidRICSubscriptionDeleteFailure(msg) == 
+      /\ /\ "requestId" \in DOMAIN msg 
+         /\ msg["requestId"] \in Nat
+      /\ /\ "cause" \in DOMAIN msg
+         /\ msg["cause"] \in Cause!All
    
-   LOCAL ValidRICIndication(m) ==
-      /\ /\ "requestId" \in DOMAIN m 
-         /\ m["requestId"] \in Nat
+   LOCAL ValidRICIndication(msg) ==
+      /\ /\ "requestId" \in DOMAIN msg 
+         /\ msg["requestId"] \in Nat
    
-   LOCAL ValidRICControlRequest(m) == 
-      /\ /\ "requestId" \in DOMAIN m 
-         /\ m["requestId"] \in Nat
+   LOCAL ValidRICControlRequest(msg) == 
+      /\ /\ "requestId" \in DOMAIN msg 
+         /\ msg["requestId"] \in Nat
    
-   LOCAL ValidRICControlAcknowledge(m) == 
-      /\ /\ "requestId" \in DOMAIN m 
-         /\ m["requestId"] \in Nat
+   LOCAL ValidRICControlAcknowledge(msg) == 
+      /\ /\ "requestId" \in DOMAIN msg 
+         /\ msg["requestId"] \in Nat
    
-   LOCAL ValidRICControlFailure(m) == 
-      /\ /\ "requestId" \in DOMAIN m 
-         /\ m["requestId"] \in Nat
-      /\ /\ "cause" \in DOMAIN m
-         /\ m["cause"] \in Cause!All
+   LOCAL ValidRICControlFailure(msg) == 
+      /\ /\ "requestId" \in DOMAIN msg 
+         /\ msg["requestId"] \in Nat
+      /\ /\ "cause" \in DOMAIN msg
+         /\ msg["cause"] \in Cause!All
    
    ----
    
@@ -504,128 +504,128 @@ Cause == INSTANCE Cause
    This section defines operators for constructing E2AP messages.
    *)
    
-   LOCAL SetType(m, t) == [m EXCEPT !.type = t]
+   LOCAL SetType(msg, type) == [msg EXCEPT !.type = type]
    
-   LOCAL SetFailureCause(m, c) == [m EXCEPT !.cause = c]
+   LOCAL SetFailureCause(msg, cause) == [msg EXCEPT !.cause = cause]
    
-   WithE2SetupRequest(m) ==
-      IF Assert(ValidE2SetupRequest(m), "Invalid E2SetupRequest") 
-      THEN SetType(m, E2SetupRequest)
+   WithE2SetupRequest(msg) ==
+      IF Assert(ValidE2SetupRequest(msg), "Invalid E2SetupRequest") 
+      THEN SetType(msg, E2SetupRequest)
       ELSE Nil
    
-   WithE2SetupResponse(m) ==
-      IF Assert(ValidE2SetupResponse(m), "Invalid E2SetupResponse") 
-      THEN SetType(m, E2SetupResponse) 
+   WithE2SetupResponse(msg) ==
+      IF Assert(ValidE2SetupResponse(msg), "Invalid E2SetupResponse") 
+      THEN SetType(msg, E2SetupResponse) 
       ELSE Nil
    
-   WithE2SetupFailure(m, c) == 
-      IF Assert(ValidE2SetupFailure(m), "Invalid E2SetupFailure") 
-      THEN SetType(m, SetFailureCause(E2SetupFailure, c))
+   WithE2SetupFailure(msg, cause) == 
+      IF Assert(ValidE2SetupFailure(msg), "Invalid E2SetupFailure") 
+      THEN SetType(msg, SetFailureCause(E2SetupFailure, cause))
       ELSE Nil
    
-   WithRICServiceUpdate(m) ==
-      IF Assert(ValidRICServiceUpdate(m), "Invalid RICServiceUpdate") 
-      THEN SetType(m, RICServiceUpdate)
+   WithRICServiceUpdate(msg) ==
+      IF Assert(ValidRICServiceUpdate(msg), "Invalid RICServiceUpdate") 
+      THEN SetType(msg, RICServiceUpdate)
       ELSE Nil
    
-   WithRICServiceUpdateAcknowledge(m) ==
-      IF Assert(ValidRICServiceUpdateAcknowledge(m), "Invalid RICServiceUpdateAcknowledge") 
-      THEN SetType(m, RICServiceUpdateAcknowledge) 
+   WithRICServiceUpdateAcknowledge(msg) ==
+      IF Assert(ValidRICServiceUpdateAcknowledge(msg), "Invalid RICServiceUpdateAcknowledge") 
+      THEN SetType(msg, RICServiceUpdateAcknowledge) 
       ELSE Nil
    
-   WithRICServiceUpdateFailure(m, c) == 
-      IF Assert(ValidRICServiceUpdateFailure(m), "Invalid RICServiceUpdateFailure") 
-      THEN SetType(m, SetFailureCause(RICServiceUpdateFailure, c))
+   WithRICServiceUpdateFailure(msg, cause) == 
+      IF Assert(ValidRICServiceUpdateFailure(msg), "Invalid RICServiceUpdateFailure") 
+      THEN SetType(msg, SetFailureCause(RICServiceUpdateFailure, cause))
       ELSE Nil
    
-   WithResetRequest(m) == 
-      IF Assert(ValidResetRequest(m), "Invalid ResetRequest") 
-      THEN SetType(m, ResetRequest) 
+   WithResetRequest(msg) == 
+      IF Assert(ValidResetRequest(msg), "Invalid ResetRequest") 
+      THEN SetType(msg, ResetRequest) 
       ELSE Nil
    
-   WithResetResponse(m) == 
-      IF Assert(ValidResetResponse(m), "Invalid ResetResponse") 
-      THEN SetType(m, ResetResponse) 
+   WithResetResponse(msg) == 
+      IF Assert(ValidResetResponse(msg), "Invalid ResetResponse") 
+      THEN SetType(msg, ResetResponse) 
       ELSE Nil
    
-   WithRICSubscriptionRequest(m) == 
-      IF Assert(ValidRICSubscriptionRequest(m), "Invalid RICSubscriptionRequest") 
-      THEN SetType(m, RICSubscriptionRequest) 
+   WithRICSubscriptionRequest(msg) == 
+      IF Assert(ValidRICSubscriptionRequest(msg), "Invalid RICSubscriptionRequest") 
+      THEN SetType(msg, RICSubscriptionRequest) 
       ELSE Nil
    
-   WithRICSubscriptionResponse(m) == 
-      IF Assert(ValidRICSubscriptionResponse(m), "Invalid RICSubscriptionResponse") 
-      THEN SetType(m, RICSubscriptionResponse) 
+   WithRICSubscriptionResponse(msg) == 
+      IF Assert(ValidRICSubscriptionResponse(msg), "Invalid RICSubscriptionResponse") 
+      THEN SetType(msg, RICSubscriptionResponse) 
       ELSE Nil
    
-   WithRICSubscriptionFailure(m, c) == 
-      IF Assert(ValidRICSubscriptionFailure(m), "Invalid RICSubscriptionFailure") 
-      THEN SetType(m, SetFailureCause(RICSubscriptionFailure, c)) 
+   WithRICSubscriptionFailure(msg, cause) == 
+      IF Assert(ValidRICSubscriptionFailure(msg), "Invalid RICSubscriptionFailure") 
+      THEN SetType(msg, SetFailureCause(RICSubscriptionFailure, cause)) 
       ELSE Nil
    
-   WithRICSubscriptionDeleteRequest(m) == 
-      IF Assert(ValidRICSubscriptionDeleteRequest(m), "Invalid RICSubscriptionDeleteRequest") 
-      THEN SetType(m, RICSubscriptionDeleteRequest) 
+   WithRICSubscriptionDeleteRequest(msg) == 
+      IF Assert(ValidRICSubscriptionDeleteRequest(msg), "Invalid RICSubscriptionDeleteRequest") 
+      THEN SetType(msg, RICSubscriptionDeleteRequest) 
       ELSE Nil
    
-   WithRICSubscriptionDeleteResponse(m) == 
-      IF Assert(ValidRICSubscriptionDeleteResponse(m), "Invalid RICSubscriptionDeleteResponse") 
-      THEN SetType(m, RICSubscriptionDeleteResponse) 
+   WithRICSubscriptionDeleteResponse(msg) == 
+      IF Assert(ValidRICSubscriptionDeleteResponse(msg), "Invalid RICSubscriptionDeleteResponse") 
+      THEN SetType(msg, RICSubscriptionDeleteResponse) 
       ELSE Nil
    
-   WithRICSubscriptionDeleteFailure(m, c) == 
-      IF Assert(ValidRICSubscriptionDeleteFailure(m), "Invalid RICSubscriptionDeleteFailure") 
-      THEN SetType(m, SetFailureCause(RICSubscriptionDeleteFailure, c)) 
+   WithRICSubscriptionDeleteFailure(msg, cause) == 
+      IF Assert(ValidRICSubscriptionDeleteFailure(msg), "Invalid RICSubscriptionDeleteFailure") 
+      THEN SetType(msg, SetFailureCause(RICSubscriptionDeleteFailure, cause)) 
       ELSE Nil
    
-   WithRICIndication(m) == 
-      IF Assert(ValidRICIndication(m), "Invalid RICIndication") 
-      THEN SetType(m, RICIndication) 
+   WithRICIndication(msg) == 
+      IF Assert(ValidRICIndication(msg), "Invalid RICIndication") 
+      THEN SetType(msg, RICIndication) 
       ELSE Nil
    
-   WithRICControlRequest(m) == 
-      IF Assert(ValidRICControlRequest(m), "Invalid RICControlRequest") 
-      THEN SetType(m, RICControlRequest) 
+   WithRICControlRequest(msg) == 
+      IF Assert(ValidRICControlRequest(msg), "Invalid RICControlRequest") 
+      THEN SetType(msg, RICControlRequest) 
       ELSE Nil
    
-   WithRICControlAcknowledge(m) == 
-      IF Assert(ValidRICControlAcknowledge(m), "Invalid RICControlAcknowledge") 
-      THEN SetType(m, RICControlResponse) 
+   WithRICControlAcknowledge(msg) == 
+      IF Assert(ValidRICControlAcknowledge(msg), "Invalid RICControlAcknowledge") 
+      THEN SetType(msg, RICControlResponse) 
       ELSE Nil
    
-   WithRICControlFailure(m, c) == 
-      IF Assert(ValidRICControlFailure(m), "Invalid RICControlFailure") 
-      THEN SetType(m, SetFailureCause(RICControlFailure, c)) 
+   WithRICControlFailure(msg, cause) == 
+      IF Assert(ValidRICControlFailure(msg), "Invalid RICControlFailure") 
+      THEN SetType(msg, SetFailureCause(RICControlFailure, cause)) 
       ELSE Nil
    
-   WithE2ConnectionUpdate(m) == 
-      IF Assert(ValidE2ConnectionUpdate(m), "Invalid E2ConnectionUpdate") 
-      THEN SetType(m, E2ConnectionUpdate) 
+   WithE2ConnectionUpdate(msg) == 
+      IF Assert(ValidE2ConnectionUpdate(msg), "Invalid E2ConnectionUpdate") 
+      THEN SetType(msg, E2ConnectionUpdate) 
       ELSE Nil
    
-   WithE2ConnectionUpdateAcknowledge(m) == 
-      IF Assert(ValidE2ConnectionUpdateAcknowledge(m), "Invalid E2ConnectionUpdateAcknowledge") 
-      THEN SetType(m, E2ConnectionUpdateAcknowledge) 
+   WithE2ConnectionUpdateAcknowledge(msg) == 
+      IF Assert(ValidE2ConnectionUpdateAcknowledge(msg), "Invalid E2ConnectionUpdateAcknowledge") 
+      THEN SetType(msg, E2ConnectionUpdateAcknowledge) 
       ELSE Nil
    
-   WithE2ConnectionUpdateFailure(m, c) == 
-      IF Assert(ValidE2ConnectionUpdateFailure(m), "Invalid E2ConnectionUpdateFailure") 
-      THEN SetType(m, SetFailureCause(E2ConnectionUpdateFailure, c)) 
+   WithE2ConnectionUpdateFailure(msg, cause) == 
+      IF Assert(ValidE2ConnectionUpdateFailure(msg), "Invalid E2ConnectionUpdateFailure") 
+      THEN SetType(msg, SetFailureCause(E2ConnectionUpdateFailure, cause)) 
       ELSE Nil
    
-   WithE2NodeConfigurationUpdate(m) == 
-      IF Assert(ValidE2NodeConfigurationUpdate(m), "Invalid E2NodeConfigurationUpdate") 
-      THEN SetType(m, E2NodeConfigurationUpdate) 
+   WithE2NodeConfigurationUpdate(msg) == 
+      IF Assert(ValidE2NodeConfigurationUpdate(msg), "Invalid E2NodeConfigurationUpdate") 
+      THEN SetType(msg, E2NodeConfigurationUpdate) 
       ELSE Nil
    
-   WithE2NodeConfigurationUpdateAcknowledge(m) == 
-      IF Assert(ValidE2NodeConfigurationUpdateAcknowledge(m), "Invalid E2NodeConfigurationUpdateAcknowledge") 
-      THEN SetType(m, E2NodeConfigurationUpdateAcknowledge) 
+   WithE2NodeConfigurationUpdateAcknowledge(msg) == 
+      IF Assert(ValidE2NodeConfigurationUpdateAcknowledge(msg), "Invalid E2NodeConfigurationUpdateAcknowledge") 
+      THEN SetType(msg, E2NodeConfigurationUpdateAcknowledge) 
       ELSE Nil
    
-   WithE2NodeConfigurationUpdateFailure(m, c) == 
-      IF Assert(ValidE2NodeConfigurationUpdateFailure(m), "Invalid E2NodeConfigurationUpdateFailure") 
-      THEN SetType(m, SetFailureCause(E2NodeConfigurationUpdateFailure, c)) 
+   WithE2NodeConfigurationUpdateFailure(msg, cause) == 
+      IF Assert(ValidE2NodeConfigurationUpdateFailure(msg), "Invalid E2NodeConfigurationUpdateFailure") 
+      THEN SetType(msg, SetFailureCause(E2NodeConfigurationUpdateFailure, cause)) 
       ELSE Nil
       
    ==========================================================================
@@ -857,9 +857,9 @@ LOCAL Messages == INSTANCE Messages WITH
    \* Instantiate the E2AP!Client!Responses module
    Handle == INSTANCE Receive
    
-   Connect(d) == SCTP!Client(ID)!Connect(d)
+   Connect(dst) == SCTP!Client(ID)!Connect(dst)
    
-   Disconnect(c) == SCTP!Client(ID)!Disconnect(c)
+   Disconnect(conn) == SCTP!Client(ID)!Disconnect(conn)
    
    \* The set of all open E2AP connections
    Connections == SCTP!Client(ID)!Connections
@@ -1054,5 +1054,5 @@ Next == SCTP!Next
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 21 05:27:59 PDT 2021 by jordanhalterman
+\* Last modified Tue Sep 21 08:24:54 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 10:53:17 PDT 2021 by jordanhalterman

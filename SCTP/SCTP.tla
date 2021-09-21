@@ -29,21 +29,21 @@ vars == <<conns>>
           connId == Min({i \in 1..(maxId+1) : i \notin DOMAIN conns})
       IN conns' = conns @@ (connId :> [id |-> connId, src |-> ID, dst |-> dst, req |-> <<>>, res |-> <<>>])
 
-   Disconnect(c) ==
-      conns' = [x \in DOMAIN conns \ {c.id} |-> conns[x]]
+   Disconnect(conn) ==
+      conns' = [x \in DOMAIN conns \ {conn.id} |-> conns[x]]
 
-   Send(c, m) ==
-      conns' = [conns EXCEPT ![c.id] = [conns[c.id] EXCEPT !.req = Append(conns[c.id].req, m)]]
+   Send(conn, msg) ==
+      conns' = [conns EXCEPT ![conn.id] = [conns[conn.id] EXCEPT !.req = Append(conns[conn.id].req, msg)]]
 
-   Receive(c) ==
-      conns' = [conns EXCEPT ![c.id] = [conns[c.id] EXCEPT !.res = SubSeq(conns[c.id].res, 2, Len(conns[c.id].res))]]
+   Receive(conn) ==
+      conns' = [conns EXCEPT ![conn.id] = [conns[conn.id] EXCEPT !.res = SubSeq(conns[conn.id].res, 2, Len(conns[conn.id].res))]]
 
-   Reply(c, m) ==
-      conns' = [conns' EXCEPT ![c.id] = [conns'[c.id] EXCEPT !.req = Append(conns'[c.id].req, m)]]
+   Reply(conn, msg) ==
+      conns' = [conns' EXCEPT ![conn.id] = [conns'[conn.id] EXCEPT !.req = Append(conns'[conn.id].req, msg)]]
 
-   Handle(c, f(_, _)) == Len(c.res) > 0 /\ f(c, c.res[1])
+   Handle(conn, handler(_, _)) == Len(conn.res) > 0 /\ handler(conn, conn.res[1])
 
-   Connections == {c \in conns : c.src = ID}
+   Connections == {conn \in conns : conn.src = ID}
 
    ======================================================================
 
@@ -53,30 +53,34 @@ Client(ID) == INSTANCE Client
 
    CONSTANT ID
 
-   Send(c, m) ==
-      conns' = [conns EXCEPT ![c.id] = [conns[c.id] EXCEPT !.res = Append(conns[c.id].res, m)]]
+   Send(conn, msg) ==
+      conns' = [conns EXCEPT ![conn.id] = [conns[conn.id] EXCEPT !.res = Append(conns[conn.id].res, msg)]]
 
-   Receive(c) ==
-      conns' = [conns EXCEPT ![c.id] = [conns[c.id] EXCEPT !.req = SubSeq(conns[c.id].req, 2, Len(conns[c.id].req))]]
+   Receive(conn) ==
+      conns' = [conns EXCEPT ![conn.id] = [conns[conn.id] EXCEPT !.req = SubSeq(conns[conn.id].req, 2, Len(conns[conn.id].req))]]
 
-   Reply(c, m) ==
-      conns' = [conns' EXCEPT ![c.id] = [conns'[c.id] EXCEPT !.res = Append(conns'[c.id].res, m)]]
+   Reply(conn, msg) ==
+      conns' = [conns' EXCEPT ![conn.id] = [conns'[conn.id] EXCEPT !.res = Append(conns'[conn.id].res, msg)]]
 
-   Handle(c, f(_, _)) == Len(c.req) > 0 /\ f(c, c.req[1])
+   Handle(conn, handler(_, _)) == Len(conn.req) > 0 /\ handler(conn, conn.req[1])
 
-   Connections == {c \in conns : c.dst = ID}
+   Connections == {conn \in conns : conn.dst = ID}
 
    ======================================================================
 
 Server(ID) == INSTANCE Server
 
 Init ==
-   /\ conns = [c \in {} |-> [e2n |-> Nil, e2t |-> Nil, req |-> <<>>, res |-> <<>>]]
+   /\ conns = [connId \in {} |-> [connId |-> connId, 
+                                  src    |-> Nil, 
+                                  dst    |-> Nil, 
+                                  req    |-> <<>>, 
+                                  res    |-> <<>>]]
 
 Next ==
    \/ UNCHANGED <<conns>>
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 21 05:40:27 PDT 2021 by jordanhalterman
+\* Last modified Tue Sep 21 08:27:33 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 12:21:16 PDT 2021 by jordanhalterman
