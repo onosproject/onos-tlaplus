@@ -53,9 +53,11 @@ vars == <<conns>>
                    conns'[conn.dst] EXCEPT ![conn.id] = [
                       conns'[conn.dst][conn.id] EXCEPT !.req = Append(conns'[conn.dst][conn.id].req, msg)]]]
 
-   Handle(conn, handler(_, _)) == Len(conn.res) > 0 /\ handler(conn, conn.res[1])
-
    Connections == {conn \in UNION {{conns[s][c] : c \in DOMAIN s} : s \in conns} : conn.src = ID}
+   
+   Ready(conn) == Len(conn.res) > 0
+   
+   Read(conn) == conn.res[1]
 
    ======================================================================
 
@@ -91,9 +93,11 @@ Client(ID) == INSTANCE Client
                    conns'[conn.dst] EXCEPT ![conn.id] = [
                       conns'[conn.dst][conn.id] EXCEPT !.req = Append(conns'[conn.dst][conn.id].res, msg)]]]
 
-   Handle(conn, handler(_, _)) == Len(conn.req) > 0 /\ handler(conn, conn.req[1])
-
    Connections == {conn \in UNION {{conns[s][c] : c \in DOMAIN s} : s \in conns} : conn.dst = ID}
+
+   Ready(conn) == Len(conn.req) > 0
+   
+   Read(conn) == conn.req[1]
 
    ======================================================================
 
@@ -112,5 +116,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 21 08:58:31 PDT 2021 by jordanhalterman
+\* Last modified Tue Sep 21 09:25:14 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 12:21:16 PDT 2021 by jordanhalterman

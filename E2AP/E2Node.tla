@@ -55,30 +55,36 @@ StopNode ==
 
 ----
 
-SendE2SetupRequest(c) ==
+SendE2SetupRequest(conn) ==
    /\ UNCHANGED <<conns, subs>>
 
-HandleE2SetupResponse(c, r) ==
+HandleE2SetupResponse(conn, res) ==
+   /\ E2AP!Client(E2Node)!Receive!E2SetupResponse(conn, res)
    /\ UNCHANGED <<conns, subs>>
 
-HandleRICSusbcriptionRequest(c, r) ==
+HandleRICSubscriptionRequest(conn, req) ==
+   /\ E2AP!Client(E2Node)!Receive!RICSubscriptionRequest(conn, req)
    /\ UNCHANGED <<conns, subs>>
 
-HandleRICSubscriptionDeleteRequest(c, r) ==
+HandleRICSubscriptionDeleteRequest(conn, req) ==
+   /\ E2AP!Client(E2Node)!Receive!RICSubscriptionDeleteRequest(conn, req)
    /\ UNCHANGED <<conns, subs>>
 
-HandleRICControlRequest(c, r) ==
-   /\ E2AP!Client(E2Node)!Reply!RICControlAcknowledge(c, [foo |-> "bar", bar |-> "baz"])
+HandleRICControlRequest(conn, req) ==
+   /\ E2AP!Client(E2Node)!Receive!RICControlRequest(conn, req)
+   /\ E2AP!Client(E2Node)!Reply!RICControlAcknowledge(conn, [foo |-> "bar", bar |-> "baz"])
    /\ UNCHANGED <<conns, subs>>
 
-HandleE2ConnectionUpdate(c, r) ==
+HandleE2ConnectionUpdate(conn, req) ==
+   /\ E2AP!Client(E2Node)!Receive!E2ConnectionUpdate(conn, req)
    /\ UNCHANGED <<subs>>
 
-HandleE2NodeConfigurationUpdateAcknowledge(c, r) ==
+HandleE2NodeConfigurationUpdateAcknowledge(conn, res) ==
+   /\ E2AP!Client(E2Node)!Receive!E2NodeConfigurationUpdateAcknowledge(conn, res)
    /\ UNCHANGED <<subs>>
 
 HandleRequest(c) ==
-   /\ \/ E2AP!Client(E2Node)!Handle!RICSusbcriptionRequest(c, HandleRICSusbcriptionRequest)
+   /\ \/ E2AP!Client(E2Node)!Handle!RICSubscriptionRequest(c, HandleRICSubscriptionRequest)
       \/ E2AP!Client(E2Node)!Handle!RICSubscriptionDeleteRequest(c, HandleRICSubscriptionDeleteRequest)
       \/ E2AP!Client(E2Node)!Handle!RICControlRequest(c, HandleRICControlRequest)
       \/ E2AP!Client(E2Node)!Handle!E2ConnectionUpdate(c, HandleE2ConnectionUpdate)
@@ -96,12 +102,12 @@ Init ==
 Next ==
    \/ StartNode
    \/ StopNode
-   \/ \E t \in RIC : E2AP!Client(E2Node)!Connect(t)
-   \/ \E c \in E2AP!Client(E2Node)!Connections : E2AP!Client(E2Node)!Disconnect(c)
-   \/ \E c \in E2AP!Client(E2Node)!Connections : SendE2SetupRequest(c)
-   \/ \E c \in E2AP!Client(E2Node)!Connections : HandleRequest(c)
+   \/ \E node \in RIC : E2AP!Client(E2Node)!Connect(node)
+   \/ \E conn \in E2AP!Client(E2Node)!Connections : E2AP!Client(E2Node)!Disconnect(conn)
+   \/ \E conn \in E2AP!Client(E2Node)!Connections : SendE2SetupRequest(conn)
+   \/ \E conn \in E2AP!Client(E2Node)!Connections : HandleRequest(conn)
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 21 08:59:49 PDT 2021 by jordanhalterman
+\* Last modified Tue Sep 21 09:35:51 PDT 2021 by jordanhalterman
 \* Created Tue Sep 21 02:14:57 PDT 2021 by jordanhalterman

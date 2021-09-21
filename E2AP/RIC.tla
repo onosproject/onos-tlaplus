@@ -49,23 +49,35 @@ StopNode(n) ==
 
 ----
 
-HandleE2SetupRequest(node, conn, res) ==
-   /\ E2AP!Server(node)!Reply!E2SetupResponse(conn, [foo |-> "bar", bar |-> "baz"])
+HandleE2SetupRequest(node, conn, req) ==
+   /\ E2AP!Server(node)!Receive!E2SetupRequest(conn, req)
+   /\ \/ /\ req.globalE2NodeId \notin DOMAIN nodes
+         /\ nodes' = nodes @@ (req.globalE2NodeId :> [globalE2NodeId |-> req.globalE2NodeId, 
+                                                      serviceModels  |-> req.serviceModels])
+      \/ /\ req.globalE2NodeId \in DOMAIN nodes
+         /\ nodes' = [nodes EXCEPT ![req.globalE2NodeId] = [
+                         nodes[req.globalE2NodeId] EXCEPT !.serviceModels = req.serviceModels]]
+   /\ E2AP!Server(node)!Reply!E2SetupResponse(conn, [transactionId |-> req.transactionId])
    /\ UNCHANGED <<state>>
 
 HandleRICControlResponse(node, conn, res) ==
+   /\ E2AP!Server(node)!Receive!RICControlResponse(conn, res)
    /\ UNCHANGED <<state>>
 
 HandleRICSubscriptionResponse(node, conn, res) ==
+   /\ E2AP!Server(node)!Receive!RICSubscriptionResponse(conn, res)
    /\ UNCHANGED <<state>>
 
 HandleRICSubscriptionDeleteResponse(node, conn, res) ==
+   /\ E2AP!Server(node)!Receive!RICSubscriptionDeleteResponse(conn, res)
    /\ UNCHANGED <<state>>
 
 HandleRICIndication(node, conn, res) ==
+   /\ E2AP!Server(node)!Receive!RICIndication(conn, res)
    /\ UNCHANGED <<state>>
 
 HandleE2NodeConfigurationUpdate(node, conn, req) ==
+   /\ E2AP!Server(node)!Receive!E2NodeConfigurationUpdate(conn, req)
    /\ UNCHANGED <<state>>
 
 HandleRequest(node, conn) ==
@@ -91,5 +103,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 21 08:59:40 PDT 2021 by jordanhalterman
+\* Last modified Tue Sep 21 09:33:19 PDT 2021 by jordanhalterman
 \* Created Tue Sep 21 02:14:49 PDT 2021 by jordanhalterman
