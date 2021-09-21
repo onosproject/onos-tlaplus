@@ -26,31 +26,31 @@ ASSUME /\ IsFiniteSet(RICNode)
 VARIABLE state
 
 \* Network state
-VARIABLE net
+VARIABLE network
 
 \* A store of E2 node states
 VARIABLE nodes
 
-vars == <<state, net, nodes>>
+vars == <<state, network, nodes>>
 
-LOCAL E2AP == INSTANCE E2AP WITH conns <- net
+LOCAL E2AP == INSTANCE E2AP WITH conns <- network
 
 ----
 
 StartNode(n) ==
    /\ state[n] = Stopped
    /\ state' = [nodes EXCEPT ![n] = Started]
-   /\ UNCHANGED <<net, nodes>>
+   /\ UNCHANGED <<network, nodes>>
 
 StopNode(n) ==
    /\ state[n] = Started
    /\ state' = [nodes EXCEPT ![n] = Stopped]
-   /\ UNCHANGED <<net, nodes>>
+   /\ UNCHANGED <<network, nodes>>
 
 ----
 
 HandleE2SetupRequest(node, conn, res) ==
-   /\ E2AP!RIC(node)!Reply!E2SetupResponse(conn, [foo |-> "bar", bar |-> "baz"])
+   /\ E2AP!Server(node)!Reply!E2SetupResponse(conn, [foo |-> "bar", bar |-> "baz"])
    /\ UNCHANGED <<state>>
 
 HandleRICControlResponse(node, conn, res) ==
@@ -69,12 +69,12 @@ HandleE2NodeConfigurationUpdate(node, conn, req) ==
    /\ UNCHANGED <<state>>
 
 HandleRequest(node, conn) ==
-   /\ \/ E2AP!RIC(node)!Handle!E2SetupRequest(conn, LAMBDA m : HandleE2SetupRequest(node, conn, m))
-      \/ E2AP!RIC(node)!Handle!RICControlResponse(conn, LAMBDA m : HandleRICControlResponse(node, conn, m))
-      \/ E2AP!RIC(node)!Handle!RICSubscriptionResponse(conn, LAMBDA m : HandleRICSubscriptionResponse(node, conn, m))
-      \/ E2AP!RIC(node)!Handle!RICSubscriptionDeleteResponse(conn, LAMBDA m : HandleRICSubscriptionDeleteResponse(node, conn, m))
-      \/ E2AP!RIC(node)!Handle!RICIndication(conn, LAMBDA m : HandleRICIndication(node, conn, m))
-      \/ E2AP!RIC(node)!Handle!E2NodeConfigurationUpdate(conn, LAMBDA m : HandleE2NodeConfigurationUpdate(node, conn, m))
+   /\ \/ E2AP!Server(node)!Handle!E2SetupRequest(conn, LAMBDA c, m : HandleE2SetupRequest(node, conn, m))
+      \/ E2AP!Server(node)!Handle!RICControlResponse(conn, LAMBDA c, m : HandleRICControlResponse(node, conn, m))
+      \/ E2AP!Server(node)!Handle!RICSubscriptionResponse(conn, LAMBDA c, m : HandleRICSubscriptionResponse(node, conn, m))
+      \/ E2AP!Server(node)!Handle!RICSubscriptionDeleteResponse(conn, LAMBDA c, m : HandleRICSubscriptionDeleteResponse(node, conn, m))
+      \/ E2AP!Server(node)!Handle!RICIndication(conn, LAMBDA c, m : HandleRICIndication(node, conn, m))
+      \/ E2AP!Server(node)!Handle!E2NodeConfigurationUpdate(conn, LAMBDA c, m : HandleE2NodeConfigurationUpdate(node, conn, m))
    /\ UNCHANGED <<nodes>>
 
 ----
@@ -87,9 +87,9 @@ Init ==
 Next ==
    \/ \E node \in RICNode : StartNode(node)
    \/ \E node \in RICNode : StopNode(node)
-   \/ \E node \in RICNode : \E conn \in E2AP!RIC(node)!Connections : HandleRequest(node, conn)
+   \/ \E node \in RICNode : \E conn \in E2AP!Server(node)!Connections : HandleRequest(node, conn)
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 21 06:07:29 PDT 2021 by jordanhalterman
+\* Last modified Tue Sep 21 08:59:40 PDT 2021 by jordanhalterman
 \* Created Tue Sep 21 02:14:49 PDT 2021 by jordanhalterman

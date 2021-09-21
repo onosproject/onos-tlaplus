@@ -658,7 +658,7 @@ LOCAL Messages == INSTANCE Messages WITH
    E2NodeConfigurationUpdateAcknowledge <- "E2NodeConfigurationUpdateAcknowledge",
    E2NodeConfigurationUpdateFailure <- "E2NodeConfigurationUpdateFailure"
 
-   ------------------------------ MODULE E2Node -----------------------------
+   ------------------------------ MODULE Client -----------------------------
    
    (*
    The Client module provides operators for managing and operating on E2AP
@@ -780,77 +780,77 @@ LOCAL Messages == INSTANCE Messages WITH
       received by an E2AP client.
       *)
       
-      E2SetupResponse(conn, handler(_)) == 
-         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
+      E2SetupResponse(conn, handler(_, _)) == 
+         SCTP!Client(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsE2SetupResponse(m) 
             /\ SCTP!Client(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      RICServiceUpdateAcknowledge(conn, handler(_)) == 
-         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
+      RICServiceUpdateAcknowledge(conn, handler(_, _)) == 
+         SCTP!Client(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsRICServiceUpdateAcknowledge(m) 
             /\ SCTP!Client(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      RICServiceUpdateFailure(conn, handler(_)) == 
-         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
+      RICServiceUpdateFailure(conn, handler(_, _)) == 
+         SCTP!Client(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsRICServiceUpdateFailure(m) 
             /\ SCTP!Client(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      ResetRequest(conn, handler(_)) == 
-         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
+      ResetRequest(conn, handler(_, _)) == 
+         SCTP!Client(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsResetRequest(m) 
             /\ SCTP!Client(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      ResetResponse(conn, handler(_)) == 
-         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
+      ResetResponse(conn, handler(_, _)) == 
+         SCTP!Client(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsResetResponse(m) 
             /\ SCTP!Client(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      RICSusbcriptionRequest(conn, handler(_)) == 
-         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
+      RICSusbcriptionRequest(conn, handler(_, _)) == 
+         SCTP!Client(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsRICSubscriptionRequest(m) 
             /\ SCTP!Client(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      RICSubscriptionDeleteRequest(conn, handler(_)) == 
-         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
+      RICSubscriptionDeleteRequest(conn, handler(_, _)) == 
+         SCTP!Client(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsRICSubscriptionDeleteRequest(m) 
             /\ SCTP!Client(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      RICControlRequest(conn, handler(_)) == 
-         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
+      RICControlRequest(conn, handler(_, _)) == 
+         SCTP!Client(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsRICControlRequest(m) 
             /\ SCTP!Client(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      E2ConnectionUpdate(conn, handler(_)) == 
-         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
+      E2ConnectionUpdate(conn, handler(_, _)) == 
+         SCTP!Client(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsE2ConnectionUpdate(m) 
             /\ SCTP!Client(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      E2ConnectionUpdateAcknowledge(conn, handler(_)) == 
-         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
+      E2ConnectionUpdateAcknowledge(conn, handler(_, _)) == 
+         SCTP!Client(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsE2ConnectionUpdateAcknowledge(m) 
             /\ SCTP!Client(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      E2NodeConfigurationUpdate(conn, handler(_)) == 
-         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
+      E2NodeConfigurationUpdate(conn, handler(_, _)) == 
+         SCTP!Client(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsE2NodeConfigurationUpdate(m) 
             /\ SCTP!Client(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      E2NodeConfigurationUpdateAcknowledge(conn, handler(_)) == 
-         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
+      E2NodeConfigurationUpdateAcknowledge(conn, handler(_, _)) == 
+         SCTP!Client(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsE2NodeConfigurationUpdateAcknowledge(m) 
             /\ SCTP!Client(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
       =======================================================================
    
@@ -867,9 +867,9 @@ LOCAL Messages == INSTANCE Messages WITH
    ==========================================================================
 
 \* Provides operators for the E2AP client
-E2Node(ID) == INSTANCE E2Node
+Client(ID) == INSTANCE Client
       
-   ------------------------------- MODULE RIC -------------------------------
+   ----------------------------- MODULE Server ------------------------------
    
    (*
    The Server module provides operators for managing and operating on E2AP
@@ -963,77 +963,77 @@ E2Node(ID) == INSTANCE E2Node
       received by an E2AP server.
       *)
       
-      E2SetupRequest(conn, handler(_)) == 
-         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
+      E2SetupRequest(conn, handler(_, _)) == 
+         SCTP!Server(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsE2SetupRequest(m) 
             /\ SCTP!Server(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      RICServiceUpdate(conn, handler(_)) == 
-         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
+      RICServiceUpdate(conn, handler(_, _)) == 
+         SCTP!Server(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsRICServiceUpdate(m) 
             /\ SCTP!Server(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      ResetRequest(conn, handler(_)) == 
-         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
+      ResetRequest(conn, handler(_, _)) == 
+         SCTP!Server(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsResetRequest(m) 
             /\ SCTP!Server(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      ResetResponse(conn, handler(_)) == 
-         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
+      ResetResponse(conn, handler(_, _)) == 
+         SCTP!Server(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsResetResponse(m) 
             /\ SCTP!Server(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      RICSubscriptionResponse(conn, handler(_)) == 
-         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
+      RICSubscriptionResponse(conn, handler(_, _)) == 
+         SCTP!Server(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsRICSubscriptionResponse(m) 
             /\ SCTP!Server(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      RICSubscriptionDeleteResponse(conn, handler(_)) == 
-         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
+      RICSubscriptionDeleteResponse(conn, handler(_, _)) == 
+         SCTP!Server(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsRICSubscriptionDeleteResponse(m) 
             /\ SCTP!Server(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      RICControlResponse(conn, handler(_)) == 
-         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
+      RICControlResponse(conn, handler(_, _)) == 
+         SCTP!Server(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsRICControlResponse(m) 
             /\ SCTP!Server(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      RICIndication(conn, handler(_)) == 
-         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
+      RICIndication(conn, handler(_, _)) == 
+         SCTP!Server(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsRICIndication(m) 
             /\ SCTP!Server(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      E2ConnectionUpdate(conn, handler(_)) == 
-         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
+      E2ConnectionUpdate(conn, handler(_, _)) == 
+         SCTP!Server(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsE2ConnectionUpdate(m) 
             /\ SCTP!Server(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      E2ConnectionUpdateAcknowledge(conn, handler(_)) == 
-         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
+      E2ConnectionUpdateAcknowledge(conn, handler(_, _)) == 
+         SCTP!Server(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsE2ConnectionUpdateAcknowledge(m) 
             /\ SCTP!Server(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      E2NodeConfigurationUpdate(conn, handler(_)) == 
-         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
+      E2NodeConfigurationUpdate(conn, handler(_, _)) == 
+         SCTP!Server(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsE2NodeConfigurationUpdate(m) 
             /\ SCTP!Server(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
-      E2NodeConfigurationUpdateAcknowledge(conn, handler(_)) == 
-         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
+      E2NodeConfigurationUpdateAcknowledge(conn, handler(_, _)) == 
+         SCTP!Server(ID)!Handle(conn, LAMBDA c, m: 
             /\ Messages!IsE2NodeConfigurationUpdateAcknowledge(m) 
             /\ SCTP!Server(ID)!Receive(conn)
-            /\ handler(m))
+            /\ handler(c, m))
       
       =======================================================================
    
@@ -1046,7 +1046,7 @@ E2Node(ID) == INSTANCE E2Node
    ==========================================================================
 
 \* Provides operators for the E2AP server
-RIC(ID) == INSTANCE RIC
+Server(ID) == INSTANCE Server
 
 Init == SCTP!Init
 
@@ -1054,5 +1054,5 @@ Next == SCTP!Next
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 21 08:24:54 PDT 2021 by jordanhalterman
+\* Last modified Tue Sep 21 08:37:15 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 10:53:17 PDT 2021 by jordanhalterman

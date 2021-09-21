@@ -29,7 +29,7 @@ ASSUME /\ IsFiniteSet(RIC)
 VARIABLE state
 
 \* The state of the network
-VARIABLE net
+VARIABLE network
 
 \* The state of E2AP connections
 VARIABLE conns
@@ -37,21 +37,21 @@ VARIABLE conns
 \* Subscriptions
 VARIABLE subs
 
-vars == <<state, net, conns, subs>>
+vars == <<state, network, conns, subs>>
 
-LOCAL E2AP == INSTANCE E2AP WITH conns <- net
+LOCAL E2AP == INSTANCE E2AP WITH conns <- network
 
 ----
 
 StartNode ==
    /\ state = Stopped
    /\ state' = Started
-   /\ UNCHANGED <<net, conns, subs>>
+   /\ UNCHANGED <<network, conns, subs>>
 
 StopNode ==
    /\ state = Started
    /\ state' = Stopped
-   /\ UNCHANGED <<net, conns, subs>>
+   /\ UNCHANGED <<network, conns, subs>>
 
 ----
 
@@ -68,7 +68,7 @@ HandleRICSubscriptionDeleteRequest(c, r) ==
    /\ UNCHANGED <<conns, subs>>
 
 HandleRICControlRequest(c, r) ==
-   /\ E2AP!E2Node(E2Node)!Reply!RICControlAcknowledge(c, [foo |-> "bar", bar |-> "baz"])
+   /\ E2AP!Client(E2Node)!Reply!RICControlAcknowledge(c, [foo |-> "bar", bar |-> "baz"])
    /\ UNCHANGED <<conns, subs>>
 
 HandleE2ConnectionUpdate(c, r) ==
@@ -78,9 +78,11 @@ HandleE2NodeConfigurationUpdateAcknowledge(c, r) ==
    /\ UNCHANGED <<subs>>
 
 HandleRequest(c) ==
-   /\ \/ E2AP!E2Node(E2Node)!Handle!RICSusbcriptionRequest(c, LAMBDA m : HandleRICSusbcriptionRequest(c, m))
-      \/ E2AP!E2Node(E2Node)!Handle!RICSubscriptionDeleteRequest(c, LAMBDA m : HandleRICSubscriptionDeleteRequest(c, m))
-      \/ E2AP!E2Node(E2Node)!Handle!RICControlRequest(c, LAMBDA m : HandleRICControlRequest(c, m))
+   /\ \/ E2AP!Client(E2Node)!Handle!RICSusbcriptionRequest(c, HandleRICSusbcriptionRequest)
+      \/ E2AP!Client(E2Node)!Handle!RICSubscriptionDeleteRequest(c, HandleRICSubscriptionDeleteRequest)
+      \/ E2AP!Client(E2Node)!Handle!RICControlRequest(c, HandleRICControlRequest)
+      \/ E2AP!Client(E2Node)!Handle!E2ConnectionUpdate(c, HandleE2ConnectionUpdate)
+      \/ E2AP!Client(E2Node)!Handle!E2NodeConfigurationUpdateAcknowledge(c, HandleE2NodeConfigurationUpdateAcknowledge)
    /\ UNCHANGED <<state>>
 
 ----
@@ -94,12 +96,12 @@ Init ==
 Next ==
    \/ StartNode
    \/ StopNode
-   \/ \E t \in RIC : E2AP!E2Node(E2Node)!Connect(t)
-   \/ \E c \in E2AP!E2Node(E2Node)!Connections : E2AP!E2Node(E2Node)!Disconnect(c)
-   \/ \E c \in E2AP!E2Node(E2Node)!Connections : SendE2SetupRequest(c)
-   \/ \E c \in E2AP!E2Node(E2Node)!Connections : HandleRequest(c)
+   \/ \E t \in RIC : E2AP!Client(E2Node)!Connect(t)
+   \/ \E c \in E2AP!Client(E2Node)!Connections : E2AP!Client(E2Node)!Disconnect(c)
+   \/ \E c \in E2AP!Client(E2Node)!Connections : SendE2SetupRequest(c)
+   \/ \E c \in E2AP!Client(E2Node)!Connections : HandleRequest(c)
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 21 05:58:26 PDT 2021 by jordanhalterman
+\* Last modified Tue Sep 21 08:59:49 PDT 2021 by jordanhalterman
 \* Created Tue Sep 21 02:14:57 PDT 2021 by jordanhalterman
