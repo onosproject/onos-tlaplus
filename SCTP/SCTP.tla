@@ -24,36 +24,38 @@ vars == <<conns>>
 
    CONSTANT ID
 
-   Connect(dst) ==
-      /\ dst \in DOMAIN conns
-      /\ LET maxId == Max({conns[dst][i].connId : i \in conns[dst]})
-             connId == Min({i \in 1..(maxId+1) : i \notin DOMAIN conns[dst]})
+   Connect(tgt) ==
+      /\ tgt \in DOMAIN conns
+      /\ LET maxId == Max({conns[tgt][i].connId : i \in conns[tgt]})
+             connId == Min({i \in 1..(maxId+1) : i \notin DOMAIN conns[tgt]})
              conn == [id  |-> connId, 
                       src |-> ID, 
-                      dst |-> dst, 
+                      tgt |-> tgt, 
                       req |-> <<>>, 
                       res |-> <<>>]
-         IN conns' = [conns EXCEPT ![dst] = conns[dst] @@ (connId :> conn)]
+         IN conns' = [conns EXCEPT ![tgt] = conns[tgt] @@ (connId :> conn)]
 
    Disconnect(conn) ==
-      conns' = [conns EXCEPT ![conn.dst] = [x \in DOMAIN conns[conn.dst] \ {conn.id} |-> conns[conn.dst][x]]]
+      conns' = [conns EXCEPT ![conn.tgt] = [x \in DOMAIN conns[conn.tgt] \ {conn.id} |-> conns[conn.tgt][x]]]
 
    Send(conn, msg) ==
-      conns' = [conns EXCEPT ![conn.dst] = [
-                   conns[conn.dst] EXCEPT ![conn.id] = [
-                      conns[conn.dst][conn.id] EXCEPT !.req = Append(conns[conn.dst][conn.id].req, msg)]]]
+      conns' = [conns EXCEPT ![conn.tgt] = [
+                   conns[conn.tgt] EXCEPT ![conn.id] = [
+                      conns[conn.tgt][conn.id] EXCEPT !.req = Append(conns[conn.tgt][conn.id].req, msg)]]]
 
    Receive(conn) ==
-      conns' = [conns EXCEPT ![conn.dst] = [
-                   conns[conn.dst] EXCEPT ![conn.id] = [
-                      conns[conn.dst][conn.id] EXCEPT !.res = SubSeq(conns[conn.dst][conn.id].res, 2, Len(conns[conn.dst][conn.id].res))]]]
+      conns' = [conns EXCEPT ![conn.tgt] = [
+                   conns[conn.tgt] EXCEPT ![conn.id] = [
+                      conns[conn.tgt][conn.id] EXCEPT !.res = SubSeq(conns[conn.tgt][conn.id].res, 2, Len(conns[conn.tgt][conn.id].res))]]]
 
    Reply(conn, msg) ==
-      conns' = [conns' EXCEPT ![conn.dst] = [
-                   conns'[conn.dst] EXCEPT ![conn.id] = [
-                      conns'[conn.dst][conn.id] EXCEPT !.req = Append(conns'[conn.dst][conn.id].req, msg)]]]
+      conns' = [conns' EXCEPT ![conn.tgt] = [
+                   conns'[conn.tgt] EXCEPT ![conn.id] = [
+                      conns'[conn.tgt][conn.id] EXCEPT !.req = Append(conns'[conn.tgt][conn.id].req, msg)]]]
 
    Connections == {conn \in UNION {{conns[s][c] : c \in DOMAIN s} : s \in conns} : conn.src = ID}
+   
+   Connected(connId) == \E s \in conns : \E c \in s : c.id = connId
    
    Ready(conn) == Len(conn.res) > 0
    
@@ -76,25 +78,27 @@ Client(ID) == INSTANCE Client
       /\ conns' = [c \in {c \in DOMAIN conns : c # ID} |-> conns[c]]
 
    Send(conn, msg) ==
-      /\ Assert(conn.dst = ID, "Send on invalid connection")
-      /\ conns' = [conns EXCEPT ![conn.dst] = [
-                      conns[conn.dst] EXCEPT ![conn.id] = [
-                         conns[conn.dst][conn.id] EXCEPT !.res = Append(conns[conn.dst][conn.id].res, msg)]]]
+      /\ Assert(conn.tgt = ID, "Send on invalid connection")
+      /\ conns' = [conns EXCEPT ![conn.tgt] = [
+                      conns[conn.tgt] EXCEPT ![conn.id] = [
+                         conns[conn.tgt][conn.id] EXCEPT !.res = Append(conns[conn.tgt][conn.id].res, msg)]]]
 
    Receive(conn) ==
-      /\ Assert(conn.dst = ID, "Receive on invalid connection")
-      /\ conns' = [conns EXCEPT ![conn.dst] = [
-                      conns[conn.dst] EXCEPT ![conn.id] = [
-                         conns[conn.dst][conn.id] EXCEPT !.res = SubSeq(conns[conn.dst][conn.id].req, 2, Len(conns[conn.dst][conn.id].req))]]]
+      /\ Assert(conn.tgt = ID, "Receive on invalid connection")
+      /\ conns' = [conns EXCEPT ![conn.tgt] = [
+                      conns[conn.tgt] EXCEPT ![conn.id] = [
+                         conns[conn.tgt][conn.id] EXCEPT !.res = SubSeq(conns[conn.tgt][conn.id].req, 2, Len(conns[conn.tgt][conn.id].req))]]]
 
    Reply(conn, msg) ==
-      /\ Assert(conn.dst = ID, "Reply on invalid connection")
-      /\ conns' = [conns' EXCEPT ![conn.dst] = [
-                   conns'[conn.dst] EXCEPT ![conn.id] = [
-                      conns'[conn.dst][conn.id] EXCEPT !.req = Append(conns'[conn.dst][conn.id].res, msg)]]]
+      /\ Assert(conn.tgt = ID, "Reply on invalid connection")
+      /\ conns' = [conns' EXCEPT ![conn.tgt] = [
+                   conns'[conn.tgt] EXCEPT ![conn.id] = [
+                      conns'[conn.tgt][conn.id] EXCEPT !.req = Append(conns'[conn.tgt][conn.id].res, msg)]]]
 
-   Connections == {conn \in UNION {{conns[s][c] : c \in DOMAIN s} : s \in conns} : conn.dst = ID}
+   Connections == {conn \in UNION {{conns[s][c] : c \in DOMAIN s} : s \in conns} : conn.tgt = ID}
 
+   Connected(connId) == \E s \in conns : \E c \in s : c.id = connId
+   
    Ready(conn) == Len(conn.req) > 0
    
    Read(conn) == conn.req[1]
@@ -107,7 +111,7 @@ Init ==
    /\ conns = [id \in {} |-> [
                   connId \in {} |-> [connId |-> connId, 
                                      src    |-> Nil, 
-                                     dst    |-> Nil, 
+                                     tgt    |-> Nil, 
                                      req    |-> <<>>, 
                                      res    |-> <<>>]]]
 
@@ -116,5 +120,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 21 09:25:14 PDT 2021 by jordanhalterman
+\* Last modified Tue Sep 21 14:35:07 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 12:21:16 PDT 2021 by jordanhalterman

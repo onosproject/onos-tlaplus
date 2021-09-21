@@ -781,40 +781,52 @@ LOCAL Messages == INSTANCE Messages WITH
       *)
       
       E2SetupResponse(conn, msg) == 
-         SCTP!Client(ID)!Receive(conn)
+         /\ Messages!IsE2SetupResponse(msg)
+         /\ SCTP!Client(ID)!Receive(conn)
       
       RICServiceUpdateAcknowledge(conn, msg) == 
-         SCTP!Client(ID)!Receive(conn)
+         /\ Messages!IsRICServiceUpdateAcknowledge(msg)
+         /\ SCTP!Client(ID)!Receive(conn)
       
       RICServiceUpdateFailure(conn, msg) == 
-         SCTP!Client(ID)!Receive(conn)
+         /\ Messages!IsRICServiceUpdateFailure(msg)
+         /\ SCTP!Client(ID)!Receive(conn)
       
       ResetRequest(conn, msg) == 
-         SCTP!Client(ID)!Receive(conn)
+         /\ Messages!IsResetRequest(msg)
+         /\ SCTP!Client(ID)!Receive(conn)
       
       ResetResponse(conn, msg) == 
-         SCTP!Client(ID)!Receive(conn)
+         /\ Messages!IsResetResponse(msg)
+         /\ SCTP!Client(ID)!Receive(conn)
       
       RICSubscriptionRequest(conn, msg) == 
-         SCTP!Client(ID)!Receive(conn)
+         /\ Messages!IsRICSubscriptionRequest(msg)
+         /\ SCTP!Client(ID)!Receive(conn)
       
       RICSubscriptionDeleteRequest(conn, msg) == 
-         SCTP!Client(ID)!Receive(conn)
+         /\ Messages!IsRICSubscriptionDeleteRequest(msg)
+         /\ SCTP!Client(ID)!Receive(conn)
       
       RICControlRequest(conn, msg) == 
-         SCTP!Client(ID)!Receive(conn)
+         /\ Messages!IsRICControlRequest(msg)
+         /\ SCTP!Client(ID)!Receive(conn)
       
       E2ConnectionUpdate(conn, msg) == 
-         SCTP!Client(ID)!Receive(conn)
+         /\ Messages!IsE2ConnectionUpdate(msg)
+         /\ SCTP!Client(ID)!Receive(conn)
       
       E2ConnectionUpdateAcknowledge(conn, msg) == 
-         SCTP!Client(ID)!Receive(conn)
+         /\ Messages!IsE2ConnectionUpdateAcknowledge(msg)
+         /\ SCTP!Client(ID)!Receive(conn)
       
       E2NodeConfigurationUpdate(conn, msg) == 
-         SCTP!Client(ID)!Receive(conn)
+         /\ Messages!IsE2NodeConfigurationUpdate(msg)
+         /\ SCTP!Client(ID)!Receive(conn)
       
       E2NodeConfigurationUpdateAcknowledge(conn, msg) == 
-         SCTP!Client(ID)!Receive(conn)
+         /\ Messages!IsE2NodeConfigurationUpdateAcknowledge(msg)
+         /\ SCTP!Client(ID)!Receive(conn)
       
       =======================================================================
    
@@ -922,8 +934,14 @@ LOCAL Messages == INSTANCE Messages WITH
    Disconnect(conn) == SCTP!Client(ID)!Disconnect(conn)
    
    \* The set of all open E2AP connections
-   Connections == SCTP!Client(ID)!Connections
+   Connections == SCTP!Client(ID)!Connections   
       
+   Connected(connId) == SCTP!Client(ID)!Connected(connId)
+   
+   Ready(conn) == SCTP!Client(ID)!Ready(conn)
+   
+   Read(conn) == SCTP!Client(ID)!Read(conn)
+   
    ==========================================================================
 
 \* Provides operators for the E2AP client
@@ -1024,40 +1042,52 @@ Client(ID) == INSTANCE Client
       *)
       
       E2SetupRequest(conn, msg) == 
-         SCTP!Server(ID)!Receive(conn)
+         /\ Messages!IsE2SetupRequest(msg)
+         /\ SCTP!Server(ID)!Receive(conn)
       
       RICServiceUpdate(conn, msg) == 
-         SCTP!Server(ID)!Receive(conn)
+         /\ Messages!IsRICServiceUpdate(msg)
+         /\ SCTP!Server(ID)!Receive(conn)
       
       ResetRequest(conn, msg) == 
-         SCTP!Server(ID)!Receive(conn)
+         /\ Messages!IsResetRequest(msg)
+         /\ SCTP!Server(ID)!Receive(conn)
       
       ResetResponse(conn, msg) == 
-         SCTP!Server(ID)!Receive(conn)
+         /\ Messages!IsResetResponse(msg)
+         /\ SCTP!Server(ID)!Receive(conn)
       
       RICSubscriptionResponse(conn, msg) == 
-         SCTP!Server(ID)!Receive(conn)
+         /\ Messages!IsRICSubscriptionResponse(msg)
+         /\ SCTP!Server(ID)!Receive(conn)
       
       RICSubscriptionDeleteResponse(conn, msg) == 
-         SCTP!Server(ID)!Receive(conn)
+         /\ Messages!IsRICSubscriptionDeleteResponse(msg)
+         /\ SCTP!Server(ID)!Receive(conn)
       
       RICControlResponse(conn, msg) == 
-         SCTP!Server(ID)!Receive(conn)
+         /\ Messages!IsRICControlResponse(msg)
+         /\ SCTP!Server(ID)!Receive(conn)
       
       RICIndication(conn, msg) == 
-         SCTP!Server(ID)!Receive(conn)
+         /\ Messages!IsRICIndication(msg)
+         /\ SCTP!Server(ID)!Receive(conn)
       
       E2ConnectionUpdate(conn, msg) == 
-         SCTP!Server(ID)!Receive(conn)
+         /\ Messages!IsE2ConnectionUpdate(msg)
+         /\ SCTP!Server(ID)!Receive(conn)
       
       E2ConnectionUpdateAcknowledge(conn, msg) == 
-         SCTP!Server(ID)!Receive(conn)
+         /\ Messages!IsE2ConnectionUpdateAcknowledge(msg)
+         /\ SCTP!Server(ID)!Receive(conn)
       
       E2NodeConfigurationUpdate(conn, msg) == 
-         SCTP!Server(ID)!Receive(conn)
+         /\ Messages!IsE2NodeConfigurationUpdate(msg)
+         /\ SCTP!Server(ID)!Receive(conn)
       
       E2NodeConfigurationUpdateAcknowledge(conn, msg) == 
-         SCTP!Server(ID)!Receive(conn)
+         /\ Messages!IsE2NodeConfigurationUpdateAcknowledge(msg)
+         /\ SCTP!Server(ID)!Receive(conn)
       
       =======================================================================
    
@@ -1163,6 +1193,12 @@ Client(ID) == INSTANCE Client
    \* The set of all open E2AP connections
    Connections == SCTP!Server(ID)!Connections
    
+   Connected(connId) == SCTP!Server(ID)!Connected(connId)
+   
+   Ready(conn) == SCTP!Server(ID)!Ready(conn)
+   
+   Read(conn) == SCTP!Server(ID)!Read(conn)
+   
    Start == SCTP!Server(ID)!Start
    
    Stop == SCTP!Server(ID)!Stop
@@ -1178,5 +1214,5 @@ Next == SCTP!Next
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 21 09:47:20 PDT 2021 by jordanhalterman
+\* Last modified Tue Sep 21 15:00:02 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 10:53:17 PDT 2021 by jordanhalterman
