@@ -1163,6 +1163,10 @@ Client(ID) == INSTANCE Client
    \* The set of all open E2AP connections
    Connections == SCTP!Server(ID)!Connections
    
+   Start == SCTP!Server(ID)!Start
+   
+   Stop == SCTP!Server(ID)!Stop
+   
    ==========================================================================
 
 \* Provides operators for the E2AP server
@@ -1174,5 +1178,5 @@ Next == SCTP!Next
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 21 09:36:09 PDT 2021 by jordanhalterman
+\* Last modified Tue Sep 21 09:47:20 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 10:53:17 PDT 2021 by jordanhalterman
