@@ -666,6 +666,8 @@ LOCAL Messages == INSTANCE Messages WITH
    client.
    *)
    
+   CONSTANT ID
+   
       ------------------------------ MODULE Send ----------------------------
       
       (*
@@ -674,49 +676,49 @@ LOCAL Messages == INSTANCE Messages WITH
       *)
       
       E2SetupRequest(conn, msg) == 
-         /\ SCTP!Client!Send(conn, Messages!WithE2SetupResponse(msg))
+         /\ SCTP!Client(ID)!Send(conn, Messages!WithE2SetupResponse(msg))
       
       RICServiceUpdate(conn, msg) == 
-         /\ SCTP!Client!Send(conn, Messages!WithRICServiceUpdate(msg))
+         /\ SCTP!Client(ID)!Send(conn, Messages!WithRICServiceUpdate(msg))
       
       ResetRequest(conn, msg) ==
-         /\ SCTP!Client!Send(conn, Messages!WithResetRequest(msg))
+         /\ SCTP!Client(ID)!Send(conn, Messages!WithResetRequest(msg))
       
       ResetResponse(conn, msg) ==
-         /\ SCTP!Client!Send(conn, Messages!WithResetResponse(msg))
+         /\ SCTP!Client(ID)!Send(conn, Messages!WithResetResponse(msg))
       
       RICSubscriptionResponse(conn, msg) ==
-         /\ SCTP!Client!Send(conn, Messages!WithRICSubscriptionResponse(msg))
+         /\ SCTP!Client(ID)!Send(conn, Messages!WithRICSubscriptionResponse(msg))
       
       RICSubscriptionFailure(conn, msg, cause) ==
-         /\ SCTP!Client!Send(conn, Messages!WithRICSubscriptionFailure(msg, cause))
+         /\ SCTP!Client(ID)!Send(conn, Messages!WithRICSubscriptionFailure(msg, cause))
       
       RICSubscriptionDeleteResponse(conn, msg) ==
-         /\ SCTP!Client!Send(conn, Messages!WithRICSubscriptionDeleteResponse(msg))
+         /\ SCTP!Client(ID)!Send(conn, Messages!WithRICSubscriptionDeleteResponse(msg))
       
       RICSubscriptionDeleteFailure(conn, msg, cause) ==
-         /\ SCTP!Client!Send(conn, Messages!WithRICSubscriptionDeleteFailure(msg, cause))
+         /\ SCTP!Client(ID)!Send(conn, Messages!WithRICSubscriptionDeleteFailure(msg, cause))
       
       RICIndication(conn, msg) ==
-         /\ SCTP!Client!Send(conn, Messages!WithRICIndication(msg))
+         /\ SCTP!Client(ID)!Send(conn, Messages!WithRICIndication(msg))
       
       RICControlAcknowledge(conn, msg) ==
-         /\ SCTP!Client!Send(conn, Messages!WithRICControlAcknowledge(msg))
+         /\ SCTP!Client(ID)!Send(conn, Messages!WithRICControlAcknowledge(msg))
       
       RICControlFailure(conn, msg, cause) ==
-         /\ SCTP!Client!Send(conn, Messages!WithRICControlFailure(msg, cause))
+         /\ SCTP!Client(ID)!Send(conn, Messages!WithRICControlFailure(msg, cause))
       
       E2ConnectionUpdate(conn, msg) ==
-         /\ SCTP!Client!Send(conn, Messages!WithE2ConnectionUpdate(msg))
+         /\ SCTP!Client(ID)!Send(conn, Messages!WithE2ConnectionUpdate(msg))
       
       E2ConnectionUpdateAcknowledge(conn, msg) ==
-         /\ SCTP!Client!Send(conn, Messages!WithE2ConnectionUpdateAcknowledge(msg))
+         /\ SCTP!Client(ID)!Send(conn, Messages!WithE2ConnectionUpdateAcknowledge(msg))
       
       E2NodeConfigurationUpdate(conn, msg) ==
-         /\ SCTP!Client!Send(conn, Messages!WithE2NodeConfigurationUpdate(msg))
+         /\ SCTP!Client(ID)!Send(conn, Messages!WithE2NodeConfigurationUpdate(msg))
       
       E2NodeConfigurationUpdateAcknowledge(conn, msg) ==
-         /\ SCTP!Client!Send(conn, Messages!WithE2NodeConfigurationUpdateAcknowledge(msg))
+         /\ SCTP!Client(ID)!Send(conn, Messages!WithE2NodeConfigurationUpdateAcknowledge(msg))
       
       =======================================================================
    
@@ -731,40 +733,40 @@ LOCAL Messages == INSTANCE Messages WITH
       *)
       
       ResetResponse(conn, msg) ==
-         /\ SCTP!Client!Reply(conn, Messages!WithResetResponse(msg))
+         /\ SCTP!Client(ID)!Reply(conn, Messages!WithResetResponse(msg))
       
       RICSubscriptionResponse(conn, msg) ==
-         /\ SCTP!Client!Reply(conn, Messages!WithRICSubscriptionResponse(msg))
+         /\ SCTP!Client(ID)!Reply(conn, Messages!WithRICSubscriptionResponse(msg))
       
       RICSubscriptionFailure(conn, msg, cause) ==
-         /\ SCTP!Client!Reply(conn, Messages!WithRICSubscriptionFailure(msg, cause))
+         /\ SCTP!Client(ID)!Reply(conn, Messages!WithRICSubscriptionFailure(msg, cause))
       
       RICSubscriptionDeleteResponse(conn, msg) ==
-         /\ SCTP!Client!Reply(conn, Messages!WithRICSubscriptionDeleteResponse(msg))
+         /\ SCTP!Client(ID)!Reply(conn, Messages!WithRICSubscriptionDeleteResponse(msg))
       
       RICSubscriptionDeleteFailure(conn, msg, cause) ==
-         /\ SCTP!Client!Reply(conn, Messages!WithRICSubscriptionDeleteFailure(msg, cause))
+         /\ SCTP!Client(ID)!Reply(conn, Messages!WithRICSubscriptionDeleteFailure(msg, cause))
       
       RICIndication(conn, msg) ==
-         /\ SCTP!Client!Reply(conn, Messages!WithRICIndication(msg))
+         /\ SCTP!Client(ID)!Reply(conn, Messages!WithRICIndication(msg))
       
       RICControlAcknowledge(conn, msg) ==
-         /\ SCTP!Client!Reply(conn, Messages!WithRICControlAcknowledge(msg))
+         /\ SCTP!Client(ID)!Reply(conn, Messages!WithRICControlAcknowledge(msg))
       
       RICControlFailure(conn, msg, cause) ==
-         /\ SCTP!Client!Reply(conn, Messages!WithRICControlFailure(msg, cause))
+         /\ SCTP!Client(ID)!Reply(conn, Messages!WithRICControlFailure(msg, cause))
       
       E2ConnectionUpdate(conn, msg) ==
-         /\ SCTP!Client!Reply(conn, Messages!WithE2ConnectionUpdate(msg))
+         /\ SCTP!Client(ID)!Reply(conn, Messages!WithE2ConnectionUpdate(msg))
       
       E2ConnectionUpdateAcknowledge(conn, msg) ==
-         /\ SCTP!Client!Reply(conn, Messages!WithE2ConnectionUpdateAcknowledge(msg))
+         /\ SCTP!Client(ID)!Reply(conn, Messages!WithE2ConnectionUpdateAcknowledge(msg))
       
       E2NodeConfigurationUpdate(conn, msg) ==
-         /\ SCTP!Client!Reply(conn, Messages!WithE2NodeConfigurationUpdate(msg))
+         /\ SCTP!Client(ID)!Reply(conn, Messages!WithE2NodeConfigurationUpdate(msg))
       
       E2NodeConfigurationUpdateAcknowledge(conn, msg) ==
-         /\ SCTP!Client!Reply(conn, Messages!WithE2NodeConfigurationUpdateAcknowledge(msg))
+         /\ SCTP!Client(ID)!Reply(conn, Messages!WithE2NodeConfigurationUpdateAcknowledge(msg))
       
       =======================================================================
    
@@ -779,75 +781,75 @@ LOCAL Messages == INSTANCE Messages WITH
       *)
       
       E2SetupResponse(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsE2SetupResponse(m) 
-            /\ SCTP!Client!Receive(conn)
+            /\ SCTP!Client(ID)!Receive(conn)
             /\ handler(m))
       
       RICServiceUpdateAcknowledge(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsRICServiceUpdateAcknowledge(m) 
-            /\ SCTP!Client!Receive(conn)
+            /\ SCTP!Client(ID)!Receive(conn)
             /\ handler(m))
       
       RICServiceUpdateFailure(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsRICServiceUpdateFailure(m) 
-            /\ SCTP!Client!Receive(conn)
+            /\ SCTP!Client(ID)!Receive(conn)
             /\ handler(m))
       
       ResetRequest(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsResetRequest(m) 
-            /\ SCTP!Client!Receive(conn)
+            /\ SCTP!Client(ID)!Receive(conn)
             /\ handler(m))
       
       ResetResponse(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsResetResponse(m) 
-            /\ SCTP!Client!Receive(conn)
+            /\ SCTP!Client(ID)!Receive(conn)
             /\ handler(m))
       
       RICSusbcriptionRequest(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsRICSubscriptionRequest(m) 
-            /\ SCTP!Client!Receive(conn)
+            /\ SCTP!Client(ID)!Receive(conn)
             /\ handler(m))
       
       RICSubscriptionDeleteRequest(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsRICSubscriptionDeleteRequest(m) 
-            /\ SCTP!Client!Receive(conn)
+            /\ SCTP!Client(ID)!Receive(conn)
             /\ handler(m))
       
       RICControlRequest(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsRICControlRequest(m) 
-            /\ SCTP!Client!Receive(conn)
+            /\ SCTP!Client(ID)!Receive(conn)
             /\ handler(m))
       
       E2ConnectionUpdate(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsE2ConnectionUpdate(m) 
-            /\ SCTP!Client!Receive(conn)
+            /\ SCTP!Client(ID)!Receive(conn)
             /\ handler(m))
       
       E2ConnectionUpdateAcknowledge(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsE2ConnectionUpdateAcknowledge(m) 
-            /\ SCTP!Client!Receive(conn)
+            /\ SCTP!Client(ID)!Receive(conn)
             /\ handler(m))
       
       E2NodeConfigurationUpdate(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsE2NodeConfigurationUpdate(m) 
-            /\ SCTP!Client!Receive(conn)
+            /\ SCTP!Client(ID)!Receive(conn)
             /\ handler(m))
       
       E2NodeConfigurationUpdateAcknowledge(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Client(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsE2NodeConfigurationUpdateAcknowledge(m) 
-            /\ SCTP!Client!Receive(conn)
+            /\ SCTP!Client(ID)!Receive(conn)
             /\ handler(m))
       
       =======================================================================
@@ -855,14 +857,17 @@ LOCAL Messages == INSTANCE Messages WITH
    \* Instantiate the E2AP!Client!Responses module
    Handle == INSTANCE Receive
    
-   Connect(s, d) == SCTP!Client!Connect(s, d)
+   Connect(d) == SCTP!Client(ID)!Connect(d)
    
-   Disconnect(c) == SCTP!Client!Disconnect(c)
+   Disconnect(c) == SCTP!Client(ID)!Disconnect(c)
    
+   \* The set of all open E2AP connections
+   Connections == SCTP!Client(ID)!Connections
+      
    ==========================================================================
 
 \* Provides operators for the E2AP client
-E2Node == INSTANCE E2Node
+E2Node(ID) == INSTANCE E2Node
       
    ------------------------------- MODULE RIC -------------------------------
    
@@ -870,6 +875,8 @@ E2Node == INSTANCE E2Node
    The Server module provides operators for managing and operating on E2AP
    servers and specifies the message types supported for the server.
    *)
+   
+   CONSTANT ID
    
       ----------------------------- MODULE Send -----------------------------
       
@@ -879,31 +886,31 @@ E2Node == INSTANCE E2Node
       *)
       
       E2SetupResponse(conn, msg) == 
-         /\ SCTP!Server!Send(conn, Messages!WithE2SetupResponse(msg))
+         /\ SCTP!Server(ID)!Send(conn, Messages!WithE2SetupResponse(msg))
       
       RICServiceUpdateAcknowledge(conn, msg) == 
-         /\ SCTP!Server!Send(conn, Messages!WithRICServiceUpdateAcknowledge(msg))
+         /\ SCTP!Server(ID)!Send(conn, Messages!WithRICServiceUpdateAcknowledge(msg))
       
       RICServiceUpdateFailure(conn, msg, cause) == 
-         /\ SCTP!Server!Send(conn, Messages!WithRICServiceUpdateFailure(msg, cause))
+         /\ SCTP!Server(ID)!Send(conn, Messages!WithRICServiceUpdateFailure(msg, cause))
       
       ResetRequest(conn, msg) ==
-         /\ SCTP!Server!Send(conn, Messages!WithResetRequest(msg))
+         /\ SCTP!Server(ID)!Send(conn, Messages!WithResetRequest(msg))
       
       ResetResponse(conn, msg) ==
-         /\ SCTP!Server!Send(conn, Messages!WithResetResponse(msg))
+         /\ SCTP!Server(ID)!Send(conn, Messages!WithResetResponse(msg))
       
       E2ConnectionUpdate(conn, msg) ==
-         /\ SCTP!Server!Send(conn, Messages!WithE2ConnectionUpdate(msg))
+         /\ SCTP!Server(ID)!Send(conn, Messages!WithE2ConnectionUpdate(msg))
       
       E2ConnectionUpdateAcknowledge(conn, msg) ==
-         /\ SCTP!Server!Send(conn, Messages!WithE2ConnectionUpdateAcknowledge(msg))
+         /\ SCTP!Server(ID)!Send(conn, Messages!WithE2ConnectionUpdateAcknowledge(msg))
       
       E2NodeConfigurationUpdate(conn, msg) ==
-         /\ SCTP!Server!Send(conn, Messages!WithE2NodeConfigurationUpdate(msg))
+         /\ SCTP!Server(ID)!Send(conn, Messages!WithE2NodeConfigurationUpdate(msg))
       
       E2NodeConfigurationUpdateAcknowledge(conn, msg) ==
-         /\ SCTP!Server!Send(conn, Messages!WithE2NodeConfigurationUpdateAcknowledge(msg))
+         /\ SCTP!Server(ID)!Send(conn, Messages!WithE2NodeConfigurationUpdateAcknowledge(msg))
       
       =======================================================================
    
@@ -918,31 +925,31 @@ E2Node == INSTANCE E2Node
       *)
       
       E2SetupResponse(conn, msg) == 
-         /\ SCTP!Server!Reply(conn, Messages!WithE2SetupResponse(msg))
+         /\ SCTP!Server(ID)!Reply(conn, Messages!WithE2SetupResponse(msg))
       
       RICServiceUpdateAcknowledge(conn, msg) == 
-         /\ SCTP!Server!Reply(conn, Messages!WithRICServiceUpdateAcknowledge(msg))
+         /\ SCTP!Server(ID)!Reply(conn, Messages!WithRICServiceUpdateAcknowledge(msg))
       
       RICServiceUpdateFailure(conn, msg, cause) == 
-         /\ SCTP!Server!Reply(conn, Messages!WithRICServiceUpdateFailure(msg, cause))
+         /\ SCTP!Server(ID)!Reply(conn, Messages!WithRICServiceUpdateFailure(msg, cause))
       
       ResetRequest(conn, msg) ==
-         /\ SCTP!Server!Reply(conn, Messages!WithResetRequest(msg))
+         /\ SCTP!Server(ID)!Reply(conn, Messages!WithResetRequest(msg))
       
       ResetResponse(conn, msg) ==
-         /\ SCTP!Server!Reply(conn, Messages!WithResetResponse(msg))
+         /\ SCTP!Server(ID)!Reply(conn, Messages!WithResetResponse(msg))
       
       E2ConnectionUpdate(conn, msg) ==
-         /\ SCTP!Server!Reply(conn, Messages!WithE2ConnectionUpdate(msg))
+         /\ SCTP!Server(ID)!Reply(conn, Messages!WithE2ConnectionUpdate(msg))
       
       E2ConnectionUpdateAcknowledge(conn, msg) ==
-         /\ SCTP!Server!Reply(conn, Messages!WithE2ConnectionUpdateAcknowledge(msg))
+         /\ SCTP!Server(ID)!Reply(conn, Messages!WithE2ConnectionUpdateAcknowledge(msg))
       
       E2NodeConfigurationUpdate(conn, msg) ==
-         /\ SCTP!Server!Reply(conn, Messages!WithE2NodeConfigurationUpdate(msg))
+         /\ SCTP!Server(ID)!Reply(conn, Messages!WithE2NodeConfigurationUpdate(msg))
       
       E2NodeConfigurationUpdateAcknowledge(conn, msg) ==
-         /\ SCTP!Server!Reply(conn, Messages!WithE2NodeConfigurationUpdateAcknowledge(msg))
+         /\ SCTP!Server(ID)!Reply(conn, Messages!WithE2NodeConfigurationUpdateAcknowledge(msg))
       
       =======================================================================
    
@@ -957,75 +964,75 @@ E2Node == INSTANCE E2Node
       *)
       
       E2SetupRequest(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsE2SetupRequest(m) 
-            /\ SCTP!Server!Receive(conn)
+            /\ SCTP!Server(ID)!Receive(conn)
             /\ handler(m))
       
       RICServiceUpdate(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsRICServiceUpdate(m) 
-            /\ SCTP!Server!Receive(conn)
+            /\ SCTP!Server(ID)!Receive(conn)
             /\ handler(m))
       
       ResetRequest(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsResetRequest(m) 
-            /\ SCTP!Server!Receive(conn)
+            /\ SCTP!Server(ID)!Receive(conn)
             /\ handler(m))
       
       ResetResponse(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsResetResponse(m) 
-            /\ SCTP!Server!Receive(conn)
+            /\ SCTP!Server(ID)!Receive(conn)
             /\ handler(m))
       
       RICSubscriptionResponse(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsRICSubscriptionResponse(m) 
-            /\ SCTP!Server!Receive(conn)
+            /\ SCTP!Server(ID)!Receive(conn)
             /\ handler(m))
       
       RICSubscriptionDeleteResponse(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsRICSubscriptionDeleteResponse(m) 
-            /\ SCTP!Server!Receive(conn)
+            /\ SCTP!Server(ID)!Receive(conn)
             /\ handler(m))
       
       RICControlResponse(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsRICControlResponse(m) 
-            /\ SCTP!Server!Receive(conn)
+            /\ SCTP!Server(ID)!Receive(conn)
             /\ handler(m))
       
       RICIndication(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsRICIndication(m) 
-            /\ SCTP!Server!Receive(conn)
+            /\ SCTP!Server(ID)!Receive(conn)
             /\ handler(m))
       
       E2ConnectionUpdate(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsE2ConnectionUpdate(m) 
-            /\ SCTP!Client!Receive(conn)
+            /\ SCTP!Server(ID)!Receive(conn)
             /\ handler(m))
       
       E2ConnectionUpdateAcknowledge(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsE2ConnectionUpdateAcknowledge(m) 
-            /\ SCTP!Client!Receive(conn)
+            /\ SCTP!Server(ID)!Receive(conn)
             /\ handler(m))
       
       E2NodeConfigurationUpdate(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsE2NodeConfigurationUpdate(m) 
-            /\ SCTP!Client!Receive(conn)
+            /\ SCTP!Server(ID)!Receive(conn)
             /\ handler(m))
       
       E2NodeConfigurationUpdateAcknowledge(conn, handler(_)) == 
-         SCTP!Server!Handle(conn, LAMBDA x, m : 
+         SCTP!Server(ID)!Handle(conn, LAMBDA x, m : 
             /\ Messages!IsE2NodeConfigurationUpdateAcknowledge(m) 
-            /\ SCTP!Client!Receive(conn)
+            /\ SCTP!Server(ID)!Receive(conn)
             /\ handler(m))
       
       =======================================================================
@@ -1033,13 +1040,13 @@ E2Node == INSTANCE E2Node
    \* Instantiate the E2AP!Server!Requests module
    Handle == INSTANCE Receive
    
+   \* The set of all open E2AP connections
+   Connections == SCTP!Server(ID)!Connections
+      
    ==========================================================================
 
 \* Provides operators for the E2AP server
-RIC == INSTANCE RIC
-
-\* The set of all open E2AP connections
-Connections == SCTP!Connections
+RIC(ID) == INSTANCE RIC
 
 Init == SCTP!Init
 
@@ -1047,5 +1054,5 @@ Next == SCTP!Next
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 21 00:39:05 PDT 2021 by jordanhalterman
+\* Last modified Tue Sep 21 05:27:59 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 10:53:17 PDT 2021 by jordanhalterman

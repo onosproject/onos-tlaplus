@@ -65,7 +65,7 @@ HandleRICSubscriptionDeleteRequest(n, c, r) ==
    /\ UNCHANGED <<nodes>>
 
 HandleRICControlRequest(n, c, r) ==
-   /\ E2AP!E2Node!Reply!RICControlResponse(c, [foo |-> "bar", bar |-> "baz"])
+   /\ E2AP!E2Node!Reply!RICControlAcknowledge(c, [foo |-> "bar", bar |-> "baz"])
    /\ UNCHANGED <<nodes>>
 
 HandleRequest(n, c) ==
@@ -89,5 +89,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 13 19:43:18 PDT 2021 by jordanhalterman
+\* Last modified Tue Sep 21 02:13:13 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 15:18:28 PDT 2021 by jordanhalterman
