@@ -53,7 +53,7 @@ vars == <<conns>>
                    conns'[conn.tgt] EXCEPT ![conn.id] = [
                       conns'[conn.tgt][conn.id] EXCEPT !.req = Append(conns'[conn.tgt][conn.id].req, msg)]]]
 
-   Connections == {conn \in UNION {{conns[s][c] : c \in DOMAIN s} : s \in conns} : conn.src = ID}
+   Connections == {conn \in UNION {{conns[s][c] : c \in DOMAIN s} : s \in DOMAIN conns} : conn.src = ID}
    
    Connected(connId) == \E s \in conns : \E c \in s : c.id = connId
    
@@ -95,7 +95,7 @@ Client(ID) == INSTANCE Client
                    conns'[conn.tgt] EXCEPT ![conn.id] = [
                       conns'[conn.tgt][conn.id] EXCEPT !.req = Append(conns'[conn.tgt][conn.id].res, msg)]]]
 
-   Connections == {conn \in UNION {{conns[s][c] : c \in DOMAIN s} : s \in conns} : conn.tgt = ID}
+   Connections == {conn \in UNION {{conns[s][c] : c \in DOMAIN s} : s \in DOMAIN conns} : conn.tgt = ID}
 
    Connected(connId) == \E s \in conns : \E c \in s : c.id = connId
    
@@ -120,5 +120,6 @@ Next ==
 
 =============================================================================
 \* Modification History
+\* Last modified Wed Sep 22 12:46:38 PDT 2021 by adibrastegarnia
 \* Last modified Tue Sep 21 14:35:07 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 12:21:16 PDT 2021 by jordanhalterman

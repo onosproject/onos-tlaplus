@@ -19,6 +19,7 @@ CONSTANT Stopped, Started
 \* Connection states
 CONSTANT Connecting, Connected, Configuring, Configured
 
+
 \* The set of E2 node identifiers
 CONSTANT E2Node
 
@@ -58,14 +59,15 @@ LOCAL E2AP == INSTANCE E2AP WITH conns <- network
 StartNode(e2Node) ==
    /\ state[e2Node] = Stopped
    /\ state' = [state EXCEPT ![e2Node] = Started]
-   /\ UNCHANGED <<network, mgmtConn, dataConn, subs>>
+   /\ UNCHANGED <<network, mgmtConn, dataConn, subs, transactions>>
 
 StopNode(e2Node) ==
    /\ state[e2Node] = Started
    /\ state' = [state EXCEPT ![e2Node] = Stopped]
-   /\ UNCHANGED <<network, mgmtConn, dataConn, subs>>
+   /\ UNCHANGED <<network, mgmtConn, dataConn, subs, transactions>>
 
 ----
+
 
 ReconcileConnection(e2NodeId, ricNodeId) ==
    /\ ricNodeId \in dataConn[e2NodeId]
@@ -197,7 +199,8 @@ Next ==
    \/ \E e2NodeId \in E2Node, ricNodeId \in RICNode : 
          Connect(e2NodeId, ricNodeId)
    \/ \E e2NodeId \in E2Node, ricNodeId \in RICNode : 
-         Disconnect(e2NodeId, ricNodeId)
+        \E conn \in E2AP!Client(e2NodeId)!Connections :
+         Disconnect(e2NodeId, conn)
    \/ \E e2NodeId \in E2Node :
          \E conn \in E2AP!Client(e2NodeId)!Connections :
             E2Setup(e2NodeId, conn)
@@ -207,5 +210,6 @@ Next ==
 
 =============================================================================
 \* Modification History
+\* Last modified Wed Sep 22 12:41:32 PDT 2021 by adibrastegarnia
 \* Last modified Tue Sep 21 15:04:44 PDT 2021 by jordanhalterman
 \* Created Tue Sep 21 13:27:29 PDT 2021 by jordanhalterman
