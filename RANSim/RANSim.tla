@@ -56,33 +56,37 @@ LOCAL E2AP == INSTANCE E2AP WITH conns <- network
 
 ----
 
+\* StartNode: Starting an E2 node
 StartNode(e2Node) ==
    /\ state[e2Node] = Stopped
    /\ state' = [state EXCEPT ![e2Node] = Started]
    /\ UNCHANGED <<network, mgmtConn, dataConn, subs, transactions>>
 
+\* StopeNode: Stoping an E2 node
 StopNode(e2Node) ==
    /\ state[e2Node] = Started
    /\ state' = [state EXCEPT ![e2Node] = Stopped]
    /\ UNCHANGED <<network, mgmtConn, dataConn, subs, transactions>>
 
 ----
-
-
+\* Reconciling an E2 node connection 
 ReconcileConnection(e2NodeId, ricNodeId) ==
    /\ ricNodeId \in dataConn[e2NodeId]
    /\ \/ /\ dataConn[e2NodeId].state = Connecting
          /\ E2AP!Client(e2NodeId)!Connect(ricNodeId)
-         /\ LET newConnId == CHOOSE i \in {conn.id : conn \in network[e2NodeId]} : i \notin {conn.id : conn \in network'[e2NodeId]}
+         /\ LET newConnId == CHOOSE i \in {conn.id : conn \in network[e2NodeId]} : 
+                                    i \notin {conn.id : conn \in network'[e2NodeId]}
             IN
-               /\ dataConn' = [dataConn EXCEPT ![e2NodeId] = dataConn[e2NodeId] @@ (ricNodeId :> [state |-> Connected, conn |-> newConnId])]
+               /\ dataConn' = [dataConn EXCEPT ![e2NodeId] = 
+                              dataConn[e2NodeId] @@ (ricNodeId :> 
+                              [state |-> Connected, conn |-> newConnId])]
                /\ UNCHANGED <<transactions>>
       \/ /\ dataConn[e2NodeId].state # Connecting
          /\ \/ /\ \E conn \in E2AP!Client(e2NodeId)!Connections : 
                      /\ conn.id = dataConn[e2NodeId].conn
                      /\ \/ /\ dataConn[e2NodeId].state = Connecting
                            /\ dataConn' = [dataConn EXCEPT ![e2NodeId] = [
-                                             dataConn[e2NodeId] EXCEPT ![ricNodeId].state = Connected]]
+                                           dataConn[e2NodeId] EXCEPT ![ricNodeId].state = Connected]]
                            /\ UNCHANGED <<transactions>>
                         \/ /\ dataConn[e2NodeId].state = Connected
                            /\ Len(transactions[e2NodeId]) < 256
@@ -90,14 +94,16 @@ ReconcileConnection(e2NodeId, ricNodeId) ==
                                   req == [txId |-> txId, e2NodeId |-> e2NodeId]
                               IN
                                  /\ E2AP!Client(e2NodeId)!Send!E2NodeConfigurationUpdate(conn, req)
-                                 /\ transactions' = [transactions EXCEPT ![e2NodeId] = transactions[e2NodeId] @@ (txId :> req)]
+                                 /\ transactions' = [transactions EXCEPT ![e2NodeId] = 
+                                                    transactions[e2NodeId] @@ (txId :> req)]
                                  /\ dataConn' = [dataConn EXCEPT ![e2NodeId] = [
                                              dataConn[e2NodeId] EXCEPT ![ricNodeId].state = Configuring]]
                         \/ /\ dataConn[e2NodeId].state = Configuring
                            /\ E2AP!Client(e2NodeId)!Ready(conn)
                            /\ LET res == E2AP!Client(e2NodeId)!Read(conn)
                               IN
-                                 /\ E2AP!Client(e2NodeId)!Receive!E2NodeConfigurationUpdateAcknowledge(conn, res)
+                                 /\ E2AP!Client(e2NodeId)!Receive
+                                        !E2NodeConfigurationUpdateAcknowledge(conn, res)
                                  /\ dataConn' = [dataConn EXCEPT ![e2NodeId] = [
                                              dataConn[e2NodeId] EXCEPT ![ricNodeId].state = Configured]]
                            /\ UNCHANGED <<transactions>>
@@ -105,19 +111,23 @@ ReconcileConnection(e2NodeId, ricNodeId) ==
                            /\ UNCHANGED <<dataConn>>
             \/ /\ ~\E conn \in E2AP!Client(e2NodeId)!Connections : conn.id = dataConn[e2NodeId].conn
                /\ dataConn' = [dataConn EXCEPT ![e2NodeId] = [
-                                  dataConn[e2NodeId] EXCEPT ![ricNodeId] = [state |-> Connecting, conn |-> Nil]]]
+                                  dataConn[e2NodeId] EXCEPT ![ricNodeId] =
+                                  [state |-> Connecting, conn |-> Nil]]]
    /\ UNCHANGED <<subs>>
 
 ----
 
+\* An E2 node connects to a RIC instance
 Connect(e2NodeId, ricNodeId) ==
    /\ E2AP!Client(e2NodeId)!Connect(ricNodeId)
    /\ UNCHANGED <<state, dataConn, transactions>>
 
+\* An E2 node disconnects from a RIC instance 
 Disconnect(e2NodeId, conn) ==
    /\ E2AP!Client(e2NodeId)!Disconnect(conn)
    /\ UNCHANGED <<state, dataConn, transactions>>
 
+\* An E2 node Sends an E2 setup request
 E2Setup(e2NodeId, conn) ==
    /\ ~\E c \in E2AP!Client(e2NodeId)!Connections : c.id = mgmtConn[e2NodeId].connId
    /\ Len(transactions[e2NodeId]) < 256
@@ -128,29 +138,34 @@ E2Setup(e2NodeId, conn) ==
          /\ E2AP!Client(E2Node)!Send!E2SetupRequest(conn, req)
    /\ UNCHANGED <<mgmtConn, dataConn, subs>>
 
+\* Handles an E2 Setup Response 
 HandleE2SetupResponse(e2NodeId, conn, res) ==
    /\ E2AP!Client(E2Node)!Receive!E2SetupResponse(conn, res)
    /\ \/ /\ res.txId \in DOMAIN transactions[e2NodeId]
          /\ mgmtConn' = [mgmtConn EXCEPT ![e2NodeId] = [connId |-> conn.id]]
          /\ transactions' = [transactions EXCEPT ![e2NodeId] = [
-                                t \in DOMAIN transactions[e2NodeId] \ {res.txId} |-> transactions[e2NodeId][t]]]
+                             t \in DOMAIN transactions[e2NodeId] \ {res.txId} |-> transactions[e2NodeId][t]]]
       \/ /\ res.txId \notin transactions[e2NodeId]
          /\ UNCHANGED <<mgmtConn, transactions>>
    /\ UNCHANGED <<dataConn, subs>>
 
+ \* Handles a RIC Subscription Request 
 HandleRICSubscriptionRequest(e2NodeId, conn, req) ==
    /\ E2AP!Client(E2Node)!Receive!RICSubscriptionRequest(conn, req)
    /\ UNCHANGED <<dataConn, subs>>
 
+\* Handles a RIC Subscription Delete Request                         
 HandleRICSubscriptionDeleteRequest(e2NodeId, conn, req) ==
    /\ E2AP!Client(E2Node)!Receive!RICSubscriptionDeleteRequest(conn, req)
    /\ UNCHANGED <<dataConn, subs>>
-
+   
+\* Handles a RIC Control Request                          
 HandleRICControlRequest(e2NodeId, conn, req) ==
    /\ E2AP!Client(E2Node)!Receive!RICControlRequest(conn, req)
    /\ E2AP!Client(E2Node)!Reply!RICControlAcknowledge(conn, [foo |-> "bar", bar |-> "baz"])
    /\ UNCHANGED <<dataConn, subs>>
 
+\* Handles an E2 Connection Update Request                          
 HandleE2ConnectionUpdate(e2NodeId, conn, req) ==
    /\ E2AP!Client(E2Node)!Receive!E2ConnectionUpdate(conn, req)
    /\ LET add == IF "add" \in DOMAIN req THEN req["add"] ELSE {}
@@ -164,7 +179,8 @@ HandleE2ConnectionUpdate(e2NodeId, conn, req) ==
                                ELSE
                                   [state |-> Connecting, conn |-> Nil]]]
    /\ UNCHANGED <<subs>>
-
+   
+\* Handles an Incoming E2 Node Configuration Update Ack                          
 HandleE2NodeConfigurationUpdateAcknowledge(e2NodeId, conn, res) ==
    /\ E2AP!Client(E2Node)!Receive!E2NodeConfigurationUpdateAcknowledge(conn, res)
    /\ res.txId \in transactions
@@ -173,12 +189,18 @@ HandleE2NodeConfigurationUpdateAcknowledge(e2NodeId, conn, res) ==
    /\ dataConn' = [dataConn EXCEPT ![conn.dst].state = Configured]
    /\ UNCHANGED <<subs>>
 
+\* Handle E2AP procedure requests and responses
 HandleRequest(e2NodeId, conn) ==
-   /\ \/ E2AP!Client(E2Node)!Handle!RICSubscriptionRequest(conn, LAMBDA c, m: HandleRICSubscriptionRequest(e2NodeId, c, m))
-      \/ E2AP!Client(E2Node)!Handle!RICSubscriptionDeleteRequest(conn, LAMBDA c, m: HandleRICSubscriptionDeleteRequest(e2NodeId, c, m))
-      \/ E2AP!Client(E2Node)!Handle!RICControlRequest(conn, LAMBDA c, m: HandleRICControlRequest(e2NodeId, c, m))
-      \/ E2AP!Client(E2Node)!Handle!E2ConnectionUpdate(conn, LAMBDA c, m: HandleE2ConnectionUpdate(e2NodeId, c, m))
-      \/ E2AP!Client(E2Node)!Handle!E2NodeConfigurationUpdateAcknowledge(conn, LAMBDA c, m: HandleE2NodeConfigurationUpdateAcknowledge(e2NodeId, c, m))
+   /\ \/ E2AP!Client(E2Node)!Handle!RICSubscriptionRequest(conn, LAMBDA c, m: 
+                            HandleRICSubscriptionRequest(e2NodeId, c, m))
+      \/ E2AP!Client(E2Node)!Handle!RICSubscriptionDeleteRequest(conn, LAMBDA c, m: 
+                             HandleRICSubscriptionDeleteRequest(e2NodeId, c, m))
+      \/ E2AP!Client(E2Node)!Handle!RICControlRequest(conn, LAMBDA c, m: 
+                             HandleRICControlRequest(e2NodeId, c, m))
+      \/ E2AP!Client(E2Node)!Handle!E2ConnectionUpdate(conn, LAMBDA c, m:
+                             HandleE2ConnectionUpdate(e2NodeId, c, m))
+      \/ E2AP!Client(E2Node)!Handle!E2NodeConfigurationUpdateAcknowledge(conn, LAMBDA c, m: 
+                             HandleE2NodeConfigurationUpdateAcknowledge(e2NodeId, c, m))
    /\ UNCHANGED <<state>>
 
 ----
@@ -210,6 +232,6 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Sep 22 12:41:32 PDT 2021 by adibrastegarnia
+\* Last modified Wed Sep 22 15:36:29 PDT 2021 by adibrastegarnia
 \* Last modified Tue Sep 21 15:04:44 PDT 2021 by jordanhalterman
 \* Created Tue Sep 21 13:27:29 PDT 2021 by jordanhalterman
