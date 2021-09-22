@@ -20,6 +20,7 @@ CONSTANT Stopped, Started
 CONSTANT E2Term
 
 ASSUME /\ IsFiniteSet(E2Term)
+       /\ Cardinality(E2Term) > 0
        /\ \A n \in E2Term : n \in STRING
 
 \* A mapping of node states
@@ -39,6 +40,12 @@ VARIABLE nodes
 
 \* A global store of connections for each E2 node
 VARIABLE conns
+
+\* A node local store of outstanding transactions
+VARIABLE txID, txs
+
+\* A node local store of outstanding requests
+VARIABLE reqID, reqs
 
 \* A store of streams for each node
 VARIABLE streams
@@ -68,6 +75,10 @@ StopNode(e2TermID) ==
    /\ state' = [state EXCEPT ![e2TermID] = Stopped]
    /\ E2AP!Server(e2TermID)!Start
    /\ streams' = [streams EXCEPT ![e2TermID] = [id \in {} |-> [id |-> Nil]]]
+   /\ txs' = [txs EXCEPT ![e2TermID] = [id \in {} |-> [txID |-> id]]]
+   /\ txID' = [txID EXCEPT ![e2TermID] = 0]
+   /\ reqs' = [reqs EXCEPT ![e2TermID] = [id \in {} |-> [reqID |-> id]]]
+   /\ reqID' = [reqID EXCEPT ![e2TermID] = 0]
    /\ UNCHANGED <<masterships, conns, chans, subs>>
 
 ----
@@ -113,41 +124,55 @@ ReconcileMastership(e2TermID, e2NodeID) ==
                          conn |-> CHOOSE c \in DOMAIN conns[e2NodeID] : c # masterships[e2NodeID].master]]
    /\ UNCHANGED <<state, subs>>
 
-ReconcileStream(n, s) ==
+ReconcileStream(e2TermID, streamID) ==
    /\ UNCHANGED <<state, subs>>
 
 \* ReconcileChannel reconciles a channel's state
-ReconcileChannel(n, c) ==
+ReconcileChannel(e2TermID, chanID) ==
    /\ UNCHANGED <<state, streams>>
 
 \* ReconcileSubscription reconciles a subscription's state
-ReconcileSubscription(n, s) ==
+ReconcileSubscription(e2TermID, subID) ==
+   /\ UNCHANGED <<state, streams, chans>>
+
+\* ReconcileConfiguration reconciles an E2 node configuration
+ReconcileConfiguration(e2TermID, e2NodeID) ==
    /\ UNCHANGED <<state, streams, chans>>
 
 ----
 
-HandleE2SetupRequest(node, conn, res) ==
-   /\ E2AP!Server(node)!Reply!E2SetupResponse(conn, [foo |-> "bar", bar |-> "baz"])
+HandleE2SetupRequest(e2TermID, e2apConn, e2apReq) ==
+   /\ E2AP!Server(e2TermID)!Receive!E2SetupRequest(e2apConn, e2apReq)
+   /\ E2AP!Server(e2TermID)!Reply!E2SetupResponse(e2apConn, [foo |-> "bar", bar |-> "baz"])
    /\ UNCHANGED <<chans, subs>>
 
-HandleRICControlResponse(node, conn, res) ==
+HandleRICControlResponse(e2TermID, e2apConn, e2apRes) ==
+   /\ E2AP!Server(e2TermID)!Receive!RICControlResponse(e2apConn, e2apRes)
    /\ UNCHANGED <<chans, subs>>
 
-HandleRICSubscriptionResponse(node, conn, res) ==
+HandleRICSubscriptionResponse(e2TermID, e2apConn, e2apRes) ==
+   /\ E2AP!Server(e2TermID)!Receive!RICSubscriptionResponse(e2apConn, e2apRes)
    /\ UNCHANGED <<chans, subs>>
 
-HandleRICSubscriptionDeleteResponse(node, conn, res) ==
+HandleRICSubscriptionDeleteResponse(e2TermID, e2apConn, e2apRes) ==
+   /\ E2AP!Server(e2TermID)!Receive!RICSubscriptionDeleteResponse(e2apConn, e2apRes)
    /\ UNCHANGED <<chans, subs>>
 
-HandleRICIndication(node, conn, res) ==
+HandleRICIndication(e2TermID, e2apConn, e2apReq) ==
+   /\ E2AP!Server(e2TermID)!Receive!RICIndication(e2apConn, e2apReq)
    /\ UNCHANGED <<chans, subs>>
 
-HandleE2APRequest(node, conn) ==
-   /\ \/ E2AP!Server(node)!Handle!E2SetupRequest(conn, LAMBDA c, m : HandleE2SetupRequest(node, conn, m))
-      \/ E2AP!Server(node)!Handle!RICControlResponse(conn, LAMBDA c, m : HandleRICControlResponse(node, conn, m))
-      \/ E2AP!Server(node)!Handle!RICSubscriptionResponse(conn, LAMBDA c, m : HandleRICSubscriptionResponse(node, conn, m))
-      \/ E2AP!Server(node)!Handle!RICSubscriptionDeleteResponse(conn, LAMBDA c, m : HandleRICSubscriptionDeleteResponse(node, conn, m))
-      \/ E2AP!Server(node)!Handle!RICIndication(conn, LAMBDA c, m : HandleRICIndication(node, conn, m))
+HandleE2NodeConfigurationUpdate(e2TermID, e2apConn, e2apReq) ==
+   /\ E2AP!Server(e2TermID)!Receive!E2NodeConfigurationUpdate(e2apConn, e2apReq)
+   /\ UNCHANGED <<chans, subs>>
+
+HandleE2APRequest(e2TermID, e2apConn) ==
+   /\ \/ E2AP!Server(e2TermID)!Handle!E2SetupRequest(e2apConn, LAMBDA c, m : HandleE2SetupRequest(e2TermID, c, m))
+      \/ E2AP!Server(e2TermID)!Handle!RICControlResponse(e2apConn, LAMBDA c, m : HandleRICControlResponse(e2TermID, c, m))
+      \/ E2AP!Server(e2TermID)!Handle!RICSubscriptionResponse(e2apConn, LAMBDA c, m : HandleRICSubscriptionResponse(e2TermID, c, m))
+      \/ E2AP!Server(e2TermID)!Handle!RICSubscriptionDeleteResponse(e2apConn, LAMBDA c, m : HandleRICSubscriptionDeleteResponse(e2TermID, c, m))
+      \/ E2AP!Server(e2TermID)!Handle!RICIndication(e2apConn, LAMBDA c, m : HandleRICIndication(e2TermID, c, m))
+      \/ E2AP!Server(e2TermID)!Handle!RICIndication(e2apConn, LAMBDA c, m : HandleE2NodeConfigurationUpdate(e2TermID, c, m))
    /\ UNCHANGED <<state>>
 
 ----
@@ -156,7 +181,11 @@ Init ==
    /\ state = [e2TermID \in E2Term |-> Stopped]
    /\ masterships = [e2TermID \in E2Term |-> [e \in {} |-> [master |-> Nil, term |-> 0]]]
    /\ nodes = [e \in {} |-> [version |-> 0, conns |-> {}]]
-   /\ conns = [e \in {} |-> [id |-> Nil]]
+   /\ conns = [e \in {} |-> [mgmt |-> Nil, data |-> {}]]
+   /\ txs = [e2TermID \in E2Term |-> [id \in {} |-> [txID |-> id]]]
+   /\ txID = [e2TermID \in E2Term |-> 0]
+   /\ reqs = [e2TermID \in E2Term |-> [id \in {} |-> [reqID |-> id]]]
+   /\ reqID = [e2TermID \in E2Term |-> 0]
    /\ streams = [n \in E2Term |-> [x \in {} |-> [id |-> x]]]
    /\ chans = [x \in {} |-> [id |-> x]]
    /\ subs = [x \in {} |-> [id |-> x]]
@@ -187,5 +216,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 21 18:16:38 PDT 2021 by jordanhalterman
+\* Last modified Tue Sep 21 18:51:04 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 03:23:39 PDT 2021 by jordanhalterman
