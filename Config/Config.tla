@@ -4,36 +4,47 @@ EXTENDS Naturals, FiniteSets, Sequences, TLC
 
 \* Indicates that a configuration change is waiting to be applied to the network
 CONSTANT Pending
+ASSUME Pending \in STRING
 
 \* Indicates that a configuration change has been applied to the network
 CONSTANT Complete
+ASSUME Complete \in STRING
 
 \* Indicates that a configuration change failed
 CONSTANT Failed
+ASSUME Failed \in STRING
 
 \* Indicates a change is a configuration
 CONSTANT Change
+ASSUME Change \in STRING
 
 \* Indicates a change is a rollback
 CONSTANT Rollback
+ASSUME Rollback \in STRING
 
 \* Indicates a device is connected
 CONSTANT Connected
+ASSUME Connected \in STRING
 
 \* Indicates a device is disconnected
 CONSTANT Disconnected
+ASSUME Disconnected \in STRING
 
 \* Indicates that an error occurred when applying a change
 CONSTANT Error
+ASSUME Error \in STRING
 
 \* The set of all nodes
 CONSTANT Node
+ASSUME IsFiniteSet(Node) /\ \A n \in Node : n \in STRING
 
 \* The set of all devices
 CONSTANT Device
+ASSUME IsFiniteSet(Device) /\ \A d \in Device : d \in STRING
 
 \* An empty constant
 CONSTANT Nil
+ASSUME Nil \in STRING
 
 \* Per-node election state
 VARIABLE leader
@@ -183,28 +194,21 @@ HasDeviceChanges(c) ==
 \* Add or update the given device changes for the given network change.
 \* If a device change already exists, update the 'incarnation' field.
 CreateDeviceChange(d, c) ==
-    IF Cardinality(DOMAIN deviceChange[d]) = 0 THEN
-        [x \in {c} |-> [
-                    phase       |-> networkChange[c].phase,
-                    state       |-> Pending,
-                    value       |-> networkChange[c].value,
-                    incarnation |-> networkChange[c].incarnation]]
-    ELSE
-        IF d \in DOMAIN networkChange[c].changes THEN
-            IF c \in DOMAIN deviceChange[d] THEN
-                IF deviceChange[d][c].state = Complete THEN
-                    deviceChange[d][c]
-                ELSE
-                    [deviceChange[d] EXCEPT ![c].incarnation = networkChange[c].incarnation,
-                                            ![c].state = Pending]
-            ELSE
-                [x \in {c} |-> [
-                    phase       |-> networkChange[c].phase,
-                    state       |-> Pending,
-                    value       |-> networkChange[c].value,
-                    incarnation |-> networkChange[c].incarnation]] @@ deviceChange[d]
-        ELSE
+   IF d \in DOMAIN networkChange[c].changes THEN
+      IF c \in DOMAIN deviceChange[d] THEN
+         IF deviceChange[d][c].state = Complete THEN
             deviceChange[d]
+         ELSE
+            [deviceChange[d] EXCEPT ![c].incarnation = networkChange[c].incarnation,
+                                    ![c].state = Pending]
+      ELSE
+         [x \in {c} |-> [
+            phase       |-> networkChange[c].phase,
+            state       |-> Pending,
+            value       |-> networkChange[c].value,
+            incarnation |-> networkChange[c].incarnation]] @@ deviceChange[d]
+   ELSE
+      deviceChange[d]
 
 \* Add or update device changes for the given network change
 CreateDeviceChanges(c) ==
@@ -296,8 +300,8 @@ ReconcileDeviceChange(n, d, c) ==
 
 ----
 (*
-This section models device states. Devices begin in the Unavailable state and can only
-be configured while in the Available state.
+This section models device states. Devices begin in the Disconnected state and can only
+be configured while in the Connected state.
 *)
 
 \* Set device d state to Connected
@@ -359,5 +363,5 @@ Spec == Init /\ [][Next]_vars
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Sep 22 13:23:25 PDT 2021 by jordanhalterman
+\* Last modified Wed Sep 22 17:28:11 PDT 2021 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
