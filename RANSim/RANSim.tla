@@ -17,7 +17,11 @@ CONSTANT Nil
 CONSTANT Stopped, Started
 
 \* Connection states
-CONSTANT Connecting, Connected, Configuring, Configured
+CONSTANT Connecting, Connected, Configuring, Configured, Disconnecting, Disconnected
+
+
+\* Connection Phase
+CONSTANT Open, Close
 
 
 \* The set of E2 node identifiers
@@ -69,9 +73,9 @@ StopNode(e2Node) ==
    /\ UNCHANGED <<network, mgmtConn, dataConn, subs, transactions>>
 
 ----
-\* Reconciling an E2 node connection 
-ReconcileConnection(e2NodeId, ricNodeId) ==
-   /\ ricNodeId \in dataConn[e2NodeId]
+
+\* Reconcile opening an E2 connection
+ReconcileOpenConnection(e2NodeId, ricNodeId) == 
    /\ \/ /\ dataConn[e2NodeId].state = Connecting
          /\ E2AP!Client(e2NodeId)!Connect(ricNodeId)
          /\ LET newConnId == CHOOSE i \in {conn.id : conn \in network[e2NodeId]} : 
@@ -114,6 +118,22 @@ ReconcileConnection(e2NodeId, ricNodeId) ==
                                   dataConn[e2NodeId] EXCEPT ![ricNodeId] =
                                   [state |-> Connecting, conn |-> Nil]]]
    /\ UNCHANGED <<subs>>
+      
+
+\* Reconcile closing an E2 connection
+ReconcileCloseConnection(e2NodeId, ricNodeId) == 
+   /\ \/ /\ dataConn[e2NodeId].state = Disconnecting
+         /\ E2AP!Client(e2NodeId)!Disconnect(ricNodeId)
+   
+
+\* Reconcile an E2 connection
+ReconcileConnection(e2NodeId, ricNodeId) == 
+   /\ ricNodeId \in dataConn[e2NodeId]
+   \/ /\ dataConn[e2NodeId].phase = Open
+      /\ ReconcileOpenConnection(e2NodeId, ricNodeId)
+   \/ /\ dataConn[e2NodeId].phase = Close
+      /\ ReconcileCloseConnection(e2NodeId, ricNodeId)   
+
 
 ----
 
@@ -232,6 +252,6 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Sep 22 15:36:29 PDT 2021 by adibrastegarnia
+\* Last modified Thu Sep 23 10:21:49 PDT 2021 by adibrastegarnia
 \* Last modified Tue Sep 21 15:04:44 PDT 2021 by jordanhalterman
 \* Created Tue Sep 21 13:27:29 PDT 2021 by jordanhalterman
