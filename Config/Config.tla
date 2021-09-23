@@ -1,50 +1,67 @@
 ------------------------------- MODULE Config -------------------------------
 
-EXTENDS Naturals, FiniteSets, Sequences, TLC
+INSTANCE Naturals
+
+INSTANCE FiniteSets
+
+INSTANCE Sequences
+
+INSTANCE TLC
+
+----
 
 \* Indicates that a configuration change is waiting to be applied to the network
 CONSTANT Pending
-ASSUME Pending \in STRING
 
 \* Indicates that a configuration change has been applied to the network
 CONSTANT Complete
-ASSUME Complete \in STRING
 
 \* Indicates that a configuration change failed
 CONSTANT Failed
-ASSUME Failed \in STRING
 
 \* Indicates a change is a configuration
 CONSTANT Change
-ASSUME Change \in STRING
 
 \* Indicates a change is a rollback
 CONSTANT Rollback
-ASSUME Rollback \in STRING
 
 \* Indicates a device is connected
 CONSTANT Connected
-ASSUME Connected \in STRING
 
 \* Indicates a device is disconnected
 CONSTANT Disconnected
-ASSUME Disconnected \in STRING
 
 \* Indicates that an error occurred when applying a change
 CONSTANT Error
-ASSUME Error \in STRING
-
-\* The set of all nodes
-CONSTANT Node
-ASSUME IsFiniteSet(Node) /\ \A n \in Node : n \in STRING
-
-\* The set of all devices
-CONSTANT Device
-ASSUME IsFiniteSet(Device) /\ \A d \in Device : d \in STRING
 
 \* An empty constant
 CONSTANT Nil
+
+\* The set of all nodes
+CONSTANT Node
+
+\* The set of all devices
+CONSTANT Device
+
+ASSUME Pending \in STRING
+ASSUME Complete \in STRING
+ASSUME Failed \in STRING
+ASSUME Rollback \in STRING
+ASSUME Connected \in STRING
+ASSUME Disconnected \in STRING
+ASSUME Error \in STRING
 ASSUME Nil \in STRING
+
+ASSUME /\ IsFiniteSet(Node) 
+       /\ \A n \in Node : 
+             /\ n \notin Device 
+             /\ n \in STRING
+ASSUME /\ IsFiniteSet(Device) 
+       /\ \A d \in Device : 
+             /\ d \notin Node 
+             /\ d \in STRING
+
+----
 
 \* Per-node election state
 VARIABLE leader
@@ -363,5 +380,5 @@ Spec == Init /\ [][Next]_vars
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Sep 22 18:09:57 PDT 2021 by jordanhalterman
+\* Last modified Wed Sep 22 18:37:38 PDT 2021 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
