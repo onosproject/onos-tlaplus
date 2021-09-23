@@ -1,1 +1,0 @@
-../E2Node/E2Node.tla

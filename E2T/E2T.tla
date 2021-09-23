@@ -12,13 +12,17 @@ LOCAL INSTANCE TLC
 
 \* An empty value
 CONSTANT Nil
+ASSUME Nil \in STRING
 
 \* Node states
-CONSTANT Stopped, Started
+CONSTANT Stopped
+ASSUME Stopped \in STRING
+
+CONSTANT Started
+ASSUME Started \in STRING
 
 \* A set of E2T node identifiers
 CONSTANT E2Term
-
 ASSUME /\ IsFiniteSet(E2Term)
        /\ Cardinality(E2Term) > 0
        /\ \A n \in E2Term : n \in STRING
@@ -216,5 +220,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 21 18:51:04 PDT 2021 by jordanhalterman
+\* Last modified Wed Sep 22 18:20:29 PDT 2021 by jordanhalterman
 \* Created Mon Sep 13 03:23:39 PDT 2021 by jordanhalterman
