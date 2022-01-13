@@ -169,11 +169,9 @@ ReconcileTransaction(n, tx) ==
          /\ UNCHANGED <<configurations>>
       \* If the transaction is in the Validating state, compute and validate the 
       \* Configuration for each target. Mark the transaction Failed if validation
-      \* fails any target.
-      \* TODO: Model validation failures here
+      \* fails any target. If validation is successful, proceed to Applying.
       \/ /\ tx.status.state = Validating
-         \* Validate the target configurations here
-         \* Then change the transaction state to Applying
+         \* TODO: Validate the target configurations here
          /\ transactions' = [transactions EXCEPT ![tx.index].status.state = Applying]
          /\ UNCHANGED <<configurations>>
       \* If the transaction is in the Applying state, update the Configuration for each
@@ -253,5 +251,5 @@ Spec == Init /\ [][Next]_vars
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Jan 13 04:08:17 PST 2022 by jordanhalterman
+\* Last modified Thu Jan 13 04:09:42 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
