@@ -24,14 +24,19 @@ CONSTANTS
 \* The set of all nodes
 CONSTANT Node
 
-\* The set of all targets
+(*
+Target is the possible targets, paths, and values
+
+Example:
+   Target == [
+      target1 |-> [
+         path1 |-> {"value1", "value2"},
+         path2 |-> {"value2", "value3"}],
+      target2 |-> [
+         path2 |-> {"value3", "value4"},
+         path3 |-> {"value4", "value5"}]]
+*)
 CONSTANT Target
-
-\* The set of available paths
-CONSTANT Path
-
-\* The set of available values
-CONSTANT Value
 
 ASSUME Nil \in STRING
 
@@ -61,7 +66,7 @@ ASSUME /\ \A t \in DOMAIN Target :
       delete ::= delete \in BOOLEAN 
    ]
 
-   TYPE State == state \in {Pending, Validating, Applying, Complete, Failed}
+   TYPE State ::= state \in {Pending, Validating, Applying, Complete, Failed}
 
    TYPE Transaction == [ 
       id       ::= id \in STRING,
@@ -69,6 +74,8 @@ ASSUME /\ \A t \in DOMAIN Target :
       revision ::= revision \in Nat,
       atomic   ::= atomic \in BOOLEAN,
       sync     ::= sync \in BOOLEAN,
+      changes  ::= [t \in SUBSET Target |-> 
+                      [p \in SUBSET Path |-> 
       changes  ::= [i \in 1..Nat |-> changes[i] \in Change],
       status   ::= [state ::= state \in State]]
    
@@ -108,28 +115,32 @@ vars == <<transactions, configurations, targets>>
 
 ----
 
-paths == Seq(Path)
-
-values == Seq(Value)
-
-----
-
 (*
 This section models the northbound API for the configuration service.
 *)
 
-\* Changes a set of paths/values on a set of targets
-Change(n, ts, d) ==
-   /\ LET tss == Seq(ts)
-      IN
+\* This crazy thing returns the set of all possible sets of valid changes
+ValidChanges == 
+   LET allPaths == UNION {(DOMAIN Target[t]) : t \in DOMAIN Target}
+       allValues == UNION {UNION {Target[t][p] : p \in DOMAIN Target[t]} : t \in DOMAIN Target}
+   IN
+      {targetPathValues \in SUBSET (Target \X allPaths \X allValues \X BOOLEAN) :
+         /\ \A target \in DOMAIN Target : 
+            LET targetIndexes == {i \in 1..Len(targetPathValues) : /\ targetPathValues[i][1] = target}
+            IN \/ Cardinality(targetIndexes) = 0
+               \/ /\ Cardinality(targetIndexes) = 1
+                  /\ LET targetPathValue == targetPathValues[CHOOSE index \in targetIndexes : TRUE]
+                     IN
+                        /\ targetPathValue[2] \ (DOMAIN Target[target]) = {}
+                        /\ targetPathValue[3] \in Target[target][targetPathValue[2]]}
+
+\* Add a set of changes to the transaction log
+Change ==
+   /\ \E changes \in ValidChanges :
          /\ transactions' = Append(transactions, [index   |-> Len(transactions) + 1,
                                                   atomic  |-> FALSE,
                                                   sync    |-> FALSE,
-                                                  changes |-> [i \in 1..Len(tss) |-> [
-                                                     target |-> tss[i],
-                                                     path   |-> paths[(i%Len(paths))+1],
-                                                     value  |-> values[(i%Len(values))+1],
-                                                     delete |-> d]],
+                                                  changes |-> changes,
                                                   status  |-> [state |-> Pending]])
    /\ UNCHANGED <<configurations, targets>>
 
@@ -236,10 +247,7 @@ Init ==
    /\ masters = [t \in Target |-> [master |-> Nil, term |-> 0]]
 
 Next ==
-   \/ \E n \in Node :
-         \E ts \in SUBSET Target :
-            \E b \in BOOLEAN :
-               Change(n, ts, b)
+   \/ Change
    \/ \E n \in Node :
          \E t \in DOMAIN transactions :
             ReconcileTransaction(n, t)
@@ -251,5 +259,5 @@ Spec == Init /\ [][Next]_vars
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Jan 13 04:09:42 PST 2022 by jordanhalterman
+\* Last modified Thu Jan 13 13:56:08 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
