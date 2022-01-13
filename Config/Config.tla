@@ -59,14 +59,7 @@ ASSUME /\ \A t \in DOMAIN Target :
 ----
 
 (*
-   TYPE Change == [ 
-      target ::= target \in STRING,
-      path   ::= path \in STRING, 
-      value  ::= value \in STRING, 
-      delete ::= delete \in BOOLEAN 
-   ]
-
-   TYPE State ::= state \in {Pending, Validating, Applying, Complete, Failed}
+   TYPE Status ::= status \in {Pending, Validating, Applying, Complete, Failed}
 
    TYPE Transaction == [ 
       id       ::= id \in STRING,
@@ -74,27 +67,25 @@ ASSUME /\ \A t \in DOMAIN Target :
       revision ::= revision \in Nat,
       atomic   ::= atomic \in BOOLEAN,
       sync     ::= sync \in BOOLEAN,
-      changes  ::= [t \in SUBSET Target |-> 
-                      [p \in SUBSET Path |-> 
-      changes  ::= [i \in 1..Nat |-> changes[i] \in Change],
-      status   ::= [state ::= state \in State]]
+      changes  ::= [
+         target \in SUBSET (DOMAIN Target) |-> [
+            path \in SUBSET (DOMAIN Target[target]) |-> [
+               value  ::= value \in STRING, 
+               delete ::= delete \in BOOLEAN]]],
+      status ::= status \in Status]
    
-   TYPE Element == [
-      path    ::= path \in STRING, 
-      value   ::= value \in STRING, 
-      index   ::= index \in Nat,
-      deleted ::= deleted \in BOOLEAN]
-
-
    TYPE Configuration == [
       id       ::= id \in STRING,
       revision ::= revision \in Nat,
       target   ::= target \in STRING,
-      elements ::= [i \in 1..Nat |-> elements[i] \in Element],
-      status   ::= [
-         transactionIndex ::= transactionIndex \in Nat,
-         targetIndex      ::= targetIndex \in Nat,
-         mastershipTerm   ::= mastershipTerm \in Nat]]
+      paths  ::= [
+         path \in SUBSET (DOMAIN Target[target]) |-> [
+            value   ::= value \in STRING, 
+            index   ::= index \in Nat,
+            deleted ::= delete \in BOOLEAN]],
+      transactionIndex ::= transactionIndex \in Nat,
+      syncIndex        ::= syncIndex \in Nat,
+      mastershipTerm   ::= mastershipTerm \in Nat]
 *)
 
 \* A sequence of transactions
@@ -141,7 +132,7 @@ Change ==
                                                   atomic  |-> FALSE,
                                                   sync    |-> FALSE,
                                                   changes |-> changes,
-                                                  status  |-> [state |-> Pending]])
+                                                  status  |-> Pending])
    /\ UNCHANGED <<configurations, targets>>
 
 ----
@@ -150,53 +141,44 @@ Change ==
 This section models the Transaction log reconciler.
 *)
 
-RemoveElement(elements, path) == [i \in {e \in DOMAIN elements : elements[e].path # path} |-> elements[i]]
-
-AddElement(elements, element) == Append(elements, element)
-
-UpdateElement(elements, element) == AddElement(RemoveElement(elements, element.path), element)
-
-Paths(elements, changes) == {e.path : e \in elements} \cup {c.path : c \in elements}
-
-UpdateElements(elements, changes) ==
-   LET configPaths == {e.path : e \in elements}
-       configMap == [path \in configPaths |-> CHOOSE e \in elements : e.path = path]
-       changePaths == {c.path : c \in changes}
-       changeMap == [path \in changePaths |-> CHOOSE c \in changes : c.path = path]
-       allPaths == configPaths \cup changePaths
-   IN
-      Seq({IF path \in DOMAIN changeMap THEN changeMap[path] ELSE configMap[path] : path \in allPaths})
-
 \* Reconcile the transaction log
 ReconcileTransaction(n, tx) ==
       \* If the transaction is Pending, begin validation if the prior transaction
       \* has already been applied. This simplifies concurrency control in the controller
       \* and guarantees transactions are applied to the configurations in sequential order.
-   /\ \/ /\ tx.status.state = Pending
+   /\ \/ /\ tx.status = Pending
          /\ \/ /\ tx.index > 1
-               /\ transactions[tx.index - 1].status.state \in {Complete, Failed}
+               /\ transactions[tx.index - 1].status \in {Complete, Failed}
             \/ tx.index = 1
-         /\ transactions' = [transactions EXCEPT ![tx.index].status.state = Validating]
+         /\ transactions' = [transactions EXCEPT ![tx.index].status = Validating]
          /\ UNCHANGED <<configurations>>
       \* If the transaction is in the Validating state, compute and validate the 
-      \* Configuration for each target. Mark the transaction Failed if validation
-      \* fails any target. If validation is successful, proceed to Applying.
-      \/ /\ tx.status.state = Validating
-         \* TODO: Validate the target configurations here
-         /\ transactions' = [transactions EXCEPT ![tx.index].status.state = Applying]
+      \* Configuration for each target. 
+      \/ /\ tx.status = Validating
+         \* If validation fails any target, mark the transaction Failed. 
+         \* If validation is successful, proceed to Applying.
+         /\ \E valid \in BOOLEAN :
+               \/ /\ valid
+                  /\ transactions' = [transactions EXCEPT ![tx.index].status = Applying]
+               \/ /\ ~valid
+                  /\ transactions' = [transactions EXCEPT ![tx.index].status = Failed]
          /\ UNCHANGED <<configurations>>
       \* If the transaction is in the Applying state, update the Configuration for each
       \* target and Complete the transaction.
-      \/ /\ tx.status.state = Applying
+      \/ /\ tx.status = Applying
          /\ \/ /\ tx.atomic
                \* TODO: Apply atomic transactions here
-               /\ transactions' = [transactions EXCEPT ![tx.index].status.state = Complete]
+               /\ transactions' = [transactions EXCEPT ![tx.index].status = Complete]
                /\ UNCHANGED <<configurations>>
          /\ \/ /\ ~tx.atomic
-               /\ configurations' = [t \in Target |-> [
-                                        configurations[t] EXCEPT !.elements = UpdateElements(configurations[t].elements, tx.changes),
-                                                                 !.status.transactionIndex = tx.index]]
-               /\ transactions' = [transactions EXCEPT ![tx.index].status.state = Complete]
+               \* Add the transaction index to each updated path
+               /\ configurations' = [
+                     t \in DOMAIN Target |-> [
+                        configurations[t] EXCEPT 
+                           !.paths = [path \in DOMAIN tx.changes |-> 
+                              tx.changes[path] @@ [index |-> tx.index]] @@ configurations[t].paths,
+                           !.transactionIndex = tx.index]]
+               /\ transactions' = [transactions EXCEPT ![tx.index].status = Complete]
    /\ UNCHANGED <<targets>>
 
 ----
@@ -211,17 +193,31 @@ ReconcileConfiguration(n, c) ==
    \* If the configuration's mastership term is less than the current mastership term,
    \* assume the target may have restarted/reconnected and perform a full reconciliation
    \* of the target configuration from the root path.
-   /\ \/ /\ masters[c.target].term > c.status.mastershipTerm
-         \* TODO: Reconcile the target state here
-         /\ configurations' = [configurations EXCEPT ![c.id].status.mastershipTerm = masters[c.target].term,
-                                                     ![c.id].status.targetIndex = c.status.transactionIndex]
+   /\ \/ /\ masters[c.target].term > c.mastershipTerm
+         \* Merge the configuration paths with the target paths, removing paths 
+         \* that have been marked deleted
+         /\ targets' = [targets EXCEPT ![c.target] = 
+               [p \in {p \in DOMAIN c.paths : ~c.paths[p].deleted} |-> [value |-> c.paths[p]]] @@ 
+               [p \in {p \in DOMAIN targets[c.target] : ~c.paths[p].deleted} |-> targets[c.target][p]]]
+         \* Set the configuration's mastership term and sync index
+         /\ configurations' = [configurations EXCEPT ![c.id].mastershipTerm = masters[c.target].term,
+                                                     ![c.id].syncIndex = c.transactionIndex]
    \* If the Configuration's transaction index is greater than the target index,
    \* reconcile the configuration with the target. Once the target has been updated,
-   \* update the target index to match the reconciled transaction index.
-   /\ \/ /\ masters[c.target].term = c.status.mastershipTerm
-         /\ c.status.transactionIndex > c.status.targetIndex
-         \* TODO: Reconcile the target state here
-         /\ configurations' = [configurations EXCEPT ![c.id].status.targetIndex = c.status.transactionIndex]
+   \* update the sync index to match the reconciled transaction index.
+   /\ \/ /\ masters[c.target].term = c.mastershipTerm
+         /\ c.transactionIndex > c.syncIndex
+         \* Compute the set of updated and deleted paths by comparing
+         \* their indexes to the target's last sync index.
+         /\ LET updatedPaths == {p \in DOMAIN c.paths : c.paths[p].index > c.syncIndex}
+                deletedPaths == {p \in updatedPaths : c.paths[p].deleted}
+            IN
+               \* Update the target paths by adding/updating paths that have changed and
+               \* removing paths that have been deleted since the last sync.
+               /\ targets' = [targets EXCEPT ![c.target] = 
+                     [p \in updatedPaths \ deletedPaths |-> c.paths[p]] @@ 
+                     [p \in DOMAIN targets[c.target] \ deletedPaths |-> targets[c.target][p]]]
+         /\ configurations' = [configurations EXCEPT ![c.id].syncIndex = c.transactionIndex]
    /\ UNCHANGED <<transactions>>
 
 ----
@@ -239,11 +235,9 @@ Init ==
                                           value   |-> Nil,
                                           index   |-> 0,
                                           deleted |-> FALSE]]]]
-   /\ targets = [t \in Target |-> [
-                    id     |-> t,
-                    config |-> [path \in {} |-> [
-                                   path |-> path,
-                                   value |-> Nil]]]]
+   /\ targets = [t \in Target |-> 
+                   [path \in {} |-> [
+                       value |-> Nil]]]
    /\ masters = [t \in Target |-> [master |-> Nil, term |-> 0]]
 
 Next ==
@@ -259,5 +253,5 @@ Spec == Init /\ [][Next]_vars
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Jan 13 13:56:08 PST 2022 by jordanhalterman
+\* Last modified Thu Jan 13 15:45:19 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
