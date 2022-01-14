@@ -207,7 +207,7 @@ ReconcileTransaction(n, tx) ==
                            !.paths = [path \in DOMAIN tx.changes |-> 
                               tx.changes[path] @@ [index |-> tx.index]] @@ configurations[t].paths,
                            !.txIndex = tx.index,
-                           !.status           = ConfigurationPending]]
+                           !.status  = ConfigurationPending]]
                /\ transactions' = [transactions EXCEPT ![tx.index].status = TransactionComplete]
    /\ UNCHANGED <<targets>>
 
@@ -218,7 +218,20 @@ This section models the Configuration reconciler.
 *)
 
 ReconcileConfiguration(n, c) ==
-   /\ \/ /\ c.status = ConfigurationInitializing
+   /\ \/ /\ c.status = ConfigurationPending
+            \* If the configuration is marked ConfigurationPending and mastership 
+            \* has changed (indicated by an increased mastership term), mark the
+            \* configuration ConfigurationInitializing to force full re-synchronization.
+         /\ \/ /\ masters[c.target].term > c.mastershipTerm
+               /\ configurations' = [configurations EXCEPT ![c.id].status         = ConfigurationInitializing,
+                                                           ![c.id].mastershipTerm = masters[c.target].term]
+            \* If the configuration is marked ConfigurationPending and the values have
+            \* changed (determined by comparing the transaction index to the last sync 
+            \* index), mark the configuration ConfigurationUpdating to push the changes
+            \* to the target.
+            \/ /\ c.syncIndex < c.txIndex
+               /\ configurations' = [configurations EXCEPT ![c.id].status = ConfigurationUpdating]
+      \/ /\ c.status = ConfigurationInitializing
          /\ masters[c.target].master = n
          \* Merge the configuration paths with the target paths, removing paths 
          \* that have been marked deleted
@@ -247,13 +260,6 @@ ReconcileConfiguration(n, c) ==
                      [p \in DOMAIN targets[c.target] \ deletedPaths |-> targets[c.target][p]]]
          /\ configurations' = [configurations EXCEPT ![c.id].status    = ConfigurationComplete,
                                                      ![c.id].syncIndex = c.txIndex]
-      \* If the configuration is marked ConfigurationPending and mastership has changed
-      \* (indicated by an increased mastership term), mark the configuration
-      \* ConfigurationInitializing to force full re-synchronization.
-      \/ /\ c.status = ConfigurationPending
-         /\ masters[c.target].term > c.mastershipTerm
-         /\ configurations' = [configurations EXCEPT ![c.id].status         = ConfigurationInitializing,
-                                                     ![c.id].mastershipTerm = masters[c.target].term]
       \* If the configuration is in a completed state and mastership has been lost,
       \* revert it to ConfigurationPending. This can occur when the connection to the
       \* target has been lost and the mastership is no longer valid.
@@ -296,5 +302,5 @@ Spec == Init /\ [][Next]_vars
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Jan 13 23:04:14 PST 2022 by jordanhalterman
+\* Last modified Thu Jan 13 23:17:03 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
