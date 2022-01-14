@@ -243,12 +243,14 @@ ReconcileConfiguration(n, c) ==
          /\ masters[configurations[c].target].master = n
          \* Merge the configuration paths with the target paths, removing paths 
          \* that have been marked deleted
-         /\ targets' = [targets EXCEPT ![configurations[c].target] = 
-               [p \in {p \in DOMAIN c.paths : ~configurations[c].paths[p].deleted} |-> [value |-> configurations[c].paths[p]]] @@ 
-               [p \in {p \in DOMAIN targets[configurations[c].target] : ~configurations[c].paths[p].deleted} |-> targets[configurations[c].target][p]]]
-         \* Set the configuration's status to Complete
-         /\ configurations' = [configurations EXCEPT ![c].status    = ConfigurationComplete,
-                                                     ![c].syncIndex = configurations[c].txIndex]
+         /\ LET deletePaths == {p \in DOMAIN configurations[c].paths : configurations[c].paths[p].deleted}
+            IN
+               /\ targets' = [targets EXCEPT ![configurations[c].target] = 
+                     [p \in (DOMAIN c.paths \ deletePaths) |-> [value |-> configurations[c].paths[p]]] @@ 
+                     [p \in (DOMAIN targets[configurations[c].target] \ deletePaths) |-> targets[configurations[c].target][p]]]
+               \* Set the configuration's status to Complete
+               /\ configurations' = [configurations EXCEPT ![c].status    = ConfigurationComplete,
+                                                           ![c].syncIndex = configurations[c].txIndex]
       \* If the configuration is marked ConfigurationUpdating, we only need to
       \* push paths that have changed since the target was initialized or last
       \* updated by the controller. The set of changes made since the last 
@@ -312,5 +314,5 @@ Spec == Init /\ [][Next]_vars
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Jan 14 15:25:59 PST 2022 by jordanhalterman
+\* Last modified Fri Jan 14 15:33:11 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
