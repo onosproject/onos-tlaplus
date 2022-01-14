@@ -133,6 +133,14 @@ vars == <<transactions, configurations, targets>>
 
 ----
 
+ChangeMaster(n, t) ==
+   /\ masters[t].master # n
+   /\ masters' = [masters EXCEPT ![t].term   = masters[t].term + 1,
+                                 ![t].master = n]
+   /\ UNCHANGED <<transactions, configurations>>
+
+----
+
 (*
 This section models the northbound API for the configuration service.
 *)
@@ -171,44 +179,44 @@ This section models the Transaction log reconciler.
 *)
 
 \* Reconcile the transaction log
-ReconcileTransaction(n, tx) ==
+ReconcileTransaction(n, i) ==
       \* If the transaction is Pending, begin validation if the prior transaction
       \* has already been applied. This simplifies concurrency control in the controller
       \* and guarantees transactions are applied to the configurations in sequential order.
-   /\ \/ /\ tx.status = TransactionPending
-         /\ \/ /\ tx.index > 1
-               /\ transactions[tx.index - 1].status \in {TransactionComplete, TransactionFailed}
-            \/ tx.index = 1
-         /\ transactions' = [transactions EXCEPT ![tx.index].status = TransactionValidating]
+   /\ \/ /\ transactions[i].status = TransactionPending
+         /\ \/ /\ transactions[i].index > 1
+               /\ transactions[transactions[i].index - 1].status \in {TransactionComplete, TransactionFailed}
+            \/ transactions[i].index = 1
+         /\ transactions' = [transactions EXCEPT ![transactions[i].index].status = TransactionValidating]
          /\ UNCHANGED <<configurations>>
       \* If the transaction is in the Validating state, compute and validate the 
       \* Configuration for each target. 
-      \/ /\ tx.status = TransactionValidating
+      \/ /\ transactions[i].status = TransactionValidating
          \* If validation fails any target, mark the transaction Failed. 
          \* If validation is successful, proceed to Applying.
          /\ \E valid \in BOOLEAN :
                \/ /\ valid
-                  /\ transactions' = [transactions EXCEPT ![tx.index].status = TransactionApplying]
+                  /\ transactions' = [transactions EXCEPT ![transactions[i].index].status = TransactionApplying]
                \/ /\ ~valid
-                  /\ transactions' = [transactions EXCEPT ![tx.index].status = TransactionFailed]
+                  /\ transactions' = [transactions EXCEPT ![transactions[i].index].status = TransactionFailed]
          /\ UNCHANGED <<configurations>>
       \* If the transaction is in the Applying state, update the Configuration for each
       \* target and Complete the transaction.
-      \/ /\ tx.status = TransactionApplying
-         /\ \/ /\ tx.atomic
+      \/ /\ transactions[i].status = TransactionApplying
+         /\ \/ /\ transactions[i].atomic
                \* TODO: Apply atomic transactions here
-               /\ transactions' = [transactions EXCEPT ![tx.index].status = TransactionComplete]
+               /\ transactions' = [transactions EXCEPT ![transactions[i].index].status = TransactionComplete]
                /\ UNCHANGED <<configurations>>
-         /\ \/ /\ ~tx.atomic
+         /\ \/ /\ ~transactions[i].atomic
                \* Add the transaction index to each updated path
                /\ configurations' = [
                      t \in DOMAIN Target |-> [
                         configurations[t] EXCEPT 
-                           !.paths = [path \in DOMAIN tx.changes |-> 
-                              tx.changes[path] @@ [index |-> tx.index]] @@ configurations[t].paths,
-                           !.txIndex = tx.index,
+                           !.paths = [path \in DOMAIN transactions[i].changes |-> 
+                              transactions[i].changes[path] @@ [index |-> transactions[i].index]] @@ configurations[t].paths,
+                           !.txIndex = transactions[i].index,
                            !.status  = ConfigurationPending]]
-               /\ transactions' = [transactions EXCEPT ![tx.index].status = TransactionComplete]
+               /\ transactions' = [transactions EXCEPT ![transactions[i].index].status = TransactionComplete]
    /\ UNCHANGED <<targets>>
 
 ----
@@ -218,55 +226,55 @@ This section models the Configuration reconciler.
 *)
 
 ReconcileConfiguration(n, c) ==
-   /\ \/ /\ c.status = ConfigurationPending
+   /\ \/ /\ configurations[c].status = ConfigurationPending
             \* If the configuration is marked ConfigurationPending and mastership 
             \* has changed (indicated by an increased mastership term), mark the
             \* configuration ConfigurationInitializing to force full re-synchronization.
-         /\ \/ /\ masters[c.target].term > c.mastershipTerm
-               /\ configurations' = [configurations EXCEPT ![c.id].status         = ConfigurationInitializing,
-                                                           ![c.id].mastershipTerm = masters[c.target].term]
+         /\ \/ /\ masters[configurations[c].target].term > configurations[c].mastershipTerm
+               /\ configurations' = [configurations EXCEPT ![c].status         = ConfigurationInitializing,
+                                                           ![c].mastershipTerm = masters[configurations[c].target].term]
             \* If the configuration is marked ConfigurationPending and the values have
             \* changed (determined by comparing the transaction index to the last sync 
             \* index), mark the configuration ConfigurationUpdating to push the changes
             \* to the target.
-            \/ /\ c.syncIndex < c.txIndex
-               /\ configurations' = [configurations EXCEPT ![c.id].status = ConfigurationUpdating]
-      \/ /\ c.status = ConfigurationInitializing
-         /\ masters[c.target].master = n
+            \/ /\ configurations[c].syncIndex < configurations[c].txIndex
+               /\ configurations' = [configurations EXCEPT ![c].status = ConfigurationUpdating]
+      \/ /\ configurations[c].status = ConfigurationInitializing
+         /\ masters[configurations[c].target].master = n
          \* Merge the configuration paths with the target paths, removing paths 
          \* that have been marked deleted
-         /\ targets' = [targets EXCEPT ![c.target] = 
-               [p \in {p \in DOMAIN c.paths : ~c.paths[p].deleted} |-> [value |-> c.paths[p]]] @@ 
-               [p \in {p \in DOMAIN targets[c.target] : ~c.paths[p].deleted} |-> targets[c.target][p]]]
+         /\ targets' = [targets EXCEPT ![configurations[c].target] = 
+               [p \in {p \in DOMAIN c.paths : ~configurations[c].paths[p].deleted} |-> [value |-> configurations[c].paths[p]]] @@ 
+               [p \in {p \in DOMAIN targets[configurations[c].target] : ~configurations[c].paths[p].deleted} |-> targets[configurations[c].target][p]]]
          \* Set the configuration's status to Complete
-         /\ configurations' = [configurations EXCEPT ![c.id].status    = ConfigurationComplete,
-                                                     ![c.id].syncIndex = c.txIndex]
+         /\ configurations' = [configurations EXCEPT ![c].status    = ConfigurationComplete,
+                                                     ![c].syncIndex = configurations[c].txIndex]
       \* If the configuration is marked ConfigurationUpdating, we only need to
       \* push paths that have changed since the target was initialized or last
       \* updated by the controller. The set of changes made since the last 
       \* synchronization are identified by comparing the index of each path-value
       \* to the last synchronization index, `syncIndex`.
-      \/ /\ c.status = ConfigurationUpdating
-         /\ masters[c.target].master = n
+      \/ /\ configurations[c].status = ConfigurationUpdating
+         /\ masters[configurations[c].target].master = n
          \* Compute the set of updated and deleted paths by comparing
          \* their indexes to the target's last sync index.
-         /\ LET updatedPaths == {p \in DOMAIN c.paths : c.paths[p].index > c.syncIndex}
-                deletedPaths == {p \in updatedPaths : c.paths[p].deleted}
+         /\ LET updatedPaths == {p \in DOMAIN configurations[c].paths : configurations[c].paths[p].index > configurations[c].syncIndex}
+                deletedPaths == {p \in updatedPaths : configurations[c].paths[p].deleted}
             IN
                \* Update the target paths by adding/updating paths that have changed and
                \* removing paths that have been deleted since the last sync.
-               /\ targets' = [targets EXCEPT ![c.target] = 
-                     [p \in updatedPaths \ deletedPaths |-> c.paths[p]] @@ 
-                     [p \in DOMAIN targets[c.target] \ deletedPaths |-> targets[c.target][p]]]
-         /\ configurations' = [configurations EXCEPT ![c.id].status    = ConfigurationComplete,
-                                                     ![c.id].syncIndex = c.txIndex]
+               /\ targets' = [targets EXCEPT ![configurations[c].target] = 
+                     [p \in updatedPaths \ deletedPaths |-> configurations[c].paths[p]] @@ 
+                     [p \in DOMAIN targets[configurations[c].target] \ deletedPaths |-> targets[configurations[c].target][p]]]
+         /\ configurations' = [configurations EXCEPT ![c].status    = ConfigurationComplete,
+                                                     ![c].syncIndex = configurations[c].txIndex]
       \* If the configuration is not already ConfigurationPending and mastership
       \* has been lost revert it. This can occur when the connection to the
       \* target has been lost and the mastership is no longer valid.
       \* TODO: We still need to model mastership changes
       \/ /\ c.status # ConfigurationPending
-         /\ masters[c.target].master = Nil
-         /\ configurations' = [configurations EXCEPT ![c.id].status = ConfigurationPending]
+         /\ masters[configurations[c].target].master = Nil
+         /\ configurations' = [configurations EXCEPT ![c].status = ConfigurationPending]
    /\ UNCHANGED <<transactions>>
 
 ----
@@ -277,30 +285,32 @@ Init and next state predicates
 
 Init ==
    /\ transactions = <<>>
-   /\ configurations = [t \in Target |-> [
-                           id       |-> t,
-                           config |-> [path \in {} |-> [
-                                          path    |-> path,
-                                          value   |-> Nil,
-                                          index   |-> 0,
-                                          deleted |-> FALSE]]]]
+   /\ configurations = [t \in Target |-> 
+                           [id     |-> t,
+                            config |-> 
+                               [path \in {} |-> 
+                                   [path    |-> path,
+                                    value   |-> Nil,
+                                    index   |-> 0,
+                                    deleted |-> FALSE]]]]
    /\ targets = [t \in Target |-> 
-                   [path \in {} |-> [
-                       value |-> Nil]]]
+                    [path \in {} |-> 
+                        [value |-> Nil]]]
    /\ masters = [t \in Target |-> [master |-> Nil, term |-> 0]]
 
 Next ==
    \/ Change
    \/ \E n \in Node :
-         \E t \in DOMAIN transactions :
-            ReconcileTransaction(n, t)
-   \/ \E n \in Node :
-         \E c \in configurations :
-            ReconcileConfiguration(n, c)
+         \/ \E t \in DOMAIN Target :
+               ChangeMaster(n, t)
+         \/ \E t \in DOMAIN transactions :
+               ReconcileTransaction(n, t)
+         \/ \E t \in DOMAIN configurations :
+               ReconcileConfiguration(n, t)
 
 Spec == Init /\ [][Next]_vars
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Jan 13 23:30:10 PST 2022 by jordanhalterman
+\* Last modified Fri Jan 14 15:25:59 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
