@@ -260,11 +260,11 @@ ReconcileConfiguration(n, c) ==
                      [p \in DOMAIN targets[c.target] \ deletedPaths |-> targets[c.target][p]]]
          /\ configurations' = [configurations EXCEPT ![c.id].status    = ConfigurationComplete,
                                                      ![c.id].syncIndex = c.txIndex]
-      \* If the configuration is in a completed state and mastership has been lost,
-      \* revert it to ConfigurationPending. This can occur when the connection to the
+      \* If the configuration is not already ConfigurationPending and mastership
+      \* has been lost revert it. This can occur when the connection to the
       \* target has been lost and the mastership is no longer valid.
       \* TODO: We still need to model mastership changes
-      \/ /\ c.status \in {ConfigurationComplete, ConfigurationFailed}
+      \/ /\ c.status # ConfigurationPending
          /\ masters[c.target].master = Nil
          /\ configurations' = [configurations EXCEPT ![c.id].status = ConfigurationPending]
    /\ UNCHANGED <<transactions>>
@@ -302,5 +302,5 @@ Spec == Init /\ [][Next]_vars
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Jan 13 23:17:03 PST 2022 by jordanhalterman
+\* Last modified Thu Jan 13 23:30:10 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
