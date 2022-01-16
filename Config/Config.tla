@@ -66,9 +66,10 @@ ASSUME /\ IsFiniteSet(Node)
              /\ n \in STRING
              
 ASSUME /\ \A t \in DOMAIN Target : 
-             /\ IsFiniteSet(Target[t])
              /\ t \notin Node 
              /\ t \in STRING
+             /\ \A p \in DOMAIN Target[t] :
+                   IsFiniteSet(Target[t][p])
 
 ----
 
@@ -207,7 +208,7 @@ ReconcileTransaction(n, i) ==
                \* TODO: Apply atomic transactions here
                /\ transactions' = [transactions EXCEPT ![transactions[i].index].status = TransactionComplete]
                /\ UNCHANGED <<configurations>>
-         /\ \/ /\ ~transactions[i].atomic
+            \/ /\ ~transactions[i].atomic
                \* Add the transaction index to each updated path
                /\ configurations' = [
                      t \in DOMAIN Target |-> [
@@ -314,5 +315,5 @@ Spec == Init /\ [][Next]_vars
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Jan 14 15:33:11 PST 2022 by jordanhalterman
+\* Last modified Sun Jan 16 10:00:11 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
