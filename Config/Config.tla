@@ -185,9 +185,9 @@ ReconcileTransaction(n, i) ==
       \* has already been applied. This simplifies concurrency control in the controller
       \* and guarantees transactions are applied to the configurations in sequential order.
    /\ \/ /\ transactions[i].status = TransactionPending
-         /\ \/ /\ transactions[i].index > 1
+         /\ \/ /\ transactions[i].index - 1 \in DOMAIN transactions
                /\ transactions[transactions[i].index - 1].status \in {TransactionComplete, TransactionFailed}
-            \/ transactions[i].index = 1
+            \/ transactions[i].index - 1 \notin DOMAIN transactions
          /\ transactions' = [transactions EXCEPT ![transactions[i].index].status = TransactionValidating]
          /\ UNCHANGED <<configurations>>
       \* If the transaction is in the Validating state, compute and validate the 
@@ -315,5 +315,5 @@ Spec == Init /\ [][Next]_vars
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Jan 16 10:00:11 PST 2022 by jordanhalterman
+\* Last modified Mon Jan 17 23:06:50 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
