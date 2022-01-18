@@ -125,22 +125,22 @@ VARIABLE transaction
 VARIABLE configuration
 
 \* A record of target states
-VARIABLE targets
+VARIABLE target
 
 \* A record of target masters
-VARIABLE masters
+VARIABLE master
 
 VARIABLE history
 
-vars == <<transaction, configuration, masters, targets, history>>
+vars == <<transaction, configuration, master, target, history>>
 
 ----
 
 ChangeMaster(n, t) ==
-   /\ masters[t].master # n
-   /\ masters' = [masters EXCEPT ![t].term   = masters[t].term + 1,
-                                 ![t].master = n]
-   /\ UNCHANGED <<transaction, configuration, targets, history>>
+   /\ master[t].master # n
+   /\ master' = [master EXCEPT ![t].term   = master[t].term + 1,
+                               ![t].master = n]
+   /\ UNCHANGED <<transaction, configuration, target, history>>
 
 ----
 
@@ -195,7 +195,7 @@ Change ==
                                              sync    |-> FALSE,
                                              changes |-> changes,
                                              status  |-> TransactionPending])
-   /\ UNCHANGED <<configuration, masters, targets, history>>
+   /\ UNCHANGED <<configuration, master, target, history>>
 
 ----
 
@@ -249,7 +249,7 @@ ReconcileTransaction(n, t) ==
                            configuration[r]]
                /\ history' = [r \in DOMAIN Target |-> Append(history[r], configuration'[r])]
                /\ transaction' = [transaction EXCEPT ![t].status = TransactionComplete]
-   /\ UNCHANGED <<masters, targets>>
+   /\ UNCHANGED <<master, target>>
 
 ----
 
@@ -259,32 +259,34 @@ This section models the Configuration reconciler.
 
 ReconcileConfiguration(n, c) ==
    /\ \/ /\ configuration[c].status = ConfigurationPending
+         /\ master[configuration[c].target].master # Nil
             \* If the configuration is marked ConfigurationPending and mastership 
             \* has changed (indicated by an increased mastership term), mark the
             \* configuration ConfigurationInitializing to force full re-synchronization.
-         /\ \/ /\ masters[configuration[c].target].term > configuration[c].term
+         /\ \/ /\ master[configuration[c].target].term > configuration[c].term
                /\ configuration' = [configuration EXCEPT ![c].status = ConfigurationInitializing,
-                                                         ![c].term   = masters[configuration[c].target].term]
+                                                         ![c].term   = master[configuration[c].target].term]
                /\ history' = [history EXCEPT ![c] = Append(history[c], configuration'[c])]
             \* If the configuration is marked ConfigurationPending and the values have
             \* changed (determined by comparing the transaction index to the last sync 
             \* index), mark the configuration ConfigurationUpdating to push the changes
             \* to the target.
-            \/ /\ configuration[c].syncIndex < configuration[c].txIndex
+            \/ /\ master[configuration[c].target].term = configuration[c].term
+               /\ configuration[c].syncIndex < configuration[c].txIndex
                /\ configuration' = [configuration EXCEPT ![c].status = ConfigurationUpdating]
                /\ history' = [history EXCEPT ![c] = Append(history[c], configuration'[c])]
-         /\ UNCHANGED <<targets>>
+         /\ UNCHANGED <<target>>
       \/ /\ configuration[c].status = ConfigurationInitializing
-         /\ masters[configuration[c].target].master = n
+         /\ master[configuration[c].target].master = n
          \* Merge the configuration paths with the target paths, removing paths 
          \* that have been marked deleted
          /\ LET deletePaths == {p \in DOMAIN configuration[c].paths : configuration[c].paths[p].deleted}
                 configPaths == DOMAIN configuration[c].paths \ deletePaths
-                targetPaths == DOMAIN targets[configuration[c].target] \ deletePaths
+                targetPaths == DOMAIN target[configuration[c].target] \ deletePaths
             IN
-               /\ targets' = [targets EXCEPT ![configuration[c].target] = 
+               /\ target' = [target EXCEPT ![configuration[c].target] = 
                      [p \in configPaths |-> [value |-> configuration[c].paths[p]]] 
-                        @@ [p \in targetPaths |-> targets[configuration[c].target][p]]]
+                        @@ [p \in targetPaths |-> target[configuration[c].target][p]]]
                \* Set the configuration's status to Complete
          /\ configuration' = [configuration EXCEPT ![c].status    = ConfigurationComplete,
                                                    ![c].syncIndex = configuration[c].txIndex]
@@ -295,20 +297,20 @@ ReconcileConfiguration(n, c) ==
       \* synchronization are identified by comparing the index of each path-value
       \* to the last synchronization index, `syncIndex`.
       \/ /\ configuration[c].status = ConfigurationUpdating
-         /\ masters[configuration[c].target].master = n
+         /\ master[configuration[c].target].master = n
          \* Compute the set of updated and deleted paths by comparing
          \* their indexes to the target's last sync index.
          /\ LET updatePaths == {p \in DOMAIN configuration[c].paths :
                                     configuration[c].paths[p].index > configuration[c].syncIndex}
                 deletePaths == {p \in updatePaths : configuration[c].paths[p].deleted}
                 configPaths == updatePaths \ deletePaths
-                targetPaths == DOMAIN targets[configuration[c].target] \ deletePaths
+                targetPaths == DOMAIN target[configuration[c].target] \ deletePaths
             IN
                \* Update the target paths by adding/updating paths that have changed and
                \* removing paths that have been deleted since the last sync.
-               /\ targets' = [targets EXCEPT ![configuration[c].target] = 
+               /\ target' = [target EXCEPT ![configuration[c].target] = 
                      [p \in configPaths |-> configuration[c].paths[p]] 
-                        @@ [p \in targetPaths |-> targets[configuration[c].target][p]]]
+                        @@ [p \in targetPaths |-> target[configuration[c].target][p]]]
          /\ configuration' = [configuration EXCEPT ![c].status    = ConfigurationComplete,
                                                    ![c].syncIndex = configuration[c].txIndex]
          /\ history' = [history EXCEPT ![c] = Append(history[c], configuration'[c])]
@@ -317,11 +319,11 @@ ReconcileConfiguration(n, c) ==
       \* target has been lost and the mastership is no longer valid.
       \* TODO: We still need to model mastership changes
       \/ /\ configuration[c].status # ConfigurationPending
-         /\ masters[configuration[c].target].master = Nil
+         /\ master[configuration[c].target].master = Nil
          /\ configuration' = [configuration EXCEPT ![c].status = ConfigurationPending]
          /\ history' = [history EXCEPT ![c] = Append(history[c], configuration'[c])]
-         /\ UNCHANGED <<targets>>
-   /\ UNCHANGED <<transaction, masters>>
+         /\ UNCHANGED <<target>>
+   /\ UNCHANGED <<transaction, master>>
 
 ----
 
@@ -343,10 +345,10 @@ Init ==
                             syncIndex |-> 0,
                             term      |-> 0,
                             status    |-> ConfigurationPending]]
-   /\ targets = [t \in DOMAIN Target |-> 
+   /\ target = [t \in DOMAIN Target |-> 
                     [path \in {} |-> 
                         [value |-> Nil]]]
-   /\ masters = [t \in DOMAIN Target |-> [master |-> Nil, term |-> 0]]
+   /\ master = [t \in DOMAIN Target |-> [master |-> Nil, term |-> 0]]
    /\ history = [t \in DOMAIN Target |-> <<>>]
 
 Next ==
@@ -373,5 +375,5 @@ Inv ==
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Jan 18 12:23:05 PST 2022 by jordanhalterman
+\* Last modified Tue Jan 18 12:53:43 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
