@@ -180,45 +180,46 @@ This section models the Transaction log reconciler.
 *)
 
 \* Reconcile the transaction log
-ReconcileTransaction(n, i) ==
-      \* If the transaction is Pending, begin validation if the prior transaction
-      \* has already been applied. This simplifies concurrency control in the controller
-      \* and guarantees transactions are applied to the configurations in sequential order.
-   /\ \/ /\ transactions[i].status = TransactionPending
-         /\ \/ /\ transactions[i].index - 1 \in DOMAIN transactions
-               /\ transactions[transactions[i].index - 1].status \in {TransactionComplete, TransactionFailed}
-            \/ transactions[i].index - 1 \notin DOMAIN transactions
-         /\ transactions' = [transactions EXCEPT ![transactions[i].index].status = TransactionValidating]
-         /\ UNCHANGED <<configurations>>
-      \* If the transaction is in the Validating state, compute and validate the 
-      \* Configuration for each target. 
-      \/ /\ transactions[i].status = TransactionValidating
-         \* If validation fails any target, mark the transaction Failed. 
-         \* If validation is successful, proceed to Applying.
-         /\ \E valid \in BOOLEAN :
-               \/ /\ valid
-                  /\ transactions' = [transactions EXCEPT ![transactions[i].index].status = TransactionApplying]
-               \/ /\ ~valid
-                  /\ transactions' = [transactions EXCEPT ![transactions[i].index].status = TransactionFailed]
-         /\ UNCHANGED <<configurations>>
-      \* If the transaction is in the Applying state, update the Configuration for each
-      \* target and Complete the transaction.
-      \/ /\ transactions[i].status = TransactionApplying
-         /\ \/ /\ transactions[i].atomic
-               \* TODO: Apply atomic transactions here
-               /\ transactions' = [transactions EXCEPT ![transactions[i].index].status = TransactionComplete]
-               /\ UNCHANGED <<configurations>>
-            \/ /\ ~transactions[i].atomic
-               \* Add the transaction index to each updated path
-               /\ configurations' = [
-                     t \in DOMAIN Target |-> [
-                        configurations[t] EXCEPT 
-                           !.paths = [path \in DOMAIN transactions[i].changes |-> 
-                              transactions[i].changes[path] @@ [index |-> transactions[i].index]] @@ configurations[t].paths,
-                           !.txIndex = transactions[i].index,
-                           !.status  = ConfigurationPending]]
-               /\ transactions' = [transactions EXCEPT ![transactions[i].index].status = TransactionComplete]
-   /\ UNCHANGED <<targets>>
+ReconcileTransaction(n, t) ==
+   LET tx == transactions[t]
+   IN    \* If the transaction is Pending, begin validation if the prior transaction
+         \* has already been applied. This simplifies concurrency control in the controller
+         \* and guarantees transactions are applied to the configurations in sequential order.
+      /\ \/ /\ tx.status = TransactionPending
+            /\ \/ /\ tx.index - 1 \in DOMAIN transactions
+                  /\ transactions[tx.index - 1].status \in {TransactionComplete, TransactionFailed}
+               \/ tx.index - 1 \notin DOMAIN transactions
+            /\ transactions' = [transactions EXCEPT ![tx.index].status = TransactionValidating]
+            /\ UNCHANGED <<configurations>>
+         \* If the transaction is in the Validating state, compute and validate the 
+         \* Configuration for each target. 
+         \/ /\ tx.status = TransactionValidating
+            \* If validation fails any target, mark the transaction Failed. 
+            \* If validation is successful, proceed to Applying.
+            /\ \E valid \in BOOLEAN :
+                  \/ /\ valid
+                     /\ transactions' = [transactions EXCEPT ![tx.index].status = TransactionApplying]
+                  \/ /\ ~valid
+                     /\ transactions' = [transactions EXCEPT ![tx.index].status = TransactionFailed]
+            /\ UNCHANGED <<configurations>>
+         \* If the transaction is in the Applying state, update the Configuration for each
+         \* target and Complete the transaction.
+         \/ /\ tx.status = TransactionApplying
+            /\ \/ /\ tx.atomic
+                  \* TODO: Apply atomic transactions here
+                  /\ transactions' = [transactions EXCEPT ![tx.index].status = TransactionComplete]
+                  /\ UNCHANGED <<configurations>>
+               \/ /\ ~tx.atomic
+                  \* Add the transaction index to each updated path
+                  /\ configurations' = [
+                        r \in DOMAIN Target |-> [
+                           configurations[r] EXCEPT 
+                              !.paths = [path \in DOMAIN tx.changes |-> 
+                                 tx.changes[path] @@ [index |-> tx.index]] @@ configurations[t].paths,
+                              !.txIndex = tx.index,
+                              !.status  = ConfigurationPending]]
+                  /\ transactions' = [transactions EXCEPT ![tx.index].status = TransactionComplete]
+      /\ UNCHANGED <<targets>>
 
 ----
 
@@ -315,5 +316,5 @@ Spec == Init /\ [][Next]_vars
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Jan 17 23:06:50 PST 2022 by jordanhalterman
+\* Last modified Mon Jan 17 23:09:38 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
