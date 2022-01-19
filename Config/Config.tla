@@ -108,6 +108,9 @@ changes in the Transaction log.
                value  ::= value \in STRING, 
                delete ::= delete \in BOOLEAN]]],
       rollback ::= index \in Nat,
+      sources  ::= 
+         target \in SUBSET (DOMAIN Target) |-> [
+            path \in SUBSET (DOMAIN Target[target]) |-> value \in STRING]],
       status   ::= status \in TransactionStatus]
    
    TYPE ConfigurationStatus ::= status \in 
@@ -511,7 +514,7 @@ Next ==
 
 Spec == Init /\ [][Next]_vars
 
-Inv ==
+Order ==
    /\ \A a, b \in DOMAIN transaction :
          transaction[a].index > transaction[b].index =>
             (transaction[a].status \in {TransactionComplete, TransactionFailed} => 
@@ -521,7 +524,14 @@ Inv ==
             /\ configuration[t].txIndex >= history[t][c].txIndex
             /\ configuration[t].syncIndex >= history[t][c].syncIndex
 
+THEOREM Safety == Spec => []Order
+
+Completion == \A i \in DOMAIN transaction : 
+                 transaction[i].status \in {TransactionComplete, TransactionFailed}
+
+THEOREM Liveness == Spec => <>Completion
+
 =============================================================================
 \* Modification History
-\* Last modified Tue Jan 18 20:14:43 PST 2022 by jordanhalterman
+\* Last modified Tue Jan 18 23:25:00 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
