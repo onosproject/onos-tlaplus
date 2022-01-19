@@ -38,7 +38,7 @@ CONSTANTS
 CONSTANT Node
 
 (*
-Target is the possible targets, paths, and values
+Target is the set of all targets and their possible paths and values.
 
 Example:
    Target == [
@@ -79,6 +79,12 @@ ASSUME /\ \A t \in DOMAIN Target :
 ----
 
 (*
+Configuration update/rollback requests are tracked and processed through
+two data types. Transactions represent the lifecycle of a single configuration
+change request and are stored in an append-only log. Configurations represent
+the desired configuration of a gNMI target based on the aggregate of relevant
+changes in the Transaction log.
+
    TYPE TransactionType ::= type \in
       {TransactionChange,
        TransactionRollback}
@@ -126,12 +132,11 @@ ASSUME /\ \A t \in DOMAIN Target :
       status    ::= status \in ConfigurationStatus]
 *)
 
-\* A sequence of transactions
-\* Each transactions contains a record of 'changes' for a set of targets
+\* A transaction log. Transactions may either request a set
+\* of changes to a set of targets or rollback a prior change.
 VARIABLE transaction
 
-\* A record of target configurations
-\* Each configuration represents the desired state of the target
+\* A record of per-target configurations
 VARIABLE configuration
 
 \* A record of target states
@@ -140,12 +145,23 @@ VARIABLE target
 \* A record of target masters
 VARIABLE master
 
+\* A history variable tracking past configuration changes
 VARIABLE history
 
 vars == <<transaction, configuration, master, target, history>>
 
 ----
 
+(*
+This section models mastership for the configuration service.
+
+Mastership is used primarily to track the lifecycle of individual
+configuration targets and react to state changes on the southbound.
+Each target is assigned a master from the Node set, and masters
+can be unset when the target disconnects.
+*)
+
+\* Set node n as the master for target t
 SetMaster(n, t) ==
    /\ master[t].master # n
    /\ master' = [master EXCEPT ![t].term   = master[t].term + 1,
@@ -160,8 +176,21 @@ UnsetMaster(t) ==
 ----
 
 (*
-This section models the northbound API for the configuration service.
+This section models configuration changes and rollbacks. Changes
+are appended to the transaction log and processed asynchronously.
 *)
+
+Value(s, t, p) ==
+   LET value == CHOOSE v \in s : v.target = t /\ v.path = p
+   IN
+      [value  |-> value.value,
+       delete |-> value.delete]
+
+Paths(s, t) ==
+   [p \in {v.path : v \in {v \in s : v.target = t}} |-> Value(s, t, p)]
+
+Changes(s) ==
+   [t \in {v.target : v \in s} |-> Paths(s, t)]
 
 ValidValues(t, p) ==
    UNION {{[value |-> v, delete |-> FALSE] : v \in Target[t][p]}, {[value |-> Nil, delete |-> TRUE]}}
@@ -172,36 +201,28 @@ ValidPaths(t) ==
 ValidTargets ==
    UNION {{p @@ [target |-> t] : p \in ValidPaths(t)} : t \in DOMAIN Target}
 
-ValidPath(s, t, p) ==
-   LET value == CHOOSE v \in s : v.target = t /\ v.path = p
-   IN
-      [value  |-> value.value,
-       delete |-> value.delete]
-
-ValidTarget(s, t) ==
-   [p \in {v.path : v \in {v \in s : v.target = t}} |-> ValidPath(s, t, p)]
-
-ValidChange(s) ==
-   [t \in {v.target : v \in s} |-> ValidTarget(s, t)]
-
+\* The set of all valid sets of changes to all targets and their paths. 
+\* The set of possible changes is computed from the Target model value.
 ValidChanges == 
    LET changeSets == {s \in SUBSET ValidTargets :
                          \A t \in DOMAIN Target :
                             \A p \in DOMAIN Target[t] :
                                Cardinality({v \in s : v.target = t /\ v.path = p}) <= 1}
    IN
-      {ValidChange(s) : s \in changeSets}
+      {Changes(s) : s \in changeSets}
 
+\* The next available index in the transaction log.
+\* This is computed as the max of the existing indexes in the log to
+\* allow for changes to the log (e.g. log compaction) to be modeled.
 NextIndex ==
    IF DOMAIN transaction = {} THEN
       1
    ELSE 
       LET i == CHOOSE i \in DOMAIN transaction :
-         \A j \in DOMAIN transaction :
-            i >= j
+         \A j \in DOMAIN transaction : i >= j
       IN i + 1
 
-\* Add a set of changes to the transaction log
+\* Add a set of changes 'c' to the transaction log
 Change(c) ==
    /\ transaction' = transaction @@ (NextIndex :> [type    |-> TransactionChange,
                                                    index   |-> NextIndex,
@@ -212,11 +233,11 @@ Change(c) ==
                                                    status  |-> TransactionPending])
    /\ UNCHANGED <<configuration, master, target, history>>
 
-\* Add a rollback to the transaction log
+\* Add a rollback of transaction 't' to the transaction log
 Rollback(t) ==
    /\ transaction[t].type = TransactionChange
    /\ transaction' = transaction @@ (NextIndex :> [type     |-> TransactionRollback,
-                                                   index   |-> NextIndex,
+                                                   index    |-> NextIndex,
                                                    atomic   |-> FALSE,
                                                    sync     |-> FALSE,
                                                    rollback |-> t,
@@ -227,8 +248,22 @@ Rollback(t) ==
 
 (*
 This section models the Transaction log reconciler.
+
+Transactions come in two flavors:
+- Change transactions contain a set of changes to be applied to a set 
+of targets
+- Rollback transactions reference a prior change transaction to be
+reverted to the previous state
+
+Both types of transaction are reconciled in stages:
+* Pending - waiting for prior transactions to complete
+* Validating - validating the requested changes
+* Applying - applying the changes to target configurations
+* Complete - completed applying changes successfully
+* Failed - failed applying changes
 *)
 
+\* Reconcile a change transaction
 ReconcileChange(n, i) ==
    \* If the transaction is Pending, begin validation if the prior transaction
    \* has already been applied. This simplifies concurrency control in the controller
@@ -268,6 +303,11 @@ ReconcileChange(n, i) ==
                ELSE
                   configuration[t]]
       /\ history' = [r \in DOMAIN Target |-> Append(history[r], configuration'[r])]
+      \* The transaction state is updated to include the source configuration modified.
+      \* The source configuration is used to optimize rollbacks.
+      \* Note that in a real-world implementation, the order of updates to the configuration
+      \* and to add the source info to the transaction could have serious ramifications.
+      \* If one is updated without the other, rollbacks may not be possible.
       /\ transaction' = [transaction EXCEPT 
             ![i].status  = TransactionComplete,
             ![i].sources = [t \in DOMAIN transaction[i].changes |->
@@ -275,6 +315,7 @@ ReconcileChange(n, i) ==
                                      ~transaction[i].changes[t][p].delete} 
                IN [p \in updatePaths \intersect DOMAIN configuration[t].paths |-> configuration[t].paths[p]]]]
 
+\* Reconcile a rollback transaction
 ReconcileRollback(n, i) ==
    \* If the transaction is Pending, begin validation if the prior transaction
    \* has already been applied. This simplifies concurrency control in the controller
@@ -303,9 +344,10 @@ ReconcileRollback(n, i) ==
                            /\ transaction' = [transaction EXCEPT ![i].status = TransactionApplying]
                         ELSE
                            /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
-               \* If the source transaction failed, fail the rollback.
+               \* If the source transaction is not in the log, fail the rollback.
                \/ /\ transaction[i].rollback \notin DOMAIN transaction
                   /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
+         \* If the source transaction failed, fail the rollback.
          \/ /\ transaction[transaction[i].rollback].status = TransactionFailed
             /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
       /\ UNCHANGED <<configuration, history>>
@@ -340,7 +382,9 @@ ReconcileRollback(n, i) ==
       /\ history' = [r \in DOMAIN Target |-> Append(history[r], configuration'[r])]
       /\ transaction' = [transaction EXCEPT ![i].status = TransactionComplete]
 
-\* Reconcile the transaction log
+\* Reconcile a transaction in the transaction log
+\* Transactions can be of one of two types: Change and Rollback.
+\* The logic for processing different types of transactions differs.
 ReconcileTransaction(n, i) ==
    /\ \/ /\ transaction[i].type = TransactionChange
          /\ ReconcileChange(n, i)
@@ -479,5 +523,5 @@ Inv ==
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Jan 18 16:30:29 PST 2022 by jordanhalterman
+\* Last modified Tue Jan 18 20:14:43 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
