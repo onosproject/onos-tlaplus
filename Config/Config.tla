@@ -285,15 +285,16 @@ ReconcileRollback(n, i) ==
          \/ i - 1 \notin DOMAIN transaction
       /\ transaction' = [transaction EXCEPT ![i].status = TransactionValidating]
       /\ UNCHANGED <<configuration, history>>
-   \* If the transaction is in the Validating state, compute and validate the 
-   \* Configuration for each target. 
+   \* If the transaction is in the Validating state, validate the rollback.
+   \* A transaction can only be rolled back if:
+   \* 1. The source transaction is in the log
+   \* 2. The source transaction was applied successfully (did not fail validation)
+   \* 3. The source transaction is the most recent change for each path is modified
    \/ /\ transaction[i].status = TransactionValidating
       /\ \/ /\ transaction[transaction[i].rollback].status = TransactionComplete
-            \* A transaction can be rolled back if:
-            \* 1. The source transaction is in the log
-            \* 2. The source transaction is complete
-            \* 3. For all changes in the transaction, no more recent change has been made
             /\ \/ /\ transaction[i].rollback \in DOMAIN transaction
+                  \* Determine whether the source transaction is the most recent change
+                  \* by comparing the configuration path indexes to the transaction index.
                   /\ LET canRollback == \A t \in DOMAIN transaction[transaction[i].rollback].changes :
                                            \A p \in DOMAIN transaction[transaction[i].rollback].changes[t] :
                                               configuration[t].paths[p].index = transaction[i].rollback
@@ -302,15 +303,17 @@ ReconcileRollback(n, i) ==
                            /\ transaction' = [transaction EXCEPT ![i].status = TransactionApplying]
                         ELSE
                            /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
+               \* If the source transaction failed, fail the rollback.
                \/ /\ transaction[i].rollback \notin DOMAIN transaction
                   /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
          \/ /\ transaction[transaction[i].rollback].status = TransactionFailed
             /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
       /\ UNCHANGED <<configuration, history>>
-   \* If the transaction is in the Applying state, update the Configuration for each
-   \* target and Complete the transaction.
+   \* If the transcation is in the Applying state, roll back the Configuration for
+   \* each target and Complete the transaction.
    \/ /\ transaction[i].status = TransactionApplying
-      \* Revert the target configurations
+      \* Target configurations are rolled back by reverting to the source paths/values
+      \* stored in the transaction when it was applied.
       /\ configuration' = [
             t \in DOMAIN Target |-> 
                IF t \in DOMAIN transaction[transaction[i].rollback].changes THEN
@@ -476,5 +479,5 @@ Inv ==
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Jan 18 16:25:57 PST 2022 by jordanhalterman
+\* Last modified Tue Jan 18 16:30:29 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
