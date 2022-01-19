@@ -110,7 +110,9 @@ changes in the Transaction log.
       rollback ::= index \in Nat,
       sources  ::= 
          target \in SUBSET (DOMAIN Target) |-> [
-            path \in SUBSET (DOMAIN Target[target]) |-> value \in STRING]],
+            path \in SUBSET (DOMAIN Target[target]) |-> [
+               value ::= value \in STRING,
+               index ::= index \in Nat]]],
       status   ::= status \in TransactionStatus]
    
    TYPE ConfigurationStatus ::= status \in 
@@ -533,5 +535,5 @@ THEOREM Liveness == Spec => <>Completion
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Jan 18 23:25:00 PST 2022 by jordanhalterman
+\* Last modified Tue Jan 18 23:31:05 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
