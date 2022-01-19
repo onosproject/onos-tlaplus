@@ -463,7 +463,6 @@ ReconcileConfiguration(n, c) ==
       \* If the configuration is not already ConfigurationPending and mastership
       \* has been lost revert it. This can occur when the connection to the
       \* target has been lost and the mastership is no longer valid.
-      \* TODO: We still need to model mastership changes
       \/ /\ configuration[c].status # ConfigurationPending
          /\ master[configuration[c].target].master = Nil
          /\ configuration' = [configuration EXCEPT ![c].status = ConfigurationPending]
@@ -535,5 +534,5 @@ THEOREM Liveness == Spec => <>Completion
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Jan 18 23:31:05 PST 2022 by jordanhalterman
+\* Last modified Wed Jan 19 00:12:18 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
