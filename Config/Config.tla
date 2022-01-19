@@ -13,6 +13,11 @@ INSTANCE TLC
 \* An empty constant
 CONSTANT Nil
 
+\* Transaction type constants
+CONSTANTS
+   TransactionChange,
+   TransactionRollback
+
 \* Transaction status constants
 CONSTANTS 
    TransactionPending,
@@ -74,6 +79,10 @@ ASSUME /\ \A t \in DOMAIN Target :
 ----
 
 (*
+   TYPE TransactionType ::= type \in
+      {TransactionChange,
+       TransactionRollback}
+
    TYPE TransactionStatus ::= status \in 
       {TransactionPending, 
        TransactionValidating,
@@ -81,8 +90,8 @@ ASSUME /\ \A t \in DOMAIN Target :
        TransactionComplete, 
        TransactionFailed}
 
-   TYPE Transaction == [ 
-      id       ::= id \in STRING,
+   TYPE Transaction == [
+      type     ::= type \in TransactionType,
       index    ::= index \in Nat,
       revision ::= revision \in Nat,
       atomic   ::= atomic \in BOOLEAN,
@@ -92,6 +101,7 @@ ASSUME /\ \A t \in DOMAIN Target :
             path \in SUBSET (DOMAIN Target[target]) |-> [
                value  ::= value \in STRING, 
                delete ::= delete \in BOOLEAN]]],
+      rollback ::= index \in Nat,
       status   ::= status \in TransactionStatus]
    
    TYPE ConfigurationStatus ::= status \in 
@@ -136,10 +146,15 @@ vars == <<transaction, configuration, master, target, history>>
 
 ----
 
-ChangeMaster(n, t) ==
+SetMaster(n, t) ==
    /\ master[t].master # n
    /\ master' = [master EXCEPT ![t].term   = master[t].term + 1,
                                ![t].master = n]
+   /\ UNCHANGED <<transaction, configuration, target, history>>
+
+UnsetMaster(t) ==
+   /\ master[t].master # Nil
+   /\ master' = [master EXCEPT ![t].master = Nil]
    /\ UNCHANGED <<transaction, configuration, target, history>>
 
 ----
@@ -176,25 +191,36 @@ ValidChanges ==
                                Cardinality({v \in s : v.target = t /\ v.path = p}) <= 1}
    IN
       {ValidChange(s) : s \in changeSets}
-                                
 
 NextIndex ==
-   IF Len(transaction) = 0 THEN
+   IF DOMAIN transaction = {} THEN
       1
-   ELSE
-      LET i == CHOOSE i \in DOMAIN transaction : 
-          \A j \in DOMAIN transaction : 
-              transaction[j].index <= transaction[i].index
-      IN transaction[i].index + 1
+   ELSE 
+      LET i == CHOOSE i \in DOMAIN transaction :
+         \A j \in DOMAIN transaction :
+            i >= j
+      IN i + 1
 
 \* Add a set of changes to the transaction log
-Change ==
-   /\ \E changes \in ValidChanges :
-      /\ transaction' = Append(transaction, [index   |-> NextIndex,
-                                             atomic  |-> FALSE,
-                                             sync    |-> FALSE,
-                                             changes |-> changes,
-                                             status  |-> TransactionPending])
+Change(c) ==
+   /\ transaction' = transaction @@ (NextIndex :> [type    |-> TransactionChange,
+                                                   index   |-> NextIndex,
+                                                   atomic  |-> FALSE,
+                                                   sync    |-> FALSE,
+                                                   changes |-> c,
+                                                   sources |-> <<>>,
+                                                   status  |-> TransactionPending])
+   /\ UNCHANGED <<configuration, master, target, history>>
+
+\* Add a rollback to the transaction log
+Rollback(t) ==
+   /\ transaction[t].type = TransactionChange
+   /\ transaction' = transaction @@ (NextIndex :> [type     |-> TransactionRollback,
+                                                   index   |-> NextIndex,
+                                                   atomic   |-> FALSE,
+                                                   sync     |-> FALSE,
+                                                   rollback |-> t,
+                                                   status   |-> TransactionPending])
    /\ UNCHANGED <<configuration, master, target, history>>
 
 ----
@@ -203,52 +229,120 @@ Change ==
 This section models the Transaction log reconciler.
 *)
 
-\* Reconcile the transaction log
-ReconcileTransaction(n, t) ==
-      \* If the transaction is Pending, begin validation if the prior transaction
-      \* has already been applied. This simplifies concurrency control in the controller
-      \* and guarantees transactions are applied to the configurations in sequential order.
-   /\ \/ /\ transaction[t].status = TransactionPending
-         /\ \/ /\ transaction[t].index - 1 \in DOMAIN transaction
-               /\ transaction[transaction[t].index - 1].status \in {TransactionComplete, TransactionFailed}
-            \/ transaction[t].index - 1 \notin DOMAIN transaction
-         /\ transaction' = [transaction EXCEPT ![t].status = TransactionValidating]
-         /\ UNCHANGED <<configuration, history>>
-      \* If the transaction is in the Validating state, compute and validate the 
-      \* Configuration for each target. 
-      \/ /\ transaction[t].status = TransactionValidating
-         \* If validation fails any target, mark the transaction Failed. 
-         \* If validation is successful, proceed to Applying.
-         /\ \E valid \in BOOLEAN :
-               \/ /\ valid
-                  /\ transaction' = [transaction EXCEPT ![t].status = TransactionApplying]
-               \/ /\ ~valid
-                  /\ transaction' = [transaction EXCEPT ![t].status = TransactionFailed]
-         /\ UNCHANGED <<configuration, history>>
-      \* If the transaction is in the Applying state, update the Configuration for each
-      \* target and Complete the transaction.
-      \/ /\ transaction[t].status = TransactionApplying
-         /\ \/ /\ transaction[t].atomic
-               \* TODO: Apply atomic transactions here
-               /\ transaction' = [transaction EXCEPT ![t].status = TransactionComplete]
-               /\ UNCHANGED <<configuration, history>>
-            \/ /\ ~transaction[t].atomic
-               \* Add the transaction index to each updated path
-               /\ configuration' = [
-                     r \in DOMAIN Target |-> 
-                        IF r \in DOMAIN transaction[t].changes THEN
-                           [configuration[r] EXCEPT 
-                              !.paths = [p \in DOMAIN transaction[t].changes[r] |-> 
-                                           [index   |-> transaction[t].index,
-                                            value   |-> transaction[t].changes[r][p].value,
-                                            deleted |-> transaction[t].changes[r][p].delete]]
-                                    @@ configuration[r].paths,
-                              !.txIndex = transaction[t].index,
-                              !.status  = ConfigurationPending]
+ReconcileChange(n, i) ==
+   \* If the transaction is Pending, begin validation if the prior transaction
+   \* has already been applied. This simplifies concurrency control in the controller
+   \* and guarantees transactions are applied to the configurations in sequential order.
+   \/ /\ transaction[i].status = TransactionPending
+      /\ \/ /\ i - 1 \in DOMAIN transaction
+            /\ transaction[i - 1].status \in {TransactionComplete, TransactionFailed}
+         \/ i - 1 \notin DOMAIN transaction
+      /\ transaction' = [transaction EXCEPT ![i].status = TransactionValidating]
+      /\ UNCHANGED <<configuration, history>>
+   \* If the transaction is in the Validating state, compute and validate the 
+   \* Configuration for each target. 
+   \/ /\ transaction[i].status = TransactionValidating
+      \* If validation fails any target, mark the transaction Failed. 
+      \* If validation is successful, proceed to Applying.
+      /\ \E valid \in BOOLEAN :
+            IF valid THEN
+               /\ transaction' = [transaction EXCEPT ![i].status = TransactionApplying]
+            ELSE
+               /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
+      /\ UNCHANGED <<configuration, history>>
+   \* If the transaction is in the Applying state, update the Configuration for each
+   \* target and Complete the transaction.
+   \/ /\ transaction[i].status = TransactionApplying
+      \* Update the target configurations, adding the transaction index to each updated path
+      /\ configuration' = [
+            t \in DOMAIN Target |-> 
+               IF t \in DOMAIN transaction[i].changes THEN
+                  [configuration[t] EXCEPT 
+                     !.paths = [p \in DOMAIN transaction[i].changes[t] |-> 
+                                  [index   |-> transaction[i].index,
+                                   value   |-> transaction[i].changes[t][p].value,
+                                   deleted |-> transaction[i].changes[t][p].delete]]
+                           @@ configuration[t].paths,
+                     !.txIndex = transaction[i].index,
+                     !.status  = ConfigurationPending]
+               ELSE
+                  configuration[t]]
+      /\ history' = [r \in DOMAIN Target |-> Append(history[r], configuration'[r])]
+      /\ transaction' = [transaction EXCEPT 
+            ![i].status  = TransactionComplete,
+            ![i].sources = [t \in DOMAIN transaction[i].changes |->
+               LET updatePaths == {p \in DOMAIN transaction[i].changes[t] : 
+                                     ~transaction[i].changes[t][p].delete} 
+               IN [p \in updatePaths \intersect DOMAIN configuration[t].paths |-> configuration[t].paths[p]]]]
+
+ReconcileRollback(n, i) ==
+   \* If the transaction is Pending, begin validation if the prior transaction
+   \* has already been applied. This simplifies concurrency control in the controller
+   \* and guarantees transactions are applied to the configurations in sequential order.
+   \/ /\ transaction[i].status = TransactionPending
+      /\ \/ /\ i - 1 \in DOMAIN transaction
+            /\ transaction[i - 1].status \in {TransactionComplete, TransactionFailed}
+         \/ i - 1 \notin DOMAIN transaction
+      /\ transaction' = [transaction EXCEPT ![i].status = TransactionValidating]
+      /\ UNCHANGED <<configuration, history>>
+   \* If the transaction is in the Validating state, compute and validate the 
+   \* Configuration for each target. 
+   \/ /\ transaction[i].status = TransactionValidating
+      /\ \/ /\ transaction[transaction[i].rollback].status = TransactionComplete
+            \* A transaction can be rolled back if:
+            \* 1. The source transaction is in the log
+            \* 2. The source transaction is complete
+            \* 3. For all changes in the transaction, no more recent change has been made
+            /\ \/ /\ transaction[i].rollback \in DOMAIN transaction
+                  /\ LET canRollback == \A t \in DOMAIN transaction[transaction[i].rollback].changes :
+                                           \A p \in DOMAIN transaction[transaction[i].rollback].changes[t] :
+                                              configuration[t].paths[p].index = transaction[i].rollback
+                     IN
+                        IF canRollback THEN
+                           /\ transaction' = [transaction EXCEPT ![i].status = TransactionApplying]
                         ELSE
-                           configuration[r]]
-               /\ history' = [r \in DOMAIN Target |-> Append(history[r], configuration'[r])]
-               /\ transaction' = [transaction EXCEPT ![t].status = TransactionComplete]
+                           /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
+               \/ /\ transaction[i].rollback \notin DOMAIN transaction
+                  /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
+         \/ /\ transaction[transaction[i].rollback].status = TransactionFailed
+            /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
+      /\ UNCHANGED <<configuration, history>>
+   \* If the transaction is in the Applying state, update the Configuration for each
+   \* target and Complete the transaction.
+   \/ /\ transaction[i].status = TransactionApplying
+      \* Revert the target configurations
+      /\ configuration' = [
+            t \in DOMAIN Target |-> 
+               IF t \in DOMAIN transaction[transaction[i].rollback].changes THEN
+                  LET adds      == {p \in DOMAIN transaction[transaction[i].rollback].changes[t] : 
+                                      /\ p \notin DOMAIN transaction[transaction[i].rollback].sources[t]
+                                      /\ ~transaction[transaction[i].rollback].changes[t][p].delete}
+                      updates   == {p \in DOMAIN transaction[transaction[i].rollback].changes[t] : 
+                                      /\ p \in DOMAIN transaction[transaction[i].rollback].sources[t]
+                                      /\ ~transaction[transaction[i].rollback].changes[t][p].delete}
+                      removes   == {p \in DOMAIN transaction[transaction[i].rollback].changes[t] : 
+                                      /\ p \in DOMAIN transaction[transaction[i].rollback].sources[t]
+                                      /\ transaction[transaction[i].rollback].changes[t][p].delete}
+                      changes   == adds \union updates \union removes
+                      unchanges == DOMAIN configuration[t].paths \ changes
+                  IN
+                     [configuration[t] EXCEPT 
+                        !.paths = [p \in unchanges |-> configuration[t].paths[p]]
+                                     @@ [p \in updates \union removes |-> 
+                                            transaction[transaction[i].rollback].sources[t][p]],
+                        !.txIndex = transaction[i].index,
+                        !.status  = ConfigurationPending]
+               ELSE
+                  configuration[t]]
+      /\ history' = [r \in DOMAIN Target |-> Append(history[r], configuration'[r])]
+      /\ transaction' = [transaction EXCEPT ![i].status = TransactionComplete]
+
+\* Reconcile the transaction log
+ReconcileTransaction(n, i) ==
+   /\ \/ /\ transaction[i].type = TransactionChange
+         /\ ReconcileChange(n, i)
+      \/ /\ transaction[i].type = TransactionRollback
+         /\ ReconcileRollback(n, i)
    /\ UNCHANGED <<master, target>>
 
 ----
@@ -352,14 +446,21 @@ Init ==
    /\ history = [t \in DOMAIN Target |-> <<>>]
 
 Next ==
-   \/ Change
+   \/ \E c \in ValidChanges : 
+         Change(c)
+   \/ \E t \in DOMAIN transaction :
+         Rollback(t)
    \/ \E n \in Node :
-         \/ \E t \in DOMAIN Target :
-               ChangeMaster(n, t)
-         \/ \E t \in DOMAIN transaction :
+         \E t \in DOMAIN Target :
+            SetMaster(n, t)
+   \/ \E t \in DOMAIN Target :
+         UnsetMaster(t)
+   \/ \E n \in Node :
+         \E t \in DOMAIN transaction :
                ReconcileTransaction(n, t)
-         \/ \E t \in DOMAIN configuration :
-               ReconcileConfiguration(n, t)
+   \/ \E n \in Node :
+         \E c \in DOMAIN configuration :
+               ReconcileConfiguration(n, c)
 
 Spec == Init /\ [][Next]_vars
 
@@ -375,5 +476,5 @@ Inv ==
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Jan 18 12:53:43 PST 2022 by jordanhalterman
+\* Last modified Tue Jan 18 16:25:57 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
