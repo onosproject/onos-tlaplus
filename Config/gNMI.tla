@@ -1,1 +1,0 @@
-../gNMI/gNMI.tla
