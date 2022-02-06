@@ -15,72 +15,40 @@ CONSTANT Nil
 
 \* Transaction type constants
 CONSTANTS
-   TransactionChange,
-   TransactionRollback
+   Change,
+   Rollback
 
 \* Transaction isolation constants
 CONSTANTS
-   IsolationDefault,
-   IsolationSerializable
+   ReadCommitted,
+   Serializable
 
-\* Transaction status constants
+\* Status constants
 CONSTANTS 
-   TransactionInitializing,
-   TransactionInitialized,
-   TransactionValidating,
-   TransactionValidated,
-   TransactionCommitting,
-   TransactionCommitted,
-   TransactionApplying,
-   TransactionApplied,
-   TransactionFailed
+   Pending,
+   Initializing,
+   Initialized,
+   Validating,
+   Validated,
+   Committing,
+   Committed,
+   Applying,
+   Applied,
+   Synchronizing,
+   Synchronized,
+   Persisted,
+   Failed
 
-TransactionStatus == 
-   <<TransactionInitializing,
-     TransactionInitialized,
-     TransactionValidating,
-     TransactionValidated,
-     TransactionCommitting,
-     TransactionCommitted,
-     TransactionApplying,
-     TransactionApplied,
-     TransactionFailed>>
-
-\* Proposal type constants
-CONSTANTS
-   ProposalChange,
-   ProposalRollback
-
-\* Proposal status constants
-CONSTANTS 
-   ProposalInitializing,
-   ProposalInitialized,
-   ProposalValidating,
-   ProposalValidated,
-   ProposalCommitting,
-   ProposalCommitted,
-   ProposalApplying,
-   ProposalApplied,
-   ProposalFailed
-
-ProposalStatus == 
-   <<ProposalInitializing,
-     ProposalInitialized,
-     ProposalValidating,
-     ProposalValidated,
-     ProposalCommitting,
-     ProposalCommitted,
-     ProposalApplying,
-     ProposalApplied,
-     ProposalFailed>>
-
-\* Configuration status constants
-CONSTANTS 
-   ConfigurationUnknown,
-   ConfigurationSynchronizing,
-   ConfigurationSynchronized,
-   ConfigurationPersisted,
-   ConfigurationFailed
+Status == 
+   <<Initializing,
+     Initialized,
+     Validating,
+     Validated,
+     Committing,
+     Committed,
+     Applying,
+     Applied,
+     Failed>>
 
 CONSTANTS
    Valid,
@@ -111,39 +79,23 @@ Example:
 *)
 CONSTANT Target
 
-Phase(S, s) == CHOOSE i \in DOMAIN S : S[i] = s
-
-TransactionPhase(s) == Phase(TransactionStatus, s)
-
-ProposalPhase(s) == Phase(ProposalStatus, s)
+Phase(s) == CHOOSE i \in DOMAIN Status : Status[i] = s
 
 ASSUME Nil \in STRING
 
-ASSUME TransactionInitializing \in STRING
-ASSUME TransactionInitialized \in STRING
-ASSUME TransactionValidating \in STRING
-ASSUME TransactionValidated \in STRING
-ASSUME TransactionCommitting \in STRING
-ASSUME TransactionCommitted \in STRING
-ASSUME TransactionApplying \in STRING
-ASSUME TransactionApplied \in STRING
-ASSUME TransactionFailed \in STRING
-
-ASSUME ProposalInitializing \in STRING
-ASSUME ProposalInitialized \in STRING
-ASSUME ProposalValidating \in STRING
-ASSUME ProposalValidated \in STRING
-ASSUME ProposalCommitting \in STRING
-ASSUME ProposalCommitted \in STRING
-ASSUME ProposalApplying \in STRING
-ASSUME ProposalApplied \in STRING
-ASSUME ProposalFailed \in STRING
-
-ASSUME ConfigurationUnknown \in STRING
-ASSUME ConfigurationSynchronizing \in STRING
-ASSUME ConfigurationSynchronized \in STRING
-ASSUME ConfigurationPersisted \in STRING
-ASSUME ConfigurationFailed \in STRING
+ASSUME Pending \in STRING
+ASSUME Initializing \in STRING
+ASSUME Initialized \in STRING
+ASSUME Validating \in STRING
+ASSUME Validated \in STRING
+ASSUME Committing \in STRING
+ASSUME Committed \in STRING
+ASSUME Applying \in STRING
+ASSUME Applied \in STRING
+ASSUME Synchronizing \in STRING
+ASSUME Synchronized \in STRING
+ASSUME Persisted \in STRING
+ASSUME Failed \in STRING
 
 ASSUME /\ IsFiniteSet(Node) 
        /\ \A n \in Node : 
@@ -166,23 +118,27 @@ change request and are stored in an append-only log. Configurations represent
 the desired configuration of a gNMI target based on the aggregate of relevant
 changes in the Transaction log.
 
-   TYPE TransactionType ::= type \in
-      {TransactionChange,
-       TransactionRollback}
+   TYPE Type ::= type \in
+      {Change,
+       Rollback}
 
-   TYPE TransactionStatus ::= status \in 
-      {TransactionInitializing,
-       TransactionInitialized,
-       TransactionValidating,
-       TransactionValidated,
-       TransactionCommitting,
-       TransactionCommitted,
-       TransactionApplying,
-       TransactionApplied,
-       TransactionFailed}
+   TYPE Status ::= status \in 
+      {Pending,
+       Initializing,
+       Initialized,
+       Validating,
+       Validated,
+       Committing,
+       Committed,
+       Applying,
+       Applied,
+       Synchronizing,
+       Synchronized,
+       Persisted,
+       Failed}
 
    TYPE Transaction == [
-      type      ::= type \in TransactionType,
+      type      ::= type \in Type,
       index     ::= index \in Nat,
       isolation ::= isolation \in {IsolationDefault, IsolationSerializable}
       values    ::= [
@@ -192,34 +148,23 @@ changes in the Transaction log.
                delete ::= delete \in BOOLEAN]]],
       rollback  ::= index \in Nat,
       targets   ::= targets \in SUBSET (DOMAIN Target)
-      status    ::= status \in TransactionStatus]
+      status    ::= status \in Status]
    
-   TYPE ProposalStatus ::= status \in 
-      {ProposalInitializing,
-       ProposalInitialized,
-       ProposalValidating,
-       ProposalValidated,
-       ProposalCommitting,
-       ProposalCommitted,
-       ProposalApplying,
-       ProposalApplied,
-       ProposalFailed}
-
    TYPE Proposal == [
-      index          ::= index \in Nat,
-      values         ::= [
+      type            ::= type \in Type,
+      index           ::= index \in Nat,
+      values          ::= [
          path \in SUBSET (DOMAIN Target[target].values) |-> [
             value  ::= value \in STRING, 
             delete ::= delete \in BOOLEAN]],
-      rollback       ::= index \in Nat,
-      prevIndex      ::= prevIndex \in Nat,
-      nextIndex      ::= nextIndex \in Nat,
-      rollbackIndex  ::= rollbackIndex \in Nat,
-      rollbackValues ::= [
+      rollback        ::= index \in Nat,
+      dependencyIndex ::= dependencyIndex \in Nat,
+      rollbackIndex   ::= rollbackIndex \in Nat,
+      rollbackValues  ::= [
          path \in SUBSET (DOMAIN Target[target].values) |-> [
             value  ::= value \in STRING, 
             delete ::= delete \in BOOLEAN]],
-      status       ::= status \in ProposalStatus]
+      status       ::= status \in Status]
    
    TYPE ConfigurationStatus ::= status \in 
       {ConfigurationUnknown,
@@ -247,7 +192,7 @@ changes in the Transaction log.
             value   ::= value \in STRING, 
             index   ::= index \in Nat,
             deleted ::= delete \in BOOLEAN]],
-      status    ::= status \in ConfigurationStatus]
+      status    ::= status \in Status]
 *)
 
 \* A transaction log. Transactions may either request a set
@@ -341,25 +286,25 @@ NextIndex ==
       IN i + 1
 
 \* Add a set of changes 'c' to the transaction log
-Change(c) ==
-   /\ \E isolation \in {IsolationDefault, IsolationSerializable} :
-         /\ transaction' = transaction @@ (NextIndex :> [type      |-> TransactionChange,
+RequestChange(c) ==
+   /\ \E isolation \in {ReadCommitted, Serializable} :
+         /\ transaction' = transaction @@ (NextIndex :> [type      |-> Change,
                                                          index     |-> NextIndex,
                                                          isolation |-> isolation,
                                                          values    |-> c,
                                                          targets   |-> {},
-                                                         status    |-> TransactionInitializing])
+                                                         status    |-> Initializing])
    /\ UNCHANGED <<proposal, configuration, mastership, target>>
 
 \* Add a rollback of transaction 't' to the transaction log
-Rollback(t) ==
-   /\ \E isolation \in {IsolationDefault, IsolationSerializable} :
-         /\ transaction' = transaction @@ (NextIndex :> [type      |-> TransactionRollback,
+RequestRollback(t) ==
+   /\ \E isolation \in {ReadCommitted, Serializable} :
+         /\ transaction' = transaction @@ (NextIndex :> [type      |-> Rollback,
                                                          index     |-> NextIndex,
                                                          isolation |-> isolation,
                                                          rollback  |-> t,
                                                          targets   |-> {},
-                                                         status    |-> TransactionInitializing])
+                                                         status    |-> Initializing])
    /\ UNCHANGED <<proposal, configuration, mastership, target>>
 
 ----
@@ -373,151 +318,173 @@ of targets
 - Rollback transactions reference a prior change transaction to be
 reverted to the previous state
 
-Both types of transaction are reconciled in stages:
-* Pending - waiting for prior transactions to complete
-* Validating - validating the requested changes
-* Applying - applying the changes to target configurations
-* Complete - completed applying changes successfully
-* Failed - failed applying changes
+Transacations proceed through a series of phases:
+* Initialize - create and link Proposals
+* Validate - validate changes and rollbacks
+* Commit - commit changes to Configurations
+* Apply - commit changes to Targets
 *)
 
 \* Reconcile a transaction
 ReconcileTransaction(n, i) ==
-   /\ \/ /\ transaction[i].status = TransactionInitializing
+      \* Initializing is the only transaction phase that's globally serialized.
+      \* While in the Initializing phase, the reconciler checks whether the
+      \* prior transaction has been Initialized before creating Proposals in
+      \* the Initialize phase. Once all of the transaction's proposals have
+      \* been Initialized, the transaction will be marked Initialized. If any
+      \* proposal is Failed, the transaction will be marked Failed as well.
+   /\ \/ /\ transaction[i].status = Initializing
+         \* Serialize transaction initialization
          /\ i-1 \in DOMAIN transaction => 
-               TransactionPhase(transaction[i-1].status) > TransactionPhase(TransactionInitializing)
+               Phase(transaction[i-1].status) > Phase(Initializing)
+         \* If the transaction's targets are not yet set, create proposals
+         \* and add targets to the transaction state.
          /\ \/ /\ transaction[i].targets = {}
-               /\ \/ /\ transaction[i].type = TransactionChange
+                  \* If the transaction is a change, the targets are taken
+                  \* from the change values.
+               /\ \/ /\ transaction[i].type = Change
                      /\ transaction' = [transaction EXCEPT ![i].targets = DOMAIN transaction[i].values]
                      /\ proposal' = [t \in DOMAIN proposal |-> 
                            IF t \in DOMAIN transaction[i].values THEN
-                              proposal[t] @@ (i :> [type           |-> ProposalChange,
-                                                    index          |-> i,
-                                                    values         |-> transaction[i].values[t],
-                                                    prevIndex      |-> 0,
-                                                    nextIndex      |-> 0,
-                                                    rollbackIndex  |-> 0,
-                                                    rollbackValues |-> <<>>,
-                                                    status |-> ProposalInitializing])
+                              proposal[t] @@ (i :> [type            |-> Change,
+                                                    index           |-> i,
+                                                    values          |-> transaction[i].values[t],
+                                                    dependencyIndex |-> 0,
+                                                    rollbackIndex   |-> 0,
+                                                    rollbackValues  |-> <<>>,
+                                                    status |-> Initializing])
                            ELSE
                               proposal[t]]
-                  \/ /\ transaction[i].type = TransactionRollback
+                  \* If the transaction is a rollback, the targets affected are 
+                  \* the targets of the change transaction being rolled back.
+                  \/ /\ transaction[i].type = Rollback
                      /\ \/ /\ transaction[i].rollback \in DOMAIN transaction
-                           /\ transaction[transaction[i].rollback].type = TransactionChange
+                           /\ transaction[transaction[i].rollback].type = Change
                            /\ transaction' = [transaction EXCEPT ![i].targets = 
                                                 DOMAIN transaction[transaction[i].rollback].values]
                            /\ proposal' = [t \in DOMAIN proposal |-> 
                                  IF t \in DOMAIN transaction[transaction[i].rollback].values THEN
-                                    proposal[t] @@ (i :> [type           |-> ProposalRollback,
-                                                          index          |-> i,
-                                                          rollback       |-> transaction[i].rollback,
-                                                          prevIndex      |-> 0,
-                                                          nextIndex      |-> 0,
-                                                          rollbackIndex  |-> 0,
-                                                          rollbackValues |-> <<>>,
-                                                          status         |-> ProposalInitializing])
+                                    proposal[t] @@ (i :> [type            |-> Rollback,
+                                                          index           |-> i,
+                                                          rollback        |-> transaction[i].rollback,
+                                                          dependencyIndex |-> 0,
+                                                          rollbackIndex   |-> 0,
+                                                          rollbackValues  |-> <<>>,
+                                                          status          |-> Initializing])
                                  ELSE
                                     proposal[t]]
                         \/ /\ \/ /\ transaction[i].rollback \in DOMAIN transaction
-                                 /\ transaction[transaction[i].rollback].type = TransactionRollback
+                                 /\ transaction[transaction[i].rollback].type = Rollback
                               \/ transaction[i].rollback \notin DOMAIN transaction
-                           /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
-                           /\ UNCHANGED <<proposal>>
+                           /\ transaction' = [transaction EXCEPT ![i].status = Failed]
+                           /\ UNCHANGED <<proposal>>                     
             \/ /\ transaction[i].targets # {}
-               /\ \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = ProposalInitialized
-                     /\ transaction' = [transaction EXCEPT ![i].status = TransactionInitialized]
+                  \* If all proposals have been Initialized, mark the transaction Initialized.
+               /\ \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Initialized
+                     /\ transaction' = [transaction EXCEPT ![i].status = Initialized]
                      /\ UNCHANGED <<proposal>>
-                  \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = ProposalFailed
-                     /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
+                  \* If any proposal has been Failed, mark the transaction Failed.
+                  \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = Failed
+                     /\ transaction' = [transaction EXCEPT ![i].status = Failed]
                      /\ UNCHANGED <<proposal>>
-      \/ /\ transaction[i].status = TransactionInitialized
+      \* Once the transaction has been Initialized, proceed to the Validate phase.
+      \* If any of the transaction's proposals depend on a Serializable transaction,
+      \* verify the dependency has been Validated to preserve serializability before 
+      \* moving the transaction to the Validate phase.
+      \/ /\ transaction[i].status = Initialized
          /\ \A t \in transaction[i].targets :
-               proposal[t][i].prevIndex # 0 =>
-                  (transaction[proposal[t][i].prevIndex].isolation = IsolationSerializable =>
-                     TransactionPhase(transaction[proposal[t][i].prevIndex].status) >= 
-                        TransactionPhase(TransactionValidated))
-         /\ transaction' = [transaction EXCEPT ![i].status = TransactionValidating]
+               proposal[t][i].dependencyIndex # 0 =>
+                  (transaction[proposal[t][i].dependencyIndex].isolation = Serializable =>
+                     Phase(transaction[proposal[t][i].dependencyIndex].status) >= Phase(Validated))
+         /\ transaction' = [transaction EXCEPT ![i].status = Validating]
          /\ UNCHANGED <<proposal>>
-      \/ /\ transaction[i].status = TransactionValidating
-         /\ \/ /\ \E t \in transaction[i].targets : 
-                     ProposalPhase(proposal[t][i].status) < ProposalPhase(ProposalValidating)
+      \/ /\ transaction[i].status = Validating
+            \* Move the transaction's proposals to the Validating state
+         /\ \/ /\ \E t \in transaction[i].targets : Phase(proposal[t][i].status) < Phase(Validating)
                /\ proposal' = [t \in DOMAIN proposal |-> 
                                  IF t \in transaction[i].targets THEN
-                                    [proposal[t] EXCEPT ![i].status = ProposalValidating]
+                                    [proposal[t] EXCEPT ![i].status = Validating]
                                  ELSE
                                     proposal[t]]
                /\ UNCHANGED <<transaction>>
-            \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = ProposalValidated
-               /\ transaction' = [transaction EXCEPT ![i].status = TransactionValidated]
+            \* If all proposals have been Validated, mark the transaction Validated.
+            \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Validated
+               /\ transaction' = [transaction EXCEPT ![i].status = Validated]
                /\ UNCHANGED <<proposal>>
-            \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = ProposalFailed
-               /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
+            \* If any proposal has been Failed, mark the transaction Failed.
+            \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = Failed
+               /\ transaction' = [transaction EXCEPT ![i].status = Failed]
                /\ UNCHANGED <<proposal>>
-      \/ /\ transaction[i].status = TransactionValidated
+      \* Once the transaction has been Validated, proceed to the Commit phase.
+      \* If any of the transaction's proposals depend on a Serializable transaction,
+      \* verify the dependency has been Committed to preserve serializability before 
+      \* moving the transaction to the Commit phase.
+      \/ /\ transaction[i].status = Validated
          /\ \A t \in transaction[i].targets :
-               proposal[t][i].prevIndex # 0 =>
-                  (transaction[proposal[t][i].prevIndex].isolation = IsolationSerializable =>
-                     TransactionPhase(transaction[proposal[t][i].prevIndex].status) >= 
-                        TransactionPhase(TransactionCommitted))
-         /\ transaction' = [transaction EXCEPT ![i].status = TransactionCommitting]
+               proposal[t][i].dependencyIndex # 0 =>
+                  (transaction[proposal[t][i].dependencyIndex].isolation = Serializable =>
+                     Phase(transaction[proposal[t][i].dependencyIndex].status) >= Phase(Committed))
+         /\ transaction' = [transaction EXCEPT ![i].status = Committing]
          /\ UNCHANGED <<proposal>>
-      \/ /\ transaction[i].status = TransactionCommitting
-         /\ \/ /\ \E t \in transaction[i].targets : 
-                     ProposalPhase(proposal[t][i].status) < ProposalPhase(ProposalCommitting)
+      \/ /\ transaction[i].status = Committing
+            \* Move the transaction's proposals to the Committing state
+         /\ \/ /\ \E t \in transaction[i].targets : Phase(proposal[t][i].status) < Phase(Committing)
                /\ proposal' = [t \in DOMAIN proposal |-> 
                                  IF t \in transaction[i].targets THEN
-                                    [proposal[t] EXCEPT ![i].status = ProposalCommitting]
+                                    [proposal[t] EXCEPT ![i].status = Committing]
                                  ELSE
                                     proposal[t]]
                /\ UNCHANGED <<transaction>>
-            \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = ProposalCommitted
-               /\ transaction' = [transaction EXCEPT ![i].status = TransactionCommitted]
+            \* If all proposals have been Committed, mark the transaction Committed.
+            \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Committed
+               /\ transaction' = [transaction EXCEPT ![i].status = Committed]
                /\ UNCHANGED <<proposal>>
-            \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = ProposalFailed
-               /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
+            \* If any proposal has been Failed, mark the transaction Failed.
+            \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = Failed
+               /\ transaction' = [transaction EXCEPT ![i].status = Failed]
                /\ UNCHANGED <<proposal>>
-      \/ /\ transaction[i].status = TransactionCommitted
+      \* Once the transaction has been Committed, proceed to the Apply phase.
+      \* If any of the transaction's proposals depend on a Serializable transaction,
+      \* verify the dependency has been Applied to preserve serializability before 
+      \* moving the transaction to the Apply phase.
+      \/ /\ transaction[i].status = Committed
          /\ \A t \in transaction[i].targets :
-               proposal[t][i].prevIndex # 0 =>
-                  (transaction[proposal[t][i].prevIndex].isolation = IsolationSerializable =>
-                     TransactionPhase(transaction[proposal[t][i].prevIndex].status) >= 
-                        TransactionPhase(TransactionApplied))
-         /\ transaction' = [transaction EXCEPT ![i].status = TransactionApplying]
+               proposal[t][i].dependencyIndex # 0 =>
+                  (transaction[proposal[t][i].dependencyIndex].isolation = Serializable =>
+                     Phase(transaction[proposal[t][i].dependencyIndex].status) >= Phase(Applied))
+         /\ transaction' = [transaction EXCEPT ![i].status = Applying]
          /\ UNCHANGED <<proposal>>
-      \/ /\ transaction[i].status = TransactionApplying
-         /\ \/ /\ \E t \in transaction[i].targets : 
-                     ProposalPhase(proposal[t][i].status) < ProposalPhase(ProposalApplying)
+      \/ /\ transaction[i].status = Applying
+            \* Move the transaction's proposals to the Applying state
+         /\ \/ /\ \E t \in transaction[i].targets : Phase(proposal[t][i].status) < Phase(Applying)
                /\ proposal' = [t \in DOMAIN proposal |-> 
                                  IF t \in transaction[i].targets THEN
-                                    [proposal[t] EXCEPT ![i].status = ProposalApplying]
+                                    [proposal[t] EXCEPT ![i].status = Applying]
                                  ELSE
                                     proposal[t]]
                /\ UNCHANGED <<transaction>>
-            \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = ProposalApplied
-               /\ transaction' = [transaction EXCEPT ![i].status = TransactionApplied]
+            \* If all proposals have been Applied, mark the transaction Applied.
+            \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Applied
+               /\ transaction' = [transaction EXCEPT ![i].status = Applied]
                /\ UNCHANGED <<proposal>>
-            \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = ProposalFailed
-               /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
+            \* If any proposal has been Failed, mark the transaction Failed.
+            \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = Failed
+               /\ transaction' = [transaction EXCEPT ![i].status = Failed]
                /\ UNCHANGED <<proposal>>
-      \/ /\ transaction[i].status = TransactionApplied
+      \/ /\ transaction[i].status = Applied
    /\ UNCHANGED <<configuration, mastership, target>>
 
 \* Reconcile a proposal
 ReconcileProposal(n, t, i) ==
-   /\ \/ /\ proposal[t][i].status = ProposalInitializing
-         /\ \/ /\ configuration[t].proposedIndex > 0
-               /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT 
-                                 ![i] = [status    |-> ProposalInitialized, 
-                                         prevIndex |-> configuration[t].proposedIndex] @@ proposal[t][i],
-                                 ![configuration[t].proposedIndex] = [nextIndex |-> i] @@ 
-                                       proposal[t][configuration[t].proposedIndex]]]
-            \/ /\ configuration[t].proposedIndex = 0
-               /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = ProposalInitialized]]
+   /\ \/ /\ proposal[t][i].status = Initializing
+         /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT 
+               ![i] = [status          |-> Initialized, 
+                       dependencyIndex |-> configuration[t].proposedIndex] @@ proposal[t][i]]]
          /\ configuration' = [configuration EXCEPT ![t].proposedIndex = i]
          /\ UNCHANGED <<target>>
-      \/ /\ proposal[t][i].status = ProposalValidating
-         /\ configuration[t].committedIndex = proposal[t][i].prevIndex
-         /\ \/ /\ proposal[t][i].type = ProposalChange
+      \/ /\ proposal[t][i].status = Validating
+         /\ configuration[t].committedIndex = proposal[t][i].dependencyIndex
+         /\ \/ /\ proposal[t][i].type = Change
                /\ LET rollbackIndex == configuration[t].configIndex
                       rollbackValues == [p \in DOMAIN proposal[t][i].values |-> [
                                            p |-> IF p \in DOMAIN configuration[t].values THEN
@@ -529,15 +496,15 @@ ReconcileProposal(n, t, i) ==
                            /\ proposal' = [proposal EXCEPT ![t] = [
                                              proposal[t] EXCEPT ![i].rollbackIndex  = rollbackIndex,
                                                                 ![i].rollbackValues = rollbackValues,
-                                                                ![i].status         = ProposalValidated]]
+                                                                ![i].status         = Validated]]
                            /\ UNCHANGED <<configuration>>
                         \/ /\ r = Invalid
                            /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
                            /\ proposal' = [proposal EXCEPT ![t] = [
-                                             proposal[t] EXCEPT ![i].status = ProposalFailed]]
-            \/ /\ proposal[t][i].type = ProposalRollback
+                                             proposal[t] EXCEPT ![i].status = Failed]]
+            \/ /\ proposal[t][i].type = Rollback
                /\ \/ /\ configuration[t].index = proposal[t][i].rollback
-                     /\ \/ /\ proposal[t][proposal[t][i].rollback].type = ProposalChange
+                     /\ \/ /\ proposal[t][proposal[t][i].rollback].type = Change
                            /\ LET rollbackIndex == proposal[t][proposal[t][i].rollback].rollbackIndex
                                   rollbackValues == proposal[t][proposal[t][i].rollback].rollbackValues
                               IN \E r \in {Valid, Invalid} :
@@ -545,34 +512,34 @@ ReconcileProposal(n, t, i) ==
                                        /\ proposal' = [proposal EXCEPT ![t] = [
                                              proposal[t] EXCEPT ![i].rollbackIndex  = rollbackIndex,
                                                                 ![i].rollbackValues = rollbackValues,
-                                                                ![i].status         = ProposalValidated]]
+                                                                ![i].status         = Validated]]
                                        /\ UNCHANGED <<configuration>>
                                     \/ /\ r = Invalid
                                        /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
                                        /\ proposal' = [proposal EXCEPT ![t] = [
-                                                         proposal[t] EXCEPT ![i].status = ProposalFailed]]
-                        \/ /\ proposal[t][proposal[t][i].rollabck].type = ProposalRollback
+                                                         proposal[t] EXCEPT ![i].status = Failed]]
+                        \/ /\ proposal[t][proposal[t][i].rollabck].type = Rollback
                            /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
                            /\ proposal' = [proposal EXCEPT ![t] = [
-                                 proposal[t] EXCEPT ![i].status = ProposalFailed]]
+                                 proposal[t] EXCEPT ![i].status = Failed]]
                   \/ /\ configuration[t].index # proposal[t][i].rollback
                      /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
-                     /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = ProposalFailed]]
+                     /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Failed]]
          /\ UNCHANGED <<target>>
-      \/ /\ proposal[t][i].status = ProposalCommitting
-         /\ configuration[t].committedIndex = proposal[t][i].prevIndex
-         /\ \/ /\ proposal[t][i].type = ProposalChange
+      \/ /\ proposal[t][i].status = Committing
+         /\ configuration[t].committedIndex = proposal[t][i].dependencyIndex
+         /\ \/ /\ proposal[t][i].type = Change
                /\ configuration' = [configuration EXCEPT ![t].values         = proposal[t][i].values,
                                                          ![t].configIndex    = i,
                                                          ![t].committedIndex = i]
-            \/ /\ proposal[t][i].type = ProposalRollback
+            \/ /\ proposal[t][i].type = Rollback
                /\ configuration' = [configuration EXCEPT ![t].values         = proposal[t][i].rollbackValues,
                                                          ![t].configIndex    = proposal[t][i].rollbackIndex,
                                                          ![t].committedIndex = i]
-         /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = ProposalCommitted]]
+         /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Committed]]
          /\ UNCHANGED <<target>>
-      \/ /\ proposal[t][i].status = ProposalApplying
-         /\ configuration[t].appliedIndex = proposal[t][i].prevIndex
+      \/ /\ proposal[t][i].status = Applying
+         /\ configuration[t].appliedIndex = proposal[t][i].dependencyIndex
          /\ configuration[t].appliedTerm = mastership[t].term
          /\ mastership[t].master = n
          /\ \E r \in {Success, Failure} :
@@ -581,10 +548,10 @@ ReconcileProposal(n, t, i) ==
                   /\ configuration' = [configuration EXCEPT 
                         ![t].appliedIndex = i,
                         ![t].appliedValues = proposal[t][i].values @@ configuration[i].appliedValues]
-                  /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = ProposalApplied]]
+                  /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Applied]]
                \/ /\ r = Failure
                   /\ configuration' = [configuration EXCEPT ![t].appliedIndex = i]
-                  /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = ProposalFailed]]
+                  /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Failed]]
    /\ UNCHANGED <<transaction, mastership>>
 
 ----
@@ -595,26 +562,26 @@ This section models the Configuration reconciler.
 
 ReconcileConfiguration(n, t) ==
    /\ \/ /\ Target[t].persistent
-         /\ configuration[t].status # ConfigurationPersisted
-         /\ configuration' = [configuration EXCEPT ![t].status = ConfigurationPersisted]
+         /\ configuration[t].status # Persisted
+         /\ configuration' = [configuration EXCEPT ![t].status = Persisted]
          /\ UNCHANGED <<target>>
       \/ /\ ~Target[t].persistent
          /\ mastership[t].term > configuration[t].configTerm
          /\ configuration' = [configuration EXCEPT ![t].configTerm = mastership[t].term,
-                                                   ![t].status     = ConfigurationSynchronizing]                                          
+                                                   ![t].status     = Synchronizing]                                          
          /\ UNCHANGED <<target>>
       \/ /\ ~Target[t].persistent
-         /\ configuration[t].status # ConfigurationUnknown
+         /\ configuration[t].status # Pending
          /\ mastership[t].term = configuration[t].configTerm
          /\ mastership[t].master = Nil
-         /\ configuration' = [configuration EXCEPT ![t].status = ConfigurationUnknown]                                        
+         /\ configuration' = [configuration EXCEPT ![t].status = Pending]                                        
          /\ UNCHANGED <<target>>
-      \/ /\ configuration[t].status = ConfigurationSynchronizing
+      \/ /\ configuration[t].status = Synchronizing
          /\ mastership[t].term = configuration[t].configTerm
          /\ mastership[t].master = n
          /\ target' = [target EXCEPT ![t] = configuration[t].values]
          /\ configuration' = [configuration EXCEPT ![t].appliedTerm = mastership[t].term,
-                                                   ![t].status      = ConfigurationSynchronized]
+                                                   ![t].status      = Synchronized]
    /\ UNCHANGED <<proposal, transaction, mastership>>
 
 ----
@@ -626,10 +593,10 @@ Init and next state predicates
 Init ==
    /\ transaction = <<>>
    /\ proposal = [t \in DOMAIN Target |->
-                     [p \in {} |-> [status |-> ProposalInitializing]]]
+                     [p \in {} |-> [status |-> Initializing]]]
    /\ configuration = [t \in DOMAIN Target |-> 
                            [target |-> t,
-                            status |-> ConfigurationUnknown,
+                            status |-> Pending,
                             values |-> 
                                [path \in {} |-> 
                                    [path    |-> path,
@@ -655,9 +622,9 @@ Init ==
 
 Next ==
    \/ \E c \in ValidChanges : 
-         Change(c)
+         RequestChange(c)
    \/ \E t \in DOMAIN transaction :
-         Rollback(t)
+         RequestRollback(t)
    \/ \E n \in Node :
          \E t \in DOMAIN Target :
             SetMaster(n, t)
@@ -681,11 +648,11 @@ Order == TRUE \* TODO redefine order spec
 THEOREM Safety == Spec => []Order
 
 Completion == \A i \in DOMAIN transaction : 
-                 transaction[i].status \in {TransactionApplied, TransactionFailed}
+                 transaction[i].status \in {Applied, Failed}
 
 THEOREM Liveness == Spec => <>Completion
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 06 02:40:51 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 06 03:48:50 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
