@@ -236,7 +236,8 @@ changes in the Transaction log.
             value   ::= value \in STRING, 
             index   ::= index \in Nat,
             deleted ::= delete \in BOOLEAN]],
-      configIndex    ::= index \in Nat,
+      configIndex    ::= configIndex \in Nat,
+      configTerm     ::= configTerm \in Nat,
       proposedIndex  ::= proposedIndex \in Nat,
       committedIndex ::= committedIndex \in Nat,
       appliedIndex   ::= appliedIndex \in Nat,
@@ -388,33 +389,47 @@ ReconcileTransaction(n, i) ==
          /\ \/ /\ transaction[i].targets = {}
                /\ \/ /\ transaction[i].type = TransactionChange
                      /\ transaction' = [transaction EXCEPT ![i].targets = DOMAIN transaction[i].values]
-                     /\ proposal' = [t \in DOMAIN proposal |-> proposal[t] @@ 
-                                       (i :> [type   |-> ProposalChange,
-                                              index  |-> i,
-                                              values |-> transaction[i].changes[t],
-                                              status |-> ProposalInitializing])]
+                     /\ proposal' = [t \in DOMAIN proposal |-> 
+                           IF t \in DOMAIN transaction[i].values THEN
+                              proposal[t] @@ (i :> [type           |-> ProposalChange,
+                                                    index          |-> i,
+                                                    values         |-> transaction[i].values[t],
+                                                    prevIndex      |-> 0,
+                                                    nextIndex      |-> 0,
+                                                    rollbackIndex  |-> 0,
+                                                    rollbackValues |-> <<>>,
+                                                    status |-> ProposalInitializing])
+                           ELSE
+                              proposal[t]]
                   \/ /\ transaction[i].type = TransactionRollback
                      /\ \/ /\ transaction[i].rollback \in DOMAIN transaction
                            /\ transaction[transaction[i].rollback].type = TransactionChange
                            /\ transaction' = [transaction EXCEPT ![i].targets = 
                                                 DOMAIN transaction[transaction[i].rollback].values]
-                           /\ proposal' = [t \in DOMAIN proposal |-> proposal[t] @@ 
-                                             (i :> [type     |-> ProposalRollback,
-                                                    index    |-> i,
-                                                    rollback |-> transaction[i].rollback,
-                                                    status   |-> ProposalInitializing])]
+                           /\ proposal' = [t \in DOMAIN proposal |-> 
+                                 IF t \in DOMAIN transaction[transaction[i].rollback].values THEN
+                                    proposal[t] @@ (i :> [type           |-> ProposalRollback,
+                                                          index          |-> i,
+                                                          rollback       |-> transaction[i].rollback,
+                                                          prevIndex      |-> 0,
+                                                          nextIndex      |-> 0,
+                                                          rollbackIndex  |-> 0,
+                                                          rollbackValues |-> <<>>,
+                                                          status         |-> ProposalInitializing])
+                                 ELSE
+                                    proposal[t]]
                         \/ /\ \/ /\ transaction[i].rollback \in DOMAIN transaction
                                  /\ transaction[transaction[i].rollback].type = TransactionRollback
                               \/ transaction[i].rollback \notin DOMAIN transaction
                            /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
                            /\ UNCHANGED <<proposal>>
             \/ /\ transaction[i].targets # {}
-               /\ \/ /\ \E t \in transaction[i].targets :
-                           /\ proposal[t][i].status = ProposalFailed
-                           /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
-                  \/ /\ \A t \in transaction[i].targets :
-                           /\ proposal[t][i].status = ProposalInitialized
-                           /\ transaction' = [transaction EXCEPT ![i].status = TransactionInitialized]
+               /\ \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = ProposalInitialized
+                     /\ transaction' = [transaction EXCEPT ![i].status = TransactionInitialized]
+                     /\ UNCHANGED <<proposal>>
+                  \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = ProposalFailed
+                     /\ transaction' = [transaction EXCEPT ![i].status = TransactionFailed]
+                     /\ UNCHANGED <<proposal>>
       \/ /\ transaction[i].status = TransactionInitialized
          /\ \A t \in transaction[i].targets :
                proposal[t][i].prevIndex # 0 =>
@@ -575,22 +590,23 @@ This section models the Configuration reconciler.
 *)
 
 ReconcileConfiguration(n, t) ==
-   /\ \/ /\ target[t].persistent
+   /\ \/ /\ Target[t].persistent
          /\ configuration[t].status # ConfigurationPersisted
          /\ configuration' = [configuration EXCEPT ![t].status = ConfigurationPersisted]
          /\ UNCHANGED <<target>>
-      \/ /\ ~target[t].persistent
-         /\ mastership[t].term > configuration[t].term
-         /\ configuration' = [configuration EXCEPT ![t].term   = mastership[t].term,
-                                                   ![t].status = ConfigurationSynchronizing]                                          
+      \/ /\ ~Target[t].persistent
+         /\ mastership[t].term > configuration[t].configTerm
+         /\ configuration' = [configuration EXCEPT ![t].configTerm = mastership[t].term,
+                                                   ![t].status     = ConfigurationSynchronizing]                                          
          /\ UNCHANGED <<target>>
-      \/ /\ ~target[t].persistent
+      \/ /\ ~Target[t].persistent
          /\ configuration[t].status # ConfigurationUnknown
-         /\ mastership[t].term = configuration[t].term
+         /\ mastership[t].term = configuration[t].configTerm
          /\ mastership[t].master = Nil
          /\ configuration' = [configuration EXCEPT ![t].status = ConfigurationUnknown]                                        
          /\ UNCHANGED <<target>>
       \/ /\ configuration[t].status = ConfigurationSynchronizing
+         /\ mastership[t].term = configuration[t].configTerm
          /\ mastership[t].master = n
          /\ target' = [target EXCEPT ![t] = configuration[t].values]
          /\ configuration' = [configuration EXCEPT ![t].appliedTerm = mastership[t].term,
@@ -617,6 +633,7 @@ Init ==
                                     index   |-> 0,
                                     deleted |-> FALSE]],
                             configIndex    |-> 0,
+                            configTerm     |-> 0,
                             proposedIndex  |-> 0,
                             committedIndex |-> 0,
                             appliedIndex   |-> 0,
@@ -646,6 +663,10 @@ Next ==
          \E t \in DOMAIN transaction :
                ReconcileTransaction(n, t)
    \/ \E n \in Node :
+         \E t \in DOMAIN proposal :
+            \E i \in DOMAIN proposal[t] :
+                  ReconcileProposal(n, t, i)
+   \/ \E n \in Node :
          \E c \in DOMAIN configuration :
                ReconcileConfiguration(n, c)
 
@@ -662,5 +683,5 @@ THEOREM Liveness == Spec => <>Completion
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 06 01:55:54 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 06 02:16:54 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
