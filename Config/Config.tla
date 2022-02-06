@@ -482,8 +482,12 @@ ReconcileProposal(n, t, i) ==
                        dependencyIndex |-> configuration[t].proposedIndex] @@ proposal[t][i]]]
          /\ configuration' = [configuration EXCEPT ![t].proposedIndex = i]
          /\ UNCHANGED <<target>>
+      \* While in the Validating state, validate the proposed changes.
+      \* If validation is successful, the proposal also records the changes
+      \* required to roll back the proposal and the index to which to roll back.
       \/ /\ proposal[t][i].status = Validating
          /\ configuration[t].committedIndex = proposal[t][i].dependencyIndex
+            \* For Change proposals validate the set of requested changes.
          /\ \/ /\ proposal[t][i].type = Change
                /\ LET rollbackIndex == configuration[t].configIndex
                       rollbackValues == [p \in DOMAIN proposal[t][i].values |-> [
@@ -491,7 +495,11 @@ ReconcileProposal(n, t, i) ==
                                                     configuration[t].values[p]
                                                  ELSE
                                                     [delete |-> TRUE]]]
+                  \* Model validation successes and failures with Valid and Invalid results.
                   IN \E r \in {Valid, Invalid} :
+                        \* If the Change is Valid, record the changes required to roll
+                        \* back the proposal and the index to which the rollback changes
+                        \* will roll back the configuration.
                         \/ /\ r = Valid
                            /\ proposal' = [proposal EXCEPT ![t] = [
                                              proposal[t] EXCEPT ![i].rollbackIndex  = rollbackIndex,
@@ -502,12 +510,17 @@ ReconcileProposal(n, t, i) ==
                            /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
                            /\ proposal' = [proposal EXCEPT ![t] = [
                                              proposal[t] EXCEPT ![i].status = Failed]]
+            \* For Rollback proposals, validate the rollback changes which are
+            \* proposal being rolled back.
             \/ /\ proposal[t][i].type = Rollback
-               /\ \/ /\ configuration[t].index = proposal[t][i].rollback
+               /\ \/ /\ configuration[t].configIndex = proposal[t][i].rollback
                      /\ \/ /\ proposal[t][proposal[t][i].rollback].type = Change
                            /\ LET rollbackIndex == proposal[t][proposal[t][i].rollback].rollbackIndex
                                   rollbackValues == proposal[t][proposal[t][i].rollback].rollbackValues
                               IN \E r \in {Valid, Invalid} :
+                                    \* If the Rollback is Valid, record the changes required to
+                                    \* roll back the target proposal and the index to which the
+                                    \* configuration is being rolled back.
                                     \/ /\ r = Valid
                                        /\ proposal' = [proposal EXCEPT ![t] = [
                                              proposal[t] EXCEPT ![i].rollbackIndex  = rollbackIndex,
@@ -518,40 +531,72 @@ ReconcileProposal(n, t, i) ==
                                        /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
                                        /\ proposal' = [proposal EXCEPT ![t] = [
                                                          proposal[t] EXCEPT ![i].status = Failed]]
+                        \* If a Rollback proposal is attempting to roll back another Rollback,
+                        \* fail validation for the proposal.
                         \/ /\ proposal[t][proposal[t][i].rollabck].type = Rollback
                            /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
                            /\ proposal' = [proposal EXCEPT ![t] = [
                                  proposal[t] EXCEPT ![i].status = Failed]]
-                  \/ /\ configuration[t].index # proposal[t][i].rollback
+                  \* If the Rollback target is not the most recent change to the configuration,
+                  \* fail validation for the proposal.
+                  \/ /\ configuration[t].configIndex # proposal[t][i].rollback
                      /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
                      /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Failed]]
          /\ UNCHANGED <<target>>
+      \* While in the Committing state, commit the proposed changes to the configuration.
       \/ /\ proposal[t][i].status = Committing
+         \* Only commit the proposal if the prior proposal has already been committed.
          /\ configuration[t].committedIndex = proposal[t][i].dependencyIndex
+            \* If the proposal is a change, commit the change values and set the configuration
+            \* index to the proposal index.
          /\ \/ /\ proposal[t][i].type = Change
                /\ configuration' = [configuration EXCEPT ![t].values         = proposal[t][i].values,
                                                          ![t].configIndex    = i,
                                                          ![t].committedIndex = i]
+            \* If the proposal is a rollback, commit the rollback values and index. This
+            \* will cause the configuration index to be reverted to the index prior to
+            \* the transaction/proposal being rolled back.
             \/ /\ proposal[t][i].type = Rollback
                /\ configuration' = [configuration EXCEPT ![t].values         = proposal[t][i].rollbackValues,
                                                          ![t].configIndex    = proposal[t][i].rollbackIndex,
                                                          ![t].committedIndex = i]
          /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Committed]]
          /\ UNCHANGED <<target>>
+      \* While in the Applying state, apply the proposed changes to the target.
       \/ /\ proposal[t][i].status = Applying
          /\ configuration[t].appliedIndex = proposal[t][i].dependencyIndex
          /\ configuration[t].appliedTerm = mastership[t].term
          /\ mastership[t].master = n
-         /\ \E r \in {Success, Failure} :
-               \/ /\ r = Success
-                  /\ target' = [target EXCEPT ![t] = proposal[t][i].values @@ target[t]]
-                  /\ configuration' = [configuration EXCEPT 
-                        ![t].appliedIndex = i,
-                        ![t].appliedValues = proposal[t][i].values @@ configuration[i].appliedValues]
-                  /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Applied]]
-               \/ /\ r = Failure
-                  /\ configuration' = [configuration EXCEPT ![t].appliedIndex = i]
-                  /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Failed]]
+            \* If the proposal is a change, apply the change values to the target
+            \* and update the configuration's applied index and values.
+         /\ \/ /\ proposal[t][i].type = Change
+               \* Model successful and failed target update requests.
+               /\ \E r \in {Success, Failure} :
+                     \/ /\ r = Success
+                        /\ target' = [target EXCEPT ![t] = proposal[t][i].values @@ target[t]]
+                        /\ configuration' = [configuration EXCEPT 
+                              ![t].appliedIndex = i,
+                              ![t].appliedValues = proposal[t][i].values @@ configuration[i].appliedValues]
+                        /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Applied]]
+                     \/ /\ r = Failure
+                        /\ configuration' = [configuration EXCEPT ![t].appliedIndex = i]
+                        /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Failed]]
+                        /\ UNCHANGED <<target>>
+            \* If the proposal is a rollback, apply the rollback values and update the
+            \* configuration's applied index and values with the rollback index and values.
+            \/ /\ proposal[t][i].type = Rollback
+               \* Model successful and failed target update requests.
+               /\ \E r \in {Success, Failure} :
+                     \/ /\ r = Success
+                        /\ target' = [target EXCEPT ![t] = proposal[t][i].values @@ target[t]]
+                        /\ configuration' = [configuration EXCEPT 
+                              ![t].appliedIndex = proposal[t][i].rollbackIndex,
+                              ![t].appliedValues = proposal[t][i].rollbackValues @@ configuration[i].appliedValues]
+                        /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Applied]]
+                     \/ /\ r = Failure
+                        /\ configuration' = [configuration EXCEPT ![t].appliedIndex = proposal[t][i].rollbackIndex]
+                        /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Failed]]
+                        /\ UNCHANGED <<target>>
    /\ UNCHANGED <<transaction, mastership>>
 
 ----
@@ -654,5 +699,5 @@ THEOREM Liveness == Spec => <>Completion
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 06 03:48:50 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 06 13:24:46 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
