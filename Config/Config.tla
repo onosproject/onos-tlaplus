@@ -439,10 +439,6 @@ ReconcileTransaction(n, i) ==
             \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Committed
                /\ transaction' = [transaction EXCEPT ![i].status = Committed]
                /\ UNCHANGED <<proposal>>
-            \* If any proposal has been Failed, mark the transaction Failed.
-            \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = Failed
-               /\ transaction' = [transaction EXCEPT ![i].status = Failed]
-               /\ UNCHANGED <<proposal>>
       \* Once the transaction has been Committed, proceed to the Apply phase.
       \* If any of the transaction's proposals depend on a Serializable transaction,
       \* verify the dependency has been Applied to preserve serializability before 
@@ -471,7 +467,6 @@ ReconcileTransaction(n, i) ==
             \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = Failed
                /\ transaction' = [transaction EXCEPT ![i].status = Failed]
                /\ UNCHANGED <<proposal>>
-      \/ /\ transaction[i].status = Applied
    /\ UNCHANGED <<configuration, mastership, target>>
 
 \* Reconcile a proposal
@@ -513,8 +508,11 @@ ReconcileProposal(n, t, i) ==
             \* For Rollback proposals, validate the rollback changes which are
             \* proposal being rolled back.
             \/ /\ proposal[t][i].type = Rollback
-               /\ \/ /\ configuration[t].configIndex = proposal[t][i].rollback
-                     /\ \/ /\ proposal[t][proposal[t][i].rollback].type = Change
+                  \* Rollbacks can only be performed on Change type proposals.
+               /\ \/ /\ proposal[t][proposal[t][i].rollback].type = Change
+                        \* Only roll back the change if it's the lastest change made
+                        \* to the configuration based on the configuration index.
+                     /\ \/ /\ configuration[t].configIndex = proposal[t][i].rollback
                            /\ LET rollbackIndex == proposal[t][proposal[t][i].rollback].rollbackIndex
                                   rollbackValues == proposal[t][proposal[t][i].rollback].rollbackValues
                               IN \E r \in {Valid, Invalid} :
@@ -531,17 +529,17 @@ ReconcileProposal(n, t, i) ==
                                        /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
                                        /\ proposal' = [proposal EXCEPT ![t] = [
                                                          proposal[t] EXCEPT ![i].status = Failed]]
-                        \* If a Rollback proposal is attempting to roll back another Rollback,
+                        \* If the Rollback target is not the most recent change to the configuration,
                         \* fail validation for the proposal.
-                        \/ /\ proposal[t][proposal[t][i].rollabck].type = Rollback
+                        \/ /\ configuration[t].configIndex # proposal[t][i].rollback
                            /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
-                           /\ proposal' = [proposal EXCEPT ![t] = [
-                                 proposal[t] EXCEPT ![i].status = Failed]]
-                  \* If the Rollback target is not the most recent change to the configuration,
+                           /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Failed]]
+                  \* If a Rollback proposal is attempting to roll back another Rollback,
                   \* fail validation for the proposal.
-                  \/ /\ configuration[t].configIndex # proposal[t][i].rollback
+                  \/ /\ proposal[t][proposal[t][i].rollback].type = Rollback
                      /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
-                     /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Failed]]
+                     /\ proposal' = [proposal EXCEPT ![t] = [
+                           proposal[t] EXCEPT ![i].status = Failed]]
          /\ UNCHANGED <<target>>
       \* While in the Committing state, commit the proposed changes to the configuration.
       \/ /\ proposal[t][i].status = Committing
@@ -567,36 +565,30 @@ ReconcileProposal(n, t, i) ==
          /\ configuration[t].appliedIndex = proposal[t][i].dependencyIndex
          /\ configuration[t].appliedTerm = mastership[t].term
          /\ mastership[t].master = n
-            \* If the proposal is a change, apply the change values to the target
-            \* and update the configuration's applied index and values.
-         /\ \/ /\ proposal[t][i].type = Change
-               \* Model successful and failed target update requests.
-               /\ \E r \in {Success, Failure} :
-                     \/ /\ r = Success
+         \* Model successful and failed target update requests.
+         /\ \E r \in {Success, Failure} :
+               \/ /\ r = Success
+                     \* If the proposal is a change, apply the change values to the target
+                     \* and update the configuration's applied index and values.
+                  /\ \/ /\ proposal[t][i].type = Change
                         /\ target' = [target EXCEPT ![t] = proposal[t][i].values @@ target[t]]
                         /\ configuration' = [configuration EXCEPT 
                               ![t].appliedIndex = i,
-                              ![t].appliedValues = proposal[t][i].values @@ configuration[i].appliedValues]
-                        /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Applied]]
-                     \/ /\ r = Failure
-                        /\ configuration' = [configuration EXCEPT ![t].appliedIndex = i]
-                        /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Failed]]
-                        /\ UNCHANGED <<target>>
-            \* If the proposal is a rollback, apply the rollback values and update the
-            \* configuration's applied index and values with the rollback index and values.
-            \/ /\ proposal[t][i].type = Rollback
-               \* Model successful and failed target update requests.
-               /\ \E r \in {Success, Failure} :
-                     \/ /\ r = Success
-                        /\ target' = [target EXCEPT ![t] = proposal[t][i].values @@ target[t]]
+                              ![t].appliedValues = proposal[t][i].values @@ configuration[t].appliedValues]
+                     \* If the proposal is a rollback, apply the rollback values and update the
+                     \* configuration's applied values with the rolled back values.
+                     \/ /\ proposal[t][i].type = Rollback
+                        /\ target' = [target EXCEPT ![t] = proposal[t][i].rollbackValues @@ target[t]]
                         /\ configuration' = [configuration EXCEPT 
-                              ![t].appliedIndex = proposal[t][i].rollbackIndex,
-                              ![t].appliedValues = proposal[t][i].rollbackValues @@ configuration[i].appliedValues]
-                        /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Applied]]
-                     \/ /\ r = Failure
-                        /\ configuration' = [configuration EXCEPT ![t].appliedIndex = proposal[t][i].rollbackIndex]
-                        /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Failed]]
-                        /\ UNCHANGED <<target>>
+                              ![t].appliedIndex  = i,
+                              ![t].appliedValues = proposal[t][i].rollbackValues @@ configuration[t].appliedValues]
+                  /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Applied]]
+               \* If the proposal could not be applied, update the configuration's applied index
+               \* and mark the proposal Failed.
+               \/ /\ r = Failure
+                  /\ configuration' = [configuration EXCEPT ![t].appliedIndex = i]
+                  /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Failed]]
+                  /\ UNCHANGED <<target>>
    /\ UNCHANGED <<transaction, mastership>>
 
 ----
@@ -673,8 +665,8 @@ Next ==
    \/ \E n \in Node :
          \E t \in DOMAIN Target :
             SetMaster(n, t)
-   \/ \E t \in DOMAIN Target :
-         UnsetMaster(t)
+   \*\/ \E t \in DOMAIN Target :
+   \*      UnsetMaster(t)
    \/ \E n \in Node :
          \E t \in DOMAIN transaction :
                ReconcileTransaction(n, t)
@@ -699,5 +691,5 @@ THEOREM Liveness == Spec => <>Completion
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 06 13:24:46 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 06 14:58:27 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
