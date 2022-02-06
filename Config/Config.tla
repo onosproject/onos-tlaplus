@@ -520,7 +520,7 @@ ReconcileProposal(n, t, i) ==
          /\ \/ /\ proposal[t][i].type = ProposalChange
                /\ LET rollbackIndex == configuration[t].configIndex
                       rollbackValues == [p \in DOMAIN proposal[t][i].values |-> [
-                                           p |-> IF p \in DOMAIN configuration[t].config THEN
+                                           p |-> IF p \in DOMAIN configuration[t].values THEN
                                                     configuration[t].values[p]
                                                  ELSE
                                                     [delete |-> TRUE]]]
@@ -530,7 +530,9 @@ ReconcileProposal(n, t, i) ==
                                              proposal[t] EXCEPT ![i].rollbackIndex  = rollbackIndex,
                                                                 ![i].rollbackValues = rollbackValues,
                                                                 ![i].status         = ProposalValidated]]
+                           /\ UNCHANGED <<configuration>>
                         \/ /\ r = Invalid
+                           /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
                            /\ proposal' = [proposal EXCEPT ![t] = [
                                              proposal[t] EXCEPT ![i].status = ProposalFailed]]
             \/ /\ proposal[t][i].type = ProposalRollback
@@ -544,7 +546,9 @@ ReconcileProposal(n, t, i) ==
                                              proposal[t] EXCEPT ![i].rollbackIndex  = rollbackIndex,
                                                                 ![i].rollbackValues = rollbackValues,
                                                                 ![i].status         = ProposalValidated]]
+                                       /\ UNCHANGED <<configuration>>
                                     \/ /\ r = Invalid
+                                       /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
                                        /\ proposal' = [proposal EXCEPT ![t] = [
                                                          proposal[t] EXCEPT ![i].status = ProposalFailed]]
                         \/ /\ proposal[t][proposal[t][i].rollabck].type = ProposalRollback
@@ -683,5 +687,5 @@ THEOREM Liveness == Spec => <>Completion
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 06 02:16:54 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 06 02:40:51 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
