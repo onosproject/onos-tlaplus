@@ -628,8 +628,22 @@ ReconcileProposal(n, t, i) ==
                   /\ UNCHANGED <<target>>
       \/ /\ proposal[t][i].phase = Abort
          /\ proposal[t][i].status = Pending
-         /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
-         /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Complete]]
+            \* The committedIndex will always be greater than or equal to the appliedIndex.
+            \* If only the committedIndex matches the proposal's dependencyIndex, update
+            \* the committedIndex to enable commits of later proposals, but do not
+            \* mark the Abort phase Complete until the appliedIndex has been incremented.
+         /\ \/ /\ configuration[t].committedIndex = proposal[t][i].dependencyIndex
+               /\ configuration[t].appliedIndex # proposal[t][i].dependencyIndex
+               /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
+               /\ UNCHANGED <<proposal>>
+            \* If both the configuration's committedIndex and appliedIndex match the
+            \* proposal's dependencyIndex, update the committedIndex and appliedIndex
+            \* and mark the proposal Complete for the Abort phase.
+            \/ /\ configuration[t].committedIndex = proposal[t][i].dependencyIndex
+               /\ configuration[t].appliedIndex = proposal[t][i].dependencyIndex
+               /\ configuration' = [configuration EXCEPT ![t].committedIndex = i,
+                                                         ![t].appliedIndex   = i]
+               /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Complete]]
          /\ UNCHANGED <<target>>
    /\ UNCHANGED <<transaction, mastership>>
 
@@ -820,5 +834,5 @@ ASSUME /\ \A t \in DOMAIN Target :
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Feb 07 14:00:05 PST 2022 by jordanhalterman
+\* Last modified Mon Feb 07 14:53:44 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
