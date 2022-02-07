@@ -706,7 +706,7 @@ Isolation ==
             \/ j <= i
             \/ transaction[i].targets \cap transaction[j].targets = {}
             \/ transaction[i].isolation # Serializable
-            \/ Phase(transaction[i].status) < Phase(Committed)
+            \/ Phase(transaction[i].status) >= Phase(Committed)
             \/ Phase(transaction[j].status) < Phase(Committing)
 
 Order == TRUE \* TODO redefine order spec
@@ -720,5 +720,5 @@ THEOREM Liveness == Spec => <>Completion
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 06 15:56:34 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 06 16:13:11 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
