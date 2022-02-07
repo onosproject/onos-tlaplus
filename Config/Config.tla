@@ -22,33 +22,36 @@ CONSTANTS
 CONSTANTS
    ReadCommitted,
    Serializable
+   
+\* Phase constants
+CONSTANTS
+   Initialize,
+   Validate,
+   Abort,
+   Commit,
+   Apply
+
+Phase ==
+   LET phases == <<Initialize,
+                   Validate,
+                   Abort,
+                   Commit,
+                   Apply>>
+   IN [p \in {phases[i] : i \in DOMAIN phases} |-> 
+         CHOOSE i \in DOMAIN phases : phases[i] = p]
 
 \* Status constants
 CONSTANTS 
    Pending,
-   Initializing,
-   Initialized,
-   Validating,
-   Validated,
-   Committing,
-   Committed,
-   Applying,
-   Applied,
-   Synchronizing,
-   Synchronized,
-   Persisted,
+   Complete,
    Failed
 
 Status == 
-   <<Initializing,
-     Initialized,
-     Validating,
-     Validated,
-     Committing,
-     Committed,
-     Applying,
-     Applied,
-     Failed>>
+   LET statuses == <<Pending,
+                     Complete,
+                     Failed>>
+   IN [s \in {statuses[i] : i \in DOMAIN statuses} |-> 
+         CHOOSE i \in DOMAIN statuses : statuses[i] = s]
 
 CONSTANTS
    Valid,
@@ -79,36 +82,6 @@ Example:
 *)
 CONSTANT Target
 
-Phase(s) == CHOOSE i \in DOMAIN Status : Status[i] = s
-
-ASSUME Nil \in STRING
-
-ASSUME Pending \in STRING
-ASSUME Initializing \in STRING
-ASSUME Initialized \in STRING
-ASSUME Validating \in STRING
-ASSUME Validated \in STRING
-ASSUME Committing \in STRING
-ASSUME Committed \in STRING
-ASSUME Applying \in STRING
-ASSUME Applied \in STRING
-ASSUME Synchronizing \in STRING
-ASSUME Synchronized \in STRING
-ASSUME Persisted \in STRING
-ASSUME Failed \in STRING
-
-ASSUME /\ IsFiniteSet(Node) 
-       /\ \A n \in Node : 
-             /\ n \notin DOMAIN Target 
-             /\ n \in STRING
-             
-ASSUME /\ \A t \in DOMAIN Target : 
-             /\ t \notin Node 
-             /\ t \in STRING
-             /\ Target[t].persistent \in BOOLEAN
-             /\ \A p \in DOMAIN Target[t].values :
-                   IsFiniteSet(Target[t].values[p])
-
 ----
 
 (*
@@ -121,6 +94,13 @@ changes in the Transaction log.
    TYPE Type ::= type \in
       {Change,
        Rollback}
+       
+   TYPE Phase ::= phase \in
+      {Initialize,
+       Validate,
+       Abort,
+       Commit,
+       Apply}
 
    TYPE Status ::= status \in 
       {Pending,
@@ -148,6 +128,7 @@ changes in the Transaction log.
                delete ::= delete \in BOOLEAN]]],
       rollback  ::= index \in Nat,
       targets   ::= targets \in SUBSET (DOMAIN Target)
+      phase     ::= phase \in Phase]
       status    ::= status \in Status]
    
    TYPE Proposal == [
@@ -164,14 +145,8 @@ changes in the Transaction log.
          path \in SUBSET (DOMAIN Target[target].values) |-> [
             value  ::= value \in STRING, 
             delete ::= delete \in BOOLEAN]],
+      phase        ::= phase \in Phase]
       status       ::= status \in Status]
-   
-   TYPE ConfigurationStatus ::= status \in 
-      {ConfigurationUnknown,
-       ConfigurationSynchronizing,
-       ConfigurationSynchronized,
-       ConfigurationPersisted,
-       ConfigurationFailed}
    
    TYPE Configuration == [
       id             ::= id \in STRING,
@@ -293,7 +268,8 @@ RequestChange(c) ==
                                                          isolation |-> isolation,
                                                          values    |-> c,
                                                          targets   |-> {},
-                                                         status    |-> Initializing])
+                                                         phase     |-> Initialize,
+                                                         status    |-> Pending])
    /\ UNCHANGED <<proposal, configuration, mastership, target>>
 
 \* Add a rollback of transaction 't' to the transaction log
@@ -304,7 +280,8 @@ RequestRollback(t) ==
                                                          isolation |-> isolation,
                                                          rollback  |-> t,
                                                          targets   |-> {},
-                                                         status    |-> Initializing])
+                                                         phase     |-> Initialize,
+                                                         status    |-> Pending])
    /\ UNCHANGED <<proposal, configuration, mastership, target>>
 
 ----
@@ -327,160 +304,203 @@ Transacations proceed through a series of phases:
 
 \* Reconcile a transaction
 ReconcileTransaction(n, i) ==
-      \* Initializing is the only transaction phase that's globally serialized.
+      \* Initialize is the only transaction phase that's globally serialized.
       \* While in the Initializing phase, the reconciler checks whether the
       \* prior transaction has been Initialized before creating Proposals in
       \* the Initialize phase. Once all of the transaction's proposals have
       \* been Initialized, the transaction will be marked Initialized. If any
       \* proposal is Failed, the transaction will be marked Failed as well.
-   /\ \/ /\ transaction[i].status = Initializing
-         \* Serialize transaction initialization
-         /\ i-1 \in DOMAIN transaction => 
-               Phase(transaction[i-1].status) > Phase(Initializing)
-         \* If the transaction's targets are not yet set, create proposals
-         \* and add targets to the transaction state.
-         /\ \/ /\ transaction[i].targets = {}
-                  \* If the transaction is a change, the targets are taken
-                  \* from the change values.
-               /\ \/ /\ transaction[i].type = Change
-                     /\ transaction' = [transaction EXCEPT ![i].targets = DOMAIN transaction[i].values]
-                     /\ proposal' = [t \in DOMAIN proposal |-> 
-                           IF t \in DOMAIN transaction[i].values THEN
-                              proposal[t] @@ (i :> [type            |-> Change,
-                                                    index           |-> i,
-                                                    values          |-> transaction[i].values[t],
-                                                    dependencyIndex |-> 0,
-                                                    rollbackIndex   |-> 0,
-                                                    rollbackValues  |-> <<>>,
-                                                    status |-> Initializing])
-                           ELSE
-                              proposal[t]]
-                  \* If the transaction is a rollback, the targets affected are 
-                  \* the targets of the change transaction being rolled back.
-                  \/ /\ transaction[i].type = Rollback
-                     /\ \/ /\ transaction[i].rollback \in DOMAIN transaction
-                           /\ transaction[transaction[i].rollback].type = Change
-                           /\ transaction' = [transaction EXCEPT ![i].targets = 
-                                                DOMAIN transaction[transaction[i].rollback].values]
+   /\ \/ /\ transaction[i].phase = Initialize
+         /\ \/ /\ transaction[i].status = Pending
+               \* Serialize transaction initialization
+               /\ \/ i-1 \notin DOMAIN transaction
+                  \/ Phase[transaction[i-1].phase] > Phase[Initialize]
+                  \/ transaction[i-1].status # Pending
+               \* If the transaction's targets are not yet set, create proposals
+               \* and add targets to the transaction state.
+               /\ \/ /\ transaction[i].targets = {}
+                        \* If the transaction is a change, the targets are taken
+                        \* from the change values.
+                     /\ \/ /\ transaction[i].type = Change
+                           /\ transaction' = [transaction EXCEPT ![i].targets = DOMAIN transaction[i].values]
                            /\ proposal' = [t \in DOMAIN proposal |-> 
-                                 IF t \in DOMAIN transaction[transaction[i].rollback].values THEN
-                                    proposal[t] @@ (i :> [type            |-> Rollback,
+                                 IF t \in DOMAIN transaction[i].values THEN
+                                    proposal[t] @@ (i :> [type            |-> Change,
                                                           index           |-> i,
-                                                          rollback        |-> transaction[i].rollback,
+                                                          values          |-> transaction[i].values[t],
                                                           dependencyIndex |-> 0,
                                                           rollbackIndex   |-> 0,
                                                           rollbackValues  |-> <<>>,
-                                                          status          |-> Initializing])
+                                                          phase           |-> Initialize,
+                                                          status          |-> Pending])
                                  ELSE
                                     proposal[t]]
-                        \/ /\ \/ /\ transaction[i].rollback \in DOMAIN transaction
-                                 /\ transaction[transaction[i].rollback].type = Rollback
-                              \/ transaction[i].rollback \notin DOMAIN transaction
+                        \* If the transaction is a rollback, the targets affected are 
+                        \* the targets of the change transaction being rolled back.
+                        \/ /\ transaction[i].type = Rollback
+                           /\ \/ /\ transaction[i].rollback \in DOMAIN transaction
+                                 /\ transaction[transaction[i].rollback].type = Change
+                                 /\ transaction' = [transaction EXCEPT ![i].targets = 
+                                                      DOMAIN transaction[transaction[i].rollback].values]
+                                 /\ proposal' = [t \in DOMAIN proposal |-> 
+                                       IF t \in DOMAIN transaction[transaction[i].rollback].values THEN
+                                          proposal[t] @@ (i :> [type            |-> Rollback,
+                                                                index           |-> i,
+                                                                rollback        |-> transaction[i].rollback,
+                                                                dependencyIndex |-> 0,
+                                                                rollbackIndex   |-> 0,
+                                                                rollbackValues  |-> <<>>,
+                                                                phase           |-> Initialize,
+                                                                status          |-> Pending])
+                                       ELSE
+                                          proposal[t]]
+                              \/ /\ \/ /\ transaction[i].rollback \in DOMAIN transaction
+                                       /\ transaction[transaction[i].rollback].type = Rollback
+                                    \/ transaction[i].rollback \notin DOMAIN transaction
+                                 /\ transaction' = [transaction EXCEPT ![i].status = Failed]
+                                 /\ UNCHANGED <<proposal>>                     
+                  \/ /\ transaction[i].targets # {}
+                        \* If all proposals have been Complete, mark the transaction Complete.
+                     /\ \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Complete
+                           /\ transaction' = [transaction EXCEPT ![i].status = Complete]
+                           /\ UNCHANGED <<proposal>>
+                        \* If any proposal has been Failed, mark the transaction Failed.
+                        \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = Failed
                            /\ transaction' = [transaction EXCEPT ![i].status = Failed]
-                           /\ UNCHANGED <<proposal>>                     
-            \/ /\ transaction[i].targets # {}
-                  \* If all proposals have been Initialized, mark the transaction Initialized.
-               /\ \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Initialized
-                     /\ transaction' = [transaction EXCEPT ![i].status = Initialized]
+                           /\ UNCHANGED <<proposal>>
+            \* Once the transaction has been Initialized, proceed to the Validate phase.
+            \* If any of the transaction's proposals depend on a Serializable transaction,
+            \* verify the dependency has been Validated to preserve serializability before 
+            \* moving the transaction to the Validate phase.
+            \/ /\ transaction[i].status = Complete
+               /\ \A t \in transaction[i].targets :
+                     \/ proposal[t][i].dependencyIndex = 0
+                     \/ transaction[proposal[t][i].dependencyIndex].isolation # Serializable
+                     \/ Phase[transaction[proposal[t][i].dependencyIndex].phase] > Phase[Validate]
+                     \/ /\ transaction[proposal[t][i].dependencyIndex].phase = Validate
+                        /\ transaction[proposal[t][i].dependencyIndex].status \in {Complete, Failed}
+               /\ transaction' = [transaction EXCEPT ![i].phase  = Validate,
+                                                     ![i].status = Pending]
+               /\ UNCHANGED <<proposal>>
+            \/ /\ transaction[i].status = Failed
+               /\ transaction' = [transaction EXCEPT ![i].phase  = Abort,
+                                                     ![i].status = Pending]
+               /\ UNCHANGED <<proposal>>
+      \/ /\ transaction[i].phase = Validate
+         /\ \/ /\ transaction[i].status = Pending
+                  \* Move the transaction's proposals to the Validating state
+               /\ \/ /\ \E t \in transaction[i].targets : proposal[t][i].phase # Validate
+                     /\ proposal' = [t \in DOMAIN proposal |-> 
+                                       IF t \in transaction[i].targets THEN
+                                          [proposal[t] EXCEPT ![i].phase  = Validate,
+                                                              ![i].status = Pending]
+                                       ELSE
+                                          proposal[t]]
+                     /\ UNCHANGED <<transaction>>
+                  \* If all proposals have been Complete, mark the transaction Complete.
+                  \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Complete
+                     /\ transaction' = [transaction EXCEPT ![i].status = Complete]
                      /\ UNCHANGED <<proposal>>
                   \* If any proposal has been Failed, mark the transaction Failed.
                   \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = Failed
                      /\ transaction' = [transaction EXCEPT ![i].status = Failed]
                      /\ UNCHANGED <<proposal>>
-      \* Once the transaction has been Initialized, proceed to the Validate phase.
-      \* If any of the transaction's proposals depend on a Serializable transaction,
-      \* verify the dependency has been Validated to preserve serializability before 
-      \* moving the transaction to the Validate phase.
-      \/ /\ transaction[i].status = Initialized
-         /\ \A t \in transaction[i].targets :
-               proposal[t][i].dependencyIndex # 0 =>
-                  (transaction[proposal[t][i].dependencyIndex].isolation = Serializable =>
-                     Phase(transaction[proposal[t][i].dependencyIndex].status) >= Phase(Validated))
-         /\ transaction' = [transaction EXCEPT ![i].status = Validating]
-         /\ UNCHANGED <<proposal>>
-      \/ /\ transaction[i].status = Validating
-            \* Move the transaction's proposals to the Validating state
-         /\ \/ /\ \E t \in transaction[i].targets : Phase(proposal[t][i].status) < Phase(Validating)
-               /\ proposal' = [t \in DOMAIN proposal |-> 
-                                 IF t \in transaction[i].targets THEN
-                                    [proposal[t] EXCEPT ![i].status = Validating]
-                                 ELSE
-                                    proposal[t]]
-               /\ UNCHANGED <<transaction>>
-            \* If all proposals have been Validated, mark the transaction Validated.
-            \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Validated
-               /\ transaction' = [transaction EXCEPT ![i].status = Validated]
+            \* Once the transaction has been Validated, proceed to the Commit phase.
+            \* If any of the transaction's proposals depend on a Serializable transaction,
+            \* verify the dependency has been Committed to preserve serializability before 
+            \* moving the transaction to the Commit phase.
+            \/ /\ transaction[i].status = Complete
+               /\ \A t \in transaction[i].targets :
+                     \/ proposal[t][i].dependencyIndex = 0
+                     \/ transaction[proposal[t][i].dependencyIndex].isolation # Serializable
+                     \/ Phase[transaction[proposal[t][i].dependencyIndex].phase] > Phase[Commit]
+                     \/ /\ transaction[proposal[t][i].dependencyIndex].phase = Commit
+                        /\ transaction[proposal[t][i].dependencyIndex].status \in {Complete, Failed}
+               /\ transaction' = [transaction EXCEPT ![i].phase  = Commit,
+                                                     ![i].status = Pending]
                /\ UNCHANGED <<proposal>>
-            \* If any proposal has been Failed, mark the transaction Failed.
-            \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = Failed
-               /\ transaction' = [transaction EXCEPT ![i].status = Failed]
+      \/ /\ transaction[i].phase = Commit
+         /\ \/ /\ transaction[i].status = Pending
+                  \* Move the transaction's proposals to the Committing state
+               /\ \/ /\ \E t \in transaction[i].targets : proposal[t][i].phase # Commit
+                     /\ proposal' = [t \in DOMAIN proposal |-> 
+                                       IF t \in transaction[i].targets THEN
+                                          [proposal[t] EXCEPT ![i].phase  = Commit,
+                                                              ![i].status = Pending]
+                                       ELSE
+                                          proposal[t]]
+                     /\ UNCHANGED <<transaction>>
+                  \* If all proposals have been Complete, mark the transaction Complete.
+                  \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Complete
+                     /\ transaction' = [transaction EXCEPT ![i].status = Complete]
+                     /\ UNCHANGED <<proposal>>
+            \* Once the transaction has been Committed, proceed to the Apply phase.
+            \* If any of the transaction's proposals depend on a Serializable transaction,
+            \* verify the dependency has been Applied to preserve serializability before 
+            \* moving the transaction to the Apply phase.
+            \/ /\ transaction[i].status = Complete
+               /\ \A t \in transaction[i].targets :
+                     \/ proposal[t][i].dependencyIndex = 0
+                     \/ transaction[proposal[t][i].dependencyIndex].isolation # Serializable
+                     \/ Phase[transaction[proposal[t][i].dependencyIndex].phase] > Phase[Apply]
+                     \/ /\ transaction[proposal[t][i].dependencyIndex].phase = Apply
+                        /\ transaction[proposal[t][i].dependencyIndex].status \in {Complete, Failed}
+               /\ transaction' = [transaction EXCEPT ![i].phase  = Apply,
+                                                     ![i].status = Pending]
                /\ UNCHANGED <<proposal>>
-      \* Once the transaction has been Validated, proceed to the Commit phase.
-      \* If any of the transaction's proposals depend on a Serializable transaction,
-      \* verify the dependency has been Committed to preserve serializability before 
-      \* moving the transaction to the Commit phase.
-      \/ /\ transaction[i].status = Validated
-         /\ \A t \in transaction[i].targets :
-               proposal[t][i].dependencyIndex # 0 =>
-                  (transaction[proposal[t][i].dependencyIndex].isolation = Serializable =>
-                     Phase(transaction[proposal[t][i].dependencyIndex].status) >= Phase(Committed))
-         /\ transaction' = [transaction EXCEPT ![i].status = Committing]
-         /\ UNCHANGED <<proposal>>
-      \/ /\ transaction[i].status = Committing
-            \* Move the transaction's proposals to the Committing state
-         /\ \/ /\ \E t \in transaction[i].targets : Phase(proposal[t][i].status) < Phase(Committing)
-               /\ proposal' = [t \in DOMAIN proposal |-> 
-                                 IF t \in transaction[i].targets THEN
-                                    [proposal[t] EXCEPT ![i].status = Committing]
-                                 ELSE
-                                    proposal[t]]
-               /\ UNCHANGED <<transaction>>
-            \* If all proposals have been Committed, mark the transaction Committed.
-            \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Committed
-               /\ transaction' = [transaction EXCEPT ![i].status = Committed]
-               /\ UNCHANGED <<proposal>>
-      \* Once the transaction has been Committed, proceed to the Apply phase.
-      \* If any of the transaction's proposals depend on a Serializable transaction,
-      \* verify the dependency has been Applied to preserve serializability before 
-      \* moving the transaction to the Apply phase.
-      \/ /\ transaction[i].status = Committed
-         /\ \A t \in transaction[i].targets :
-               proposal[t][i].dependencyIndex # 0 =>
-                  (transaction[proposal[t][i].dependencyIndex].isolation = Serializable =>
-                     Phase(transaction[proposal[t][i].dependencyIndex].status) >= Phase(Applied))
-         /\ transaction' = [transaction EXCEPT ![i].status = Applying]
-         /\ UNCHANGED <<proposal>>
-      \/ /\ transaction[i].status = Applying
+      \/ /\ transaction[i].phase = Apply
+         /\ transaction[i].status = Pending
             \* Move the transaction's proposals to the Applying state
-         /\ \/ /\ \E t \in transaction[i].targets : Phase(proposal[t][i].status) < Phase(Applying)
+         /\ \/ /\ \E t \in transaction[i].targets : proposal[t][i].phase # Apply
                /\ proposal' = [t \in DOMAIN proposal |-> 
                                  IF t \in transaction[i].targets THEN
-                                    [proposal[t] EXCEPT ![i].status = Applying]
+                                    [proposal[t] EXCEPT ![i].phase  = Apply,
+                                                        ![i].status = Pending]
                                  ELSE
                                     proposal[t]]
                /\ UNCHANGED <<transaction>>
-            \* If all proposals have been Applied, mark the transaction Applied.
-            \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Applied
-               /\ transaction' = [transaction EXCEPT ![i].status = Applied]
+            \* If all proposals have been Complete, mark the transaction Complete.
+            \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Complete
+               /\ transaction' = [transaction EXCEPT ![i].status = Complete]
                /\ UNCHANGED <<proposal>>
             \* If any proposal has been Failed, mark the transaction Failed.
             \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = Failed
                /\ transaction' = [transaction EXCEPT ![i].status = Failed]
+               /\ UNCHANGED <<proposal>>
+      \* The Aborting state is used to clean up transactions that have failed during
+      \* the Initializing or Validating phases.
+      \/ /\ transaction[i].phase = Abort
+         /\ transaction[i].status = Pending
+            \* Move the transaction's proposals to the Aborting state
+         /\ \/ /\ \E t \in transaction[i].targets : proposal[t][i].phase # Abort
+               /\ proposal' = [t \in DOMAIN proposal |-> 
+                                 IF t \in transaction[i].targets THEN
+                                    [proposal[t] EXCEPT ![i].phase  = Abort,
+                                                        ![i].status = Pending]
+                                 ELSE
+                                    proposal[t]]
+               /\ UNCHANGED <<transaction>>
+            \* If all proposals have been Complete, mark the transaction Complete.
+            \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Complete
+               /\ transaction' = [transaction EXCEPT ![i].status = Complete]
                /\ UNCHANGED <<proposal>>
    /\ UNCHANGED <<configuration, mastership, target>>
 
 \* Reconcile a proposal
 ReconcileProposal(n, t, i) ==
-   /\ \/ /\ proposal[t][i].status = Initializing
-         /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT 
-               ![i] = [status          |-> Initialized, 
-                       dependencyIndex |-> configuration[t].proposedIndex] @@ proposal[t][i]]]
+   /\ \/ /\ proposal[t][i].phase = Initialize
+         /\ proposal[t][i].status = Pending
+         /\ proposal' = [proposal EXCEPT ![t] = [
+               proposal[t] EXCEPT ![i] = [
+                  status          |-> Complete, 
+                  dependencyIndex |-> configuration[t].proposedIndex] @@ proposal[t][i]]]
          /\ configuration' = [configuration EXCEPT ![t].proposedIndex = i]
          /\ UNCHANGED <<target>>
-      \* While in the Validating state, validate the proposed changes.
+      \* While in the Validate phase, validate the proposed changes.
       \* If validation is successful, the proposal also records the changes
       \* required to roll back the proposal and the index to which to roll back.
-      \/ /\ proposal[t][i].status = Validating
+      \/ /\ proposal[t][i].phase = Validate
+         /\ proposal[t][i].status = Pending
          /\ configuration[t].committedIndex = proposal[t][i].dependencyIndex
             \* For Change proposals validate the set of requested changes.
          /\ \/ /\ proposal[t][i].type = Change
@@ -500,10 +520,8 @@ ReconcileProposal(n, t, i) ==
                            /\ proposal' = [proposal EXCEPT ![t] = [
                                              proposal[t] EXCEPT ![i].rollbackIndex  = rollbackIndex,
                                                                 ![i].rollbackValues = rollbackValues,
-                                                                ![i].status         = Validated]]
-                           /\ UNCHANGED <<configuration>>
+                                                                ![i].status         = Complete]]
                         \/ /\ r = Invalid
-                           /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
                            /\ proposal' = [proposal EXCEPT ![t] = [
                                              proposal[t] EXCEPT ![i].status = Failed]]
             \* For Rollback proposals, validate the rollback changes which are
@@ -524,26 +542,23 @@ ReconcileProposal(n, t, i) ==
                                        /\ proposal' = [proposal EXCEPT ![t] = [
                                              proposal[t] EXCEPT ![i].rollbackIndex  = rollbackIndex,
                                                                 ![i].rollbackValues = rollbackValues,
-                                                                ![i].status         = Validated]]
-                                       /\ UNCHANGED <<configuration>>
+                                                                ![i].status         = Complete]]
                                     \/ /\ r = Invalid
-                                       /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
                                        /\ proposal' = [proposal EXCEPT ![t] = [
                                                          proposal[t] EXCEPT ![i].status = Failed]]
                         \* If the Rollback target is not the most recent change to the configuration,
                         \* fail validation for the proposal.
                         \/ /\ configuration[t].configIndex # proposal[t][i].rollback
-                           /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
                            /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Failed]]
                   \* If a Rollback proposal is attempting to roll back another Rollback,
                   \* fail validation for the proposal.
                   \/ /\ proposal[t][proposal[t][i].rollback].type = Rollback
-                     /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
                      /\ proposal' = [proposal EXCEPT ![t] = [
                            proposal[t] EXCEPT ![i].status = Failed]]
-         /\ UNCHANGED <<target>>
-      \* While in the Committing state, commit the proposed changes to the configuration.
-      \/ /\ proposal[t][i].status = Committing
+         /\ UNCHANGED <<configuration, target>>
+      \* While in the Commit state, commit the proposed changes to the configuration.
+      \/ /\ proposal[t][i].phase = Commit
+         /\ proposal[t][i].status = Pending
          \* Only commit the proposal if the prior proposal has already been committed.
          /\ configuration[t].committedIndex = proposal[t][i].dependencyIndex
             \* If the proposal is a change, commit the change values and set the configuration
@@ -559,10 +574,11 @@ ReconcileProposal(n, t, i) ==
                /\ configuration' = [configuration EXCEPT ![t].values         = proposal[t][i].rollbackValues,
                                                          ![t].configIndex    = proposal[t][i].rollbackIndex,
                                                          ![t].committedIndex = i]
-         /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Committed]]
+         /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Complete]]
          /\ UNCHANGED <<target>>
-      \* While in the Applying state, apply the proposed changes to the target.
-      \/ /\ proposal[t][i].status = Applying
+      \* While in the Apply phase, apply the proposed changes to the target.
+      \/ /\ proposal[t][i].phase = Apply
+         /\ proposal[t][i].status = Pending
          /\ configuration[t].appliedIndex = proposal[t][i].dependencyIndex
          /\ configuration[t].appliedTerm = mastership[t].term
          /\ mastership[t].master = n
@@ -583,13 +599,18 @@ ReconcileProposal(n, t, i) ==
                         /\ configuration' = [configuration EXCEPT 
                               ![t].appliedIndex  = i,
                               ![t].appliedValues = proposal[t][i].rollbackValues @@ configuration[t].appliedValues]
-                  /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Applied]]
+                  /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Complete]]
                \* If the proposal could not be applied, update the configuration's applied index
                \* and mark the proposal Failed.
                \/ /\ r = Failure
                   /\ configuration' = [configuration EXCEPT ![t].appliedIndex = i]
                   /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Failed]]
                   /\ UNCHANGED <<target>>
+      \/ /\ proposal[t][i].phase = Abort
+         /\ proposal[t][i].status = Pending
+         /\ configuration' = [configuration EXCEPT ![t].committedIndex = i]
+         /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Complete]]
+         /\ UNCHANGED <<target>>
    /\ UNCHANGED <<transaction, mastership>>
 
 ----
@@ -600,38 +621,35 @@ This section models the Configuration reconciler.
 
 ReconcileConfiguration(n, t) ==
    /\ \/ /\ Target[t].persistent
-         /\ configuration[t].status # Persisted
-         /\ configuration' = [configuration EXCEPT ![t].status = Persisted]
+         /\ configuration[t].status # Complete
+         /\ configuration' = [configuration EXCEPT ![t].status = Complete]
          /\ UNCHANGED <<target>>
       \/ /\ ~Target[t].persistent
-         /\ mastership[t].term > configuration[t].configTerm
+         /\ \/ mastership[t].term > configuration[t].configTerm
+            \/ /\ mastership[t].term = configuration[t].configTerm
+               /\ mastership[t].master = Nil
          /\ configuration' = [configuration EXCEPT ![t].configTerm = mastership[t].term,
-                                                   ![t].status     = Synchronizing]                                          
+                                                   ![t].status     = Pending]                                          
          /\ UNCHANGED <<target>>
-      \/ /\ ~Target[t].persistent
-         /\ configuration[t].status # Pending
-         /\ mastership[t].term = configuration[t].configTerm
-         /\ mastership[t].master = Nil
-         /\ configuration' = [configuration EXCEPT ![t].status = Pending]                                        
-         /\ UNCHANGED <<target>>
-      \/ /\ configuration[t].status = Synchronizing
+      \/ /\ configuration[t].status = Pending
          /\ mastership[t].term = configuration[t].configTerm
          /\ mastership[t].master = n
          /\ target' = [target EXCEPT ![t] = configuration[t].appliedValues]
          /\ configuration' = [configuration EXCEPT ![t].appliedTerm = mastership[t].term,
-                                                   ![t].status      = Synchronized]
+                                                   ![t].status      = Complete]
    /\ UNCHANGED <<proposal, transaction, mastership>>
 
 ----
 
 (*
-Init and next state predicates
+Formal specification, constraints, and theorems.
 *)
 
 Init ==
    /\ transaction = <<>>
    /\ proposal = [t \in DOMAIN Target |->
-                     [p \in {} |-> [status |-> Initializing]]]
+                     [p \in {} |-> [phase  |-> Initialize,
+                                    status |-> Pending]]]
    /\ configuration = [t \in DOMAIN Target |-> 
                            [target |-> t,
                             status |-> Pending,
@@ -684,12 +702,12 @@ Spec == Init /\ [][Next]_vars
 Order ==
    /\ \A i, j \in DOMAIN transaction :
          \/ j <= i
-         \/ Phase(transaction[i].status) >= Phase(transaction[j].status)
+         \/ Phase[transaction[i].phase] >= Phase[transaction[j].phase]
          \/ transaction[j].status = Failed
    /\ \A t \in DOMAIN proposal :
          \A i, j \in DOMAIN proposal[t] :
             \/ j <= i
-            \/ Phase(proposal[t][i].status) >= Phase(proposal[t][j].status)
+            \/ Phase[proposal[t][i].phase] >= Phase[proposal[t][j].phase]
             \/ proposal[t][i].status = Failed
 
 Consistency == 
@@ -699,13 +717,15 @@ Consistency ==
           appliedIndexes == {i \in DOMAIN transaction : 
                                /\ transaction[i].type = Change 
                                /\ i \in DOMAIN proposal[t]
-                               /\ proposal[t][i].status = Applied
+                               /\ proposal[t][i].phase = Apply
+                               /\ proposal[t][i].status = Complete
                                /\ t \in DOMAIN transaction[i].values
                                /\ ~\E j \in DOMAIN transaction :
                                      /\ j > i
                                      /\ transaction[j].type = Rollback
                                      /\ transaction[j].rollback = i
-                                     /\ transaction[j].status = Applied}
+                                     /\ transaction[j].phase = Apply
+                                     /\ transaction[j].status = Complete}
           \* Compute the set of paths in the target that have been updated by transactions
           appliedPaths   == UNION {DOMAIN transaction[i].values[t] : i \in appliedIndexes}
           \* Compute the highest index applied to the target for each path
@@ -724,26 +744,60 @@ Isolation ==
          \/ j <= i
          \/ transaction[i].targets \cap transaction[j].targets = {}
          \/ transaction[i].isolation # Serializable
-         \/ /\ \/ Phase(transaction[i].status) >= Phase(Committed)
-               \/ Phase(transaction[j].status) < Phase(Committing)
-            /\ \/ Phase(transaction[i].status) >= Phase(Applied)
-               \/ Phase(transaction[j].status) < Phase(Applying)
+         \/ /\ \/ /\ transaction[i].phase \in {Commit, Abort}
+                  /\ transaction[i].status \in {Complete, Failed}
+               \/ Phase[transaction[i].phase] > Phase[Commit]
+               \/ Phase[transaction[j].phase] < Phase[Commit]
+            /\ \/ /\ transaction[i].phase \in {Apply, Abort}
+                  /\ transaction[i].status \in {Complete, Failed}
+               \/ Phase[transaction[j].phase] < Phase[Apply]
          \/ transaction[j].status = Failed
 
 THEOREM Safety == Spec => [](Order /\ Consistency /\ Isolation)
 
 Completion == 
    /\ \A i \in DOMAIN transaction : 
-         /\ transaction[i].status \in {Committed, Failed}
-         /\ transaction[i].status \in {Applied, Failed}
+         /\ transaction[i].phase = Commit
+         /\ transaction[i].status \in {Complete, Failed}
+   /\ \A i \in DOMAIN transaction : 
+         /\ transaction[i].phase = Apply
+         /\ transaction[i].status \in {Complete, Failed}
    /\ \A t \in DOMAIN proposal :
          \A i \in DOMAIN proposal[t] :
-            /\ proposal[t][i].status \in {Committed, Failed}
-            /\ proposal[t][i].status \in {Applied, Failed}
+            /\ proposal[t][i].phase = Commit
+            /\ proposal[t][i].status \in {Complete, Failed}
+   /\ \A t \in DOMAIN proposal :
+         \A i \in DOMAIN proposal[t] :
+            /\ proposal[t][i].phase = Apply
+            /\ proposal[t][i].status \in {Complete, Failed}
 
 THEOREM Liveness == Spec => <>Completion
 
+----
+
+(*
+Type assumptions.
+*)
+
+ASSUME Nil \in STRING
+
+ASSUME \A phase \in Phase : phase \in STRING
+
+ASSUME \A status \in Status : status \in STRING
+
+ASSUME /\ IsFiniteSet(Node) 
+       /\ \A n \in Node : 
+             /\ n \notin DOMAIN Target 
+             /\ n \in STRING
+             
+ASSUME /\ \A t \in DOMAIN Target : 
+             /\ t \notin Node 
+             /\ t \in STRING
+             /\ Target[t].persistent \in BOOLEAN
+             /\ \A p \in DOMAIN Target[t].values :
+                   IsFiniteSet(Target[t].values[p])
+
 =============================================================================
 \* Modification History
-\* Last modified Mon Feb 07 00:14:47 PST 2022 by jordanhalterman
+\* Last modified Mon Feb 07 02:17:42 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
