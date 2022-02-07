@@ -458,6 +458,10 @@ ReconcileTransaction(n, i) ==
                /\ transaction' = [transaction EXCEPT ![i].phase  = Apply,
                                                      ![i].status = Pending]
                /\ UNCHANGED <<proposal>>
+            \/ /\ transaction[i].status = Failed
+               /\ transaction' = [transaction EXCEPT ![i].phase  = Abort,
+                                                     ![i].status = Pending]
+               /\ UNCHANGED <<proposal>>
       \/ /\ transaction[i].phase = Apply
          /\ transaction[i].status = Pending
             \* Move the transaction's proposals to the Applying state
@@ -816,5 +820,5 @@ ASSUME /\ \A t \in DOMAIN Target :
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Feb 07 13:49:30 PST 2022 by jordanhalterman
+\* Last modified Mon Feb 07 13:58:48 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
