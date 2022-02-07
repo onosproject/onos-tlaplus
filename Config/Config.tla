@@ -572,30 +572,14 @@ ReconcileProposal(n, t, i) ==
                      \* If the proposal is a change, apply the change values to the target
                      \* and update the configuration's applied index and values.
                   /\ \/ /\ proposal[t][i].type = Change
-                        /\ LET updatedPaths == {p \in DOMAIN proposal[t][i].values : 
-                                                 ~proposal[t][i].values[p].delete}
-                               unchangedPaths == (DOMAIN target[t]) \ (DOMAIN proposal[t][i].values)
-                           IN
-                              \* Update the target paths by adding/updating paths that have changed and
-                              \* removing paths that are deleted by the change.
-                              /\ target' = [target EXCEPT ![t] = 
-                                    [p \in updatedPaths |-> proposal[t][i].values[p].value] 
-                                       @@ [p \in unchangedPaths |-> target[t][p]]]
+                        /\ target' = [target EXCEPT ![t] = proposal[t][i].values @@ target[t]]
                         /\ configuration' = [configuration EXCEPT 
                               ![t].appliedIndex = i,
                               ![t].appliedValues = proposal[t][i].values @@ configuration[t].appliedValues]
                      \* If the proposal is a rollback, apply the rollback values and update the
                      \* configuration's applied values with the rolled back values.
                      \/ /\ proposal[t][i].type = Rollback
-                        /\ LET updatedPaths == {p \in DOMAIN proposal[t][i].rollbackValues : 
-                                                 ~proposal[t][i].rollbackValues[p].delete}
-                               unchangedPaths == (DOMAIN target[t]) \ (DOMAIN proposal[t][i].rollbackValues)
-                           IN
-                              \* Update the target paths by adding/updating paths that have changed and
-                              \* removing paths that are deleted by the change.
-                              /\ target' = [target EXCEPT ![t] = 
-                                    [p \in updatedPaths |-> proposal[t][i].rollbackValues[p].value] 
-                                       @@ [p \in unchangedPaths |-> target[t][p]]]
+                        /\ target' = [target EXCEPT ![t] = proposal[t][i].rollbackValues @@ target[t]]
                         /\ configuration' = [configuration EXCEPT 
                               ![t].appliedIndex  = i,
                               ![t].appliedValues = proposal[t][i].rollbackValues @@ configuration[t].appliedValues]
@@ -633,11 +617,7 @@ ReconcileConfiguration(n, t) ==
       \/ /\ configuration[t].status = Synchronizing
          /\ mastership[t].term = configuration[t].configTerm
          /\ mastership[t].master = n
-         /\ LET setPaths == {p \in DOMAIN configuration[t].appliedValues : 
-                   ~configuration[t].appliedValues[p].delete}
-            IN
-               /\ target' = [target EXCEPT ![t] = [
-                     p \in setPaths |-> configuration[t].appliedValues[p].value]]
+         /\ target' = [target EXCEPT ![t] = configuration[t].appliedValues]
          /\ configuration' = [configuration EXCEPT ![t].appliedTerm = mastership[t].term,
                                                    ![t].status      = Synchronized]
    /\ UNCHANGED <<proposal, transaction, mastership>>
@@ -721,5 +701,5 @@ THEOREM Liveness == Spec => <>Completion
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 06 16:41:03 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 06 23:16:24 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
