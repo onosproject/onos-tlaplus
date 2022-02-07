@@ -681,25 +681,69 @@ Next ==
 
 Spec == Init /\ [][Next]_vars
 
-Isolation ==
+Order ==
    /\ \A i, j \in DOMAIN transaction :
+         \/ j <= i
+         \/ Phase(transaction[i].status) >= Phase(transaction[j].status)
+         \/ transaction[j].status = Failed
+   /\ \A t \in DOMAIN proposal :
+         \A i, j \in DOMAIN proposal[t] :
             \/ j <= i
-            \/ transaction[i].targets \cap transaction[j].targets = {}
-            \/ transaction[i].isolation # Serializable
-            \/ Phase(transaction[i].status) >= Phase(Committed)
-            \/ transaction[j].status = Failed
-            \/ Phase(transaction[j].status) < Phase(Committing)
+            \/ Phase(proposal[t][i].status) >= Phase(proposal[t][j].status)
+            \/ proposal[t][i].status = Failed
 
-Order == TRUE \* TODO redefine order spec
+Consistency == 
+   \A t \in DOMAIN target :
+      LET 
+          \* Compute the transaction indexes that have been applied to the target
+          appliedIndexes == {i \in DOMAIN transaction : 
+                               /\ transaction[i].type = Change 
+                               /\ i \in DOMAIN proposal[t]
+                               /\ proposal[t][i].status = Applied
+                               /\ t \in DOMAIN transaction[i].values
+                               /\ ~\E j \in DOMAIN transaction :
+                                     /\ j > i
+                                     /\ transaction[j].type = Rollback
+                                     /\ transaction[j].rollback = i
+                                     /\ transaction[j].status = Applied}
+          \* Compute the set of paths in the target that have been updated by transactions
+          appliedPaths   == UNION {DOMAIN transaction[i].values[t] : i \in appliedIndexes}
+          \* Compute the highest index applied to the target for each path
+          pathIndexes    == [p \in appliedPaths |-> CHOOSE i \in appliedIndexes : 
+                                    \A j \in appliedIndexes :
+                                          /\ i >= j 
+                                          /\ p \in DOMAIN transaction[i].values]
+          \* Compute the expected target configuration based on the last indexes applied
+          \* to the target for each path.
+          expectedConfig == [p \in DOMAIN pathIndexes |-> transaction[pathIndexes[p]].values[p]]
+      IN 
+          target[t] = expectedConfig
 
-THEOREM Safety == Spec => [](Order /\ Isolation)
+Isolation ==
+   \A i, j \in DOMAIN transaction :
+         \/ j <= i
+         \/ transaction[i].targets \cap transaction[j].targets = {}
+         \/ transaction[i].isolation # Serializable
+         \/ /\ \/ Phase(transaction[i].status) >= Phase(Committed)
+               \/ Phase(transaction[j].status) < Phase(Committing)
+            /\ \/ Phase(transaction[i].status) >= Phase(Applied)
+               \/ Phase(transaction[j].status) < Phase(Applying)
+         \/ transaction[j].status = Failed
 
-Completion == \A i \in DOMAIN transaction : 
-                 transaction[i].status \in {Applied, Failed}
+THEOREM Safety == Spec => [](Order /\ Consistency /\ Isolation)
+
+Completion == 
+   /\ \A i \in DOMAIN transaction : 
+         /\ transaction[i].status \in {Committed, Failed}
+         /\ transaction[i].status \in {Applied, Failed}
+   /\ \A t \in DOMAIN proposal :
+         \A i \in DOMAIN proposal[t] :
+            /\ proposal[t][i].status \in {Committed, Failed}
+            /\ proposal[t][i].status \in {Applied, Failed}
 
 THEOREM Liveness == Spec => <>Completion
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 06 23:16:24 PST 2022 by jordanhalterman
+\* Last modified Mon Feb 07 00:14:47 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
