@@ -427,6 +427,10 @@ ReconcileTransaction(n, i) ==
                /\ transaction' = [transaction EXCEPT ![i].phase  = Commit,
                                                      ![i].status = Pending]
                /\ UNCHANGED <<proposal>>
+            \/ /\ transaction[i].status = Failed
+               /\ transaction' = [transaction EXCEPT ![i].phase  = Abort,
+                                                     ![i].status = Pending]
+               /\ UNCHANGED <<proposal>>
       \/ /\ transaction[i].phase = Commit
          /\ \/ /\ transaction[i].status = Pending
                   \* Move the transaction's proposals to the Committing state
@@ -456,10 +460,6 @@ ReconcileTransaction(n, i) ==
                            \/ /\ transaction[proposal[t][i].dependencyIndex].phase = Apply
                               /\ transaction[proposal[t][i].dependencyIndex].status \in {Complete, Failed}
                /\ transaction' = [transaction EXCEPT ![i].phase  = Apply,
-                                                     ![i].status = Pending]
-               /\ UNCHANGED <<proposal>>
-            \/ /\ transaction[i].status = Failed
-               /\ transaction' = [transaction EXCEPT ![i].phase  = Abort,
                                                      ![i].status = Pending]
                /\ UNCHANGED <<proposal>>
       \/ /\ transaction[i].phase = Apply
@@ -820,5 +820,5 @@ ASSUME /\ \A t \in DOMAIN Target :
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Feb 07 13:58:48 PST 2022 by jordanhalterman
+\* Last modified Mon Feb 07 14:00:05 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
