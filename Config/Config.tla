@@ -749,10 +749,10 @@ Consistency ==
           pathIndexes    == [p \in appliedPaths |-> CHOOSE i \in appliedIndexes : 
                                     \A j \in appliedIndexes :
                                           /\ i >= j 
-                                          /\ p \in DOMAIN transaction[i].values]
+                                          /\ p \in DOMAIN transaction[i].values[t]]
           \* Compute the expected target configuration based on the last indexes applied
           \* to the target for each path.
-          expectedConfig == [p \in DOMAIN pathIndexes |-> transaction[pathIndexes[p]].values[p]]
+          expectedConfig == [p \in DOMAIN pathIndexes |-> transaction[pathIndexes[p]].values[t][p]]
       IN 
           target[t] = expectedConfig
 
@@ -816,5 +816,5 @@ ASSUME /\ \A t \in DOMAIN Target :
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Feb 07 02:45:30 PST 2022 by jordanhalterman
+\* Last modified Mon Feb 07 13:49:30 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
