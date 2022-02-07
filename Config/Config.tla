@@ -313,9 +313,9 @@ ReconcileTransaction(n, i) ==
    /\ \/ /\ transaction[i].phase = Initialize
          /\ \/ /\ transaction[i].status = Pending
                \* Serialize transaction initialization
-               /\ \/ i-1 \notin DOMAIN transaction
-                  \/ Phase[transaction[i-1].phase] > Phase[Initialize]
-                  \/ transaction[i-1].status # Pending
+               /\ i-1 \in DOMAIN transaction =>
+                     \/ Phase[transaction[i-1].phase] > Phase[Initialize]
+                     \/ transaction[i-1].status # Pending
                \* If the transaction's targets are not yet set, create proposals
                \* and add targets to the transaction state.
                /\ \/ /\ transaction[i].targets = {}
@@ -361,11 +361,15 @@ ReconcileTransaction(n, i) ==
                                  /\ UNCHANGED <<proposal>>                     
                   \/ /\ transaction[i].targets # {}
                         \* If all proposals have been Complete, mark the transaction Complete.
-                     /\ \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Complete
+                     /\ \/ /\ \A t \in transaction[i].targets : 
+                                 /\ proposal[t][i].phase  = Initialize
+                                 /\ proposal[t][i].status = Complete
                            /\ transaction' = [transaction EXCEPT ![i].status = Complete]
                            /\ UNCHANGED <<proposal>>
                         \* If any proposal has been Failed, mark the transaction Failed.
-                        \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = Failed
+                        \/ /\ \E t \in transaction[i].targets : 
+                                 /\ proposal[t][i].phase  = Initialize
+                                 /\ proposal[t][i].status = Failed
                            /\ transaction' = [transaction EXCEPT ![i].status = Failed]
                            /\ UNCHANGED <<proposal>>
             \* Once the transaction has been Initialized, proceed to the Validate phase.
@@ -374,11 +378,11 @@ ReconcileTransaction(n, i) ==
             \* moving the transaction to the Validate phase.
             \/ /\ transaction[i].status = Complete
                /\ \A t \in transaction[i].targets :
-                     \/ proposal[t][i].dependencyIndex = 0
-                     \/ transaction[proposal[t][i].dependencyIndex].isolation # Serializable
-                     \/ Phase[transaction[proposal[t][i].dependencyIndex].phase] > Phase[Validate]
-                     \/ /\ transaction[proposal[t][i].dependencyIndex].phase = Validate
-                        /\ transaction[proposal[t][i].dependencyIndex].status \in {Complete, Failed}
+                     /\ proposal[t][i].dependencyIndex > 0 =>
+                           \/ transaction[proposal[t][i].dependencyIndex].isolation # Serializable
+                           \/ Phase[transaction[proposal[t][i].dependencyIndex].phase] > Phase[Validate]
+                           \/ /\ transaction[proposal[t][i].dependencyIndex].phase = Validate
+                              /\ transaction[proposal[t][i].dependencyIndex].status \in {Complete, Failed}
                /\ transaction' = [transaction EXCEPT ![i].phase  = Validate,
                                                      ![i].status = Pending]
                /\ UNCHANGED <<proposal>>
@@ -398,11 +402,15 @@ ReconcileTransaction(n, i) ==
                                           proposal[t]]
                      /\ UNCHANGED <<transaction>>
                   \* If all proposals have been Complete, mark the transaction Complete.
-                  \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Complete
+                  \/ /\ \A t \in transaction[i].targets : 
+                           /\ proposal[t][i].phase  = Validate
+                           /\ proposal[t][i].status = Complete
                      /\ transaction' = [transaction EXCEPT ![i].status = Complete]
                      /\ UNCHANGED <<proposal>>
                   \* If any proposal has been Failed, mark the transaction Failed.
-                  \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = Failed
+                  \/ /\ \E t \in transaction[i].targets : 
+                           /\ proposal[t][i].phase  = Validate
+                           /\ proposal[t][i].status = Failed
                      /\ transaction' = [transaction EXCEPT ![i].status = Failed]
                      /\ UNCHANGED <<proposal>>
             \* Once the transaction has been Validated, proceed to the Commit phase.
@@ -411,11 +419,11 @@ ReconcileTransaction(n, i) ==
             \* moving the transaction to the Commit phase.
             \/ /\ transaction[i].status = Complete
                /\ \A t \in transaction[i].targets :
-                     \/ proposal[t][i].dependencyIndex = 0
-                     \/ transaction[proposal[t][i].dependencyIndex].isolation # Serializable
-                     \/ Phase[transaction[proposal[t][i].dependencyIndex].phase] > Phase[Commit]
-                     \/ /\ transaction[proposal[t][i].dependencyIndex].phase = Commit
-                        /\ transaction[proposal[t][i].dependencyIndex].status \in {Complete, Failed}
+                     /\ proposal[t][i].dependencyIndex > 0 =>
+                           \/ transaction[proposal[t][i].dependencyIndex].isolation # Serializable
+                           \/ Phase[transaction[proposal[t][i].dependencyIndex].phase] > Phase[Commit]
+                           \/ /\ transaction[proposal[t][i].dependencyIndex].phase = Commit
+                              /\ transaction[proposal[t][i].dependencyIndex].status \in {Complete, Failed}
                /\ transaction' = [transaction EXCEPT ![i].phase  = Commit,
                                                      ![i].status = Pending]
                /\ UNCHANGED <<proposal>>
@@ -431,7 +439,9 @@ ReconcileTransaction(n, i) ==
                                           proposal[t]]
                      /\ UNCHANGED <<transaction>>
                   \* If all proposals have been Complete, mark the transaction Complete.
-                  \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Complete
+                  \/ /\ \A t \in transaction[i].targets : 
+                           /\ proposal[t][i].phase  = Commit
+                           /\ proposal[t][i].status = Complete
                      /\ transaction' = [transaction EXCEPT ![i].status = Complete]
                      /\ UNCHANGED <<proposal>>
             \* Once the transaction has been Committed, proceed to the Apply phase.
@@ -440,11 +450,11 @@ ReconcileTransaction(n, i) ==
             \* moving the transaction to the Apply phase.
             \/ /\ transaction[i].status = Complete
                /\ \A t \in transaction[i].targets :
-                     \/ proposal[t][i].dependencyIndex = 0
-                     \/ transaction[proposal[t][i].dependencyIndex].isolation # Serializable
-                     \/ Phase[transaction[proposal[t][i].dependencyIndex].phase] > Phase[Apply]
-                     \/ /\ transaction[proposal[t][i].dependencyIndex].phase = Apply
-                        /\ transaction[proposal[t][i].dependencyIndex].status \in {Complete, Failed}
+                     /\ proposal[t][i].dependencyIndex > 0 =>
+                           \/ transaction[proposal[t][i].dependencyIndex].isolation # Serializable
+                           \/ Phase[transaction[proposal[t][i].dependencyIndex].phase] > Phase[Apply]
+                           \/ /\ transaction[proposal[t][i].dependencyIndex].phase = Apply
+                              /\ transaction[proposal[t][i].dependencyIndex].status \in {Complete, Failed}
                /\ transaction' = [transaction EXCEPT ![i].phase  = Apply,
                                                      ![i].status = Pending]
                /\ UNCHANGED <<proposal>>
@@ -460,11 +470,15 @@ ReconcileTransaction(n, i) ==
                                     proposal[t]]
                /\ UNCHANGED <<transaction>>
             \* If all proposals have been Complete, mark the transaction Complete.
-            \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Complete
+            \/ /\ \A t \in transaction[i].targets : 
+                     /\ proposal[t][i].phase  = Apply
+                     /\ proposal[t][i].status = Complete
                /\ transaction' = [transaction EXCEPT ![i].status = Complete]
                /\ UNCHANGED <<proposal>>
             \* If any proposal has been Failed, mark the transaction Failed.
-            \/ /\ \E t \in transaction[i].targets : proposal[t][i].status = Failed
+            \/ /\ \E t \in transaction[i].targets : 
+                     /\ proposal[t][i].phase  = Apply
+                     /\ proposal[t][i].status = Failed
                /\ transaction' = [transaction EXCEPT ![i].status = Failed]
                /\ UNCHANGED <<proposal>>
       \* The Aborting state is used to clean up transactions that have failed during
@@ -481,7 +495,9 @@ ReconcileTransaction(n, i) ==
                                     proposal[t]]
                /\ UNCHANGED <<transaction>>
             \* If all proposals have been Complete, mark the transaction Complete.
-            \/ /\ \A t \in transaction[i].targets : proposal[t][i].status = Complete
+            \/ /\ \A t \in transaction[i].targets : 
+                     /\ proposal[t][i].phase  = Abort
+                     /\ proposal[t][i].status = Complete
                /\ transaction' = [transaction EXCEPT ![i].status = Complete]
                /\ UNCHANGED <<proposal>>
    /\ UNCHANGED <<configuration, mastership, target>>
@@ -703,12 +719,13 @@ Order ==
    /\ \A i, j \in DOMAIN transaction :
          \/ j <= i
          \/ Phase[transaction[i].phase] >= Phase[transaction[j].phase]
-         \/ transaction[j].status = Failed
+         \/ transaction[i].targets \cap transaction[j].targets = {}
+         \/ transaction[j].status \in {Pending, Failed}
    /\ \A t \in DOMAIN proposal :
          \A i, j \in DOMAIN proposal[t] :
             \/ j <= i
             \/ Phase[proposal[t][i].phase] >= Phase[proposal[t][j].phase]
-            \/ proposal[t][i].status = Failed
+            \/ proposal[t][j].status \in {Pending, Failed}
 
 Consistency == 
    \A t \in DOMAIN target :
@@ -781,9 +798,9 @@ Type assumptions.
 
 ASSUME Nil \in STRING
 
-ASSUME \A phase \in Phase : phase \in STRING
+ASSUME \A phase \in DOMAIN Phase : phase \in STRING
 
-ASSUME \A status \in Status : status \in STRING
+ASSUME \A status \in DOMAIN Status : status \in STRING
 
 ASSUME /\ IsFiniteSet(Node) 
        /\ \A n \in Node : 
@@ -799,5 +816,5 @@ ASSUME /\ \A t \in DOMAIN Target :
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Feb 07 02:17:42 PST 2022 by jordanhalterman
+\* Last modified Mon Feb 07 02:45:30 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
