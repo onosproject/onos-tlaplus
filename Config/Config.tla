@@ -631,7 +631,15 @@ ReconcileProposal(n, t, i) ==
             \* update the appliedIndex and mark the proposal Complete for the Abort phase.
             \/ /\ configuration[t].committedIndex >= i
                /\ configuration[t].appliedIndex = proposal[t][i].dependencyIndex
-               /\ configuration' = [configuration EXCEPT ![t].appliedIndex   = i]
+               /\ configuration' = [configuration EXCEPT ![t].appliedIndex = i]
+               /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Complete]]
+            \* If both the configuration's committedIndex and appliedIndex match the
+            \* proposal's dependencyIndex, update the committedIndex and appliedIndex
+            \* and mark the proposal Complete for the Abort phase.
+            \/ /\ configuration[t].committedIndex = proposal[t][i].dependencyIndex
+               /\ configuration[t].appliedIndex = proposal[t][i].dependencyIndex
+               /\ configuration' = [configuration EXCEPT ![t].committedIndex = i,
+                                                         ![t].appliedIndex   = i]
                /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].status = Complete]]
          /\ UNCHANGED <<target>>
    /\ UNCHANGED <<transaction, mastership>>
@@ -823,5 +831,5 @@ ASSUME /\ \A t \in DOMAIN Target :
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Feb 07 15:02:22 PST 2022 by jordanhalterman
+\* Last modified Mon Feb 07 15:29:29 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
