@@ -701,9 +701,17 @@ Next ==
 
 Spec == Init /\ [][Next]_vars
 
+Isolation ==
+   /\ \A i, j \in DOMAIN transaction :
+            \/ j <= i
+            \/ transaction[i].targets \cap transaction[j].targets = {}
+            \/ transaction[i].isolation # Serializable
+            \/ Phase(transaction[i].status) < Phase(Committed)
+            \/ Phase(transaction[j].status) < Phase(Committing)
+
 Order == TRUE \* TODO redefine order spec
 
-THEOREM Safety == Spec => []Order
+THEOREM Safety == Spec => [](Order /\ Isolation)
 
 Completion == \A i \in DOMAIN transaction : 
                  transaction[i].status \in {Applied, Failed}
@@ -712,5 +720,5 @@ THEOREM Liveness == Spec => <>Completion
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 06 15:42:20 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 06 15:56:34 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
