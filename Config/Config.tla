@@ -393,13 +393,11 @@ ReconcileTransaction(n, i) ==
       \/ /\ transaction[i].phase = Validate
          /\ \/ /\ transaction[i].status = Pending
                   \* Move the transaction's proposals to the Validating state
-               /\ \/ /\ \E t \in transaction[i].targets : proposal[t][i].phase # Validate
-                     /\ proposal' = [t \in DOMAIN proposal |-> 
-                                       IF t \in transaction[i].targets THEN
-                                          [proposal[t] EXCEPT ![i].phase  = Validate,
-                                                              ![i].status = Pending]
-                                       ELSE
-                                          proposal[t]]
+               /\ \/ /\ \E t \in transaction[i].targets : 
+                           /\ proposal[t][i].phase # Validate
+                           /\ proposal' = [proposal EXCEPT ![t] = [
+                                              proposal[t] EXCEPT ![i].phase  = Validate,
+                                                                 ![i].status = Pending]]
                      /\ UNCHANGED <<transaction>>
                   \* If all proposals have been Complete, mark the transaction Complete.
                   \/ /\ \A t \in transaction[i].targets : 
@@ -434,13 +432,11 @@ ReconcileTransaction(n, i) ==
       \/ /\ transaction[i].phase = Commit
          /\ \/ /\ transaction[i].status = Pending
                   \* Move the transaction's proposals to the Committing state
-               /\ \/ /\ \E t \in transaction[i].targets : proposal[t][i].phase # Commit
-                     /\ proposal' = [t \in DOMAIN proposal |-> 
-                                       IF t \in transaction[i].targets THEN
-                                          [proposal[t] EXCEPT ![i].phase  = Commit,
-                                                              ![i].status = Pending]
-                                       ELSE
-                                          proposal[t]]
+               /\ \/ /\ \E t \in transaction[i].targets :
+                           /\ proposal[t][i].phase # Validate
+                           /\ proposal' = [proposal EXCEPT ![t] = [
+                                              proposal[t] EXCEPT ![i].phase  = Commit,
+                                                                 ![i].status = Pending]]
                      /\ UNCHANGED <<transaction>>
                   \* If all proposals have been Complete, mark the transaction Complete.
                   \/ /\ \A t \in transaction[i].targets : 
@@ -465,13 +461,11 @@ ReconcileTransaction(n, i) ==
       \/ /\ transaction[i].phase = Apply
          /\ transaction[i].status = Pending
             \* Move the transaction's proposals to the Applying state
-         /\ \/ /\ \E t \in transaction[i].targets : proposal[t][i].phase # Apply
-               /\ proposal' = [t \in DOMAIN proposal |-> 
-                                 IF t \in transaction[i].targets THEN
-                                    [proposal[t] EXCEPT ![i].phase  = Apply,
-                                                        ![i].status = Pending]
-                                 ELSE
-                                    proposal[t]]
+         /\ \/ /\ \E t \in transaction[i].targets :
+                           /\ proposal[t][i].phase # Validate
+                           /\ proposal' = [proposal EXCEPT ![t] = [
+                                              proposal[t] EXCEPT ![i].phase  = Apply,
+                                                                 ![i].status = Pending]]
                /\ UNCHANGED <<transaction>>
             \* If all proposals have been Complete, mark the transaction Complete.
             \/ /\ \A t \in transaction[i].targets : 
@@ -490,13 +484,11 @@ ReconcileTransaction(n, i) ==
       \/ /\ transaction[i].phase = Abort
          /\ transaction[i].status = Pending
             \* Move the transaction's proposals to the Aborting state
-         /\ \/ /\ \E t \in transaction[i].targets : proposal[t][i].phase # Abort
-               /\ proposal' = [t \in DOMAIN proposal |-> 
-                                 IF t \in transaction[i].targets THEN
-                                    [proposal[t] EXCEPT ![i].phase  = Abort,
-                                                        ![i].status = Pending]
-                                 ELSE
-                                    proposal[t]]
+         /\ \/ /\ \E t \in transaction[i].targets :
+                           /\ proposal[t][i].phase # Validate
+                           /\ proposal' = [proposal EXCEPT ![t] = [
+                                              proposal[t] EXCEPT ![i].phase  = Abort,
+                                                                 ![i].status = Pending]]
                /\ UNCHANGED <<transaction>>
             \* If all proposals have been Complete, mark the transaction Complete.
             \/ /\ \A t \in transaction[i].targets : 
@@ -834,5 +826,5 @@ ASSUME /\ \A t \in DOMAIN Target :
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Feb 07 14:53:44 PST 2022 by jordanhalterman
+\* Last modified Mon Feb 07 14:56:54 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
