@@ -793,12 +793,14 @@ Consistency ==
 Isolation ==
    \A i \in DOMAIN transaction :
       /\ /\ transaction[i].phase = Commit
+         /\ transaction[i].state = InProgress
          /\ transaction[i].isolation = Serializable
          => ~\E j \in DOMAIN transaction : 
                /\ j > i
                /\ transaction[j].targets \cap transaction[i].targets # {}
                /\ transaction[j].phase = Commit
       /\ /\ transaction[i].phase = Apply
+         /\ transaction[i].state = InProgress
          /\ transaction[i].isolation = Serializable
          => ~\E j \in DOMAIN transaction : 
                /\ j > i
@@ -846,5 +848,5 @@ ASSUME /\ \A t \in DOMAIN Target :
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Feb 10 01:33:41 PST 2022 by jordanhalterman
+\* Last modified Thu Feb 10 11:36:59 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
