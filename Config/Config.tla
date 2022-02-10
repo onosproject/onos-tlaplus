@@ -777,15 +777,15 @@ Consistency ==
                                      /\ transaction[j].phase = Apply
                                      /\ transaction[j].state = Complete}
           \* Compute the set of paths in the target that have been updated by transactions
-          appliedPaths   == UNION {DOMAIN transaction[i].change[t] : i \in targetIndexes}
+          appliedPaths   == UNION {DOMAIN proposal[t][i].change.values : i \in targetIndexes}
           \* Compute the highest index applied to the target for each path
           pathIndexes    == [p \in appliedPaths |-> CHOOSE i \in targetIndexes : 
                                     \A j \in targetIndexes :
                                           /\ i >= j 
-                                          /\ p \in DOMAIN transaction[i].change[t]]
+                                          /\ p \in DOMAIN proposal[t][i].change.values]
           \* Compute the expected target configuration based on the last indexes applied
           \* to the target for each path.
-          expectedConfig == [p \in DOMAIN pathIndexes |-> transaction[pathIndexes[p]].change[t][p]]
+          expectedConfig == [p \in DOMAIN pathIndexes |-> proposal[t][pathIndexes[p]].change.values[p]]
       IN 
           target[t] = expectedConfig
 
@@ -847,5 +847,5 @@ ASSUME /\ \A t \in DOMAIN Target :
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Feb 10 12:30:40 PST 2022 by jordanhalterman
+\* Last modified Thu Feb 10 12:45:47 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
