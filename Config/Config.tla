@@ -459,7 +459,7 @@ ReconcileTransaction(n, i) ==
          /\ \/ /\ transaction[i].state = InProgress
                   \* Move the transaction's proposals to the Committing state
                /\ \/ /\ \E t \in transaction[i].targets :
-                           /\ proposal[t][i].phase # Validate
+                           /\ proposal[t][i].phase # Commit
                            /\ proposal' = [proposal EXCEPT ![t] = 
                                              [proposal[t] EXCEPT ![i].phase = Commit,
                                                                  ![i].state = InProgress]]
@@ -487,7 +487,7 @@ ReconcileTransaction(n, i) ==
          /\ transaction[i].state = InProgress
             \* Move the transaction's proposals to the Applying state
          /\ \/ /\ \E t \in transaction[i].targets :
-                     /\ proposal[t][i].phase # Validate
+                     /\ proposal[t][i].phase # Apply
                      /\ proposal' = [proposal EXCEPT ![t] = 
                                        [proposal[t] EXCEPT ![i].phase = Apply,
                                                            ![i].state = InProgress]]
@@ -846,5 +846,5 @@ ASSUME /\ \A t \in DOMAIN Target :
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Feb 08 16:22:09 PST 2022 by jordanhalterman
+\* Last modified Thu Feb 10 01:33:41 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
