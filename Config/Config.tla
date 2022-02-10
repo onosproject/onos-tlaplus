@@ -93,6 +93,8 @@ Example:
 *)
 CONSTANT Target
 
+Empty == [p \in {} |-> [value |-> Nil, delete |-> FALSE]]
+
 ----
 
 (*
@@ -346,7 +348,7 @@ ReconcileTransaction(n, i) ==
                                                              values |-> transaction[i].change[t]],
                                                           rollback   |-> 
                                                             [index  |-> 0, 
-                                                             values |-> Nil],
+                                                             values |-> Empty],
                                                           dependency |-> [index |-> 0],
                                                           phase      |-> Initialize,
                                                           state      |-> InProgress])
@@ -366,10 +368,10 @@ ReconcileTransaction(n, i) ==
                                           proposal[t] @@ (i :> [type       |-> Rollback,
                                                                 change   |-> 
                                                                   [index  |-> 0, 
-                                                                   values |-> Nil],
+                                                                   values |-> Empty],
                                                                 rollback   |-> 
                                                                   [index  |-> transaction[i].rollback,
-                                                                   values |-> Nil],
+                                                                   values |-> Empty],
                                                                 dependency |-> [index |-> 0],
                                                                 phase      |-> Initialize,
                                                                 state      |-> InProgress])
@@ -743,7 +745,7 @@ Next ==
          \E c \in DOMAIN configuration :
                ReconcileConfiguration(n, c)
 
-Spec == Init /\ [][Next]_vars
+Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
 
 Order ==
    \A t \in DOMAIN proposal :
@@ -810,12 +812,12 @@ Safety == [](Order /\ Consistency /\ Isolation)
 
 THEOREM Spec => Safety
 
-Completion == 
+Termination == 
    \A i \in DOMAIN transaction :
       /\ transaction[i].phase \in {Apply, Abort}
       /\ transaction[i].state = Complete
 
-Liveness == <>Completion
+Liveness == []<>Termination
 
 THEOREM Spec => Liveness
 
@@ -847,5 +849,5 @@ ASSUME /\ \A t \in DOMAIN Target :
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Feb 10 12:45:47 PST 2022 by jordanhalterman
+\* Last modified Thu Feb 10 14:42:19 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
