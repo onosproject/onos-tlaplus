@@ -766,11 +766,10 @@ Consistency ==
       LET 
           \* Compute the transaction indexes that have been applied to the target
           targetIndexes == {i \in DOMAIN transaction : 
-                               /\ transaction[i].type = Change 
                                /\ i \in DOMAIN proposal[t]
                                /\ proposal[t][i].phase = Apply
                                /\ proposal[t][i].state = Complete
-                               /\ t \in DOMAIN transaction[i].change
+                               /\ t \in transaction[i].targets
                                /\ ~\E j \in DOMAIN transaction :
                                      /\ j > i
                                      /\ transaction[j].type = Rollback
@@ -848,5 +847,5 @@ ASSUME /\ \A t \in DOMAIN Target :
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Feb 10 11:36:59 PST 2022 by jordanhalterman
+\* Last modified Thu Feb 10 12:30:40 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
