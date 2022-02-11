@@ -75,6 +75,9 @@ CONSTANTS
 \* The set of all nodes
 CONSTANT Node
 
+\* The number of transactions to use for model checking
+CONSTANT NumTransactions
+
 (*
 Target is the set of all targets and their possible paths and values.
 
@@ -264,39 +267,30 @@ ValidChanges ==
    IN
       {Changes(s) : s \in changeSets}
 
-\* The next available index in the transaction log.
-\* This is computed as the max of the existing indexes in the log to
-\* allow for changes to the log (e.g. log compaction) to be modeled.
-NextIndex ==
-   IF DOMAIN transaction = {} THEN
-      1
-   ELSE 
-      LET i == CHOOSE i \in DOMAIN transaction :
-         \A j \in DOMAIN transaction : i >= j
-      IN i + 1
-
 \* Add a set of changes 'c' to the transaction log
-RequestChange(c) ==
+RequestChange(i, c) ==
+   /\ i = Len(transaction) + 1
    /\ \E isolation \in {ReadCommitted, Serializable} :
-         /\ transaction' = transaction @@ (NextIndex :> [type      |-> Change,
-                                                         isolation |-> isolation,
-                                                         change    |-> c,
-                                                         targets   |-> {},
-                                                         phase     |-> Initialize,
-                                                         state     |-> InProgress,
-                                                         status    |-> Pending])
+         /\ transaction' = transaction @@ (i :> [type      |-> Change,
+                                                 isolation |-> isolation,
+                                                 change    |-> c,
+                                                 targets   |-> {},
+                                                 phase     |-> Initialize,
+                                                 state     |-> InProgress,
+                                                 status    |-> Pending])
    /\ UNCHANGED <<proposal, configuration, mastership, target>>
 
 \* Add a rollback of transaction 't' to the transaction log
-RequestRollback(i) ==
+RequestRollback(i, j) ==
+   /\ i = Len(transaction) + 1
    /\ \E isolation \in {ReadCommitted, Serializable} :
-         /\ transaction' = transaction @@ (NextIndex :> [type      |-> Rollback,
-                                                         isolation |-> isolation,
-                                                         rollback  |-> i,
-                                                         targets   |-> {},
-                                                         phase     |-> Initialize,
-                                                         state     |-> InProgress,
-                                                         status    |-> Pending])
+         /\ transaction' = transaction @@ (i :> [type      |-> Rollback,
+                                                 isolation |-> isolation,
+                                                 rollback  |-> j,
+                                                 targets   |-> {},
+                                                 phase     |-> Initialize,
+                                                 state     |-> InProgress,
+                                                 status    |-> Pending])
    /\ UNCHANGED <<proposal, configuration, mastership, target>>
 
 ----
@@ -725,10 +719,12 @@ Init ==
    /\ mastership = [t \in DOMAIN Target |-> [master |-> Nil, term |-> 0]]
 
 Next ==
-   \/ \E c \in ValidChanges : 
-         RequestChange(c)
-   \/ \E t \in DOMAIN transaction :
-         RequestRollback(t)
+   \/ \E i \in 1..NumTransactions :
+         \E c \in ValidChanges : 
+            RequestChange(i, c)
+   \/ \E i \in 1..NumTransactions :
+         \E j \in DOMAIN transaction :
+            RequestRollback(i, j)
    \/ \E n \in Node :
          \E t \in DOMAIN Target :
             SetMaster(n, t)
@@ -736,14 +732,14 @@ Next ==
    \*      UnsetMaster(t)
    \/ \E n \in Node :
          \E t \in DOMAIN transaction :
-               ReconcileTransaction(n, t)
+            ReconcileTransaction(n, t)
    \/ \E n \in Node :
          \E t \in DOMAIN proposal :
             \E i \in DOMAIN proposal[t] :
-                  ReconcileProposal(n, t, i)
+               ReconcileProposal(n, t, i)
    \/ \E n \in Node :
          \E c \in DOMAIN configuration :
-               ReconcileConfiguration(n, c)
+            ReconcileConfiguration(n, c)
 
 Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
 
@@ -812,12 +808,15 @@ Safety == [](Order /\ Consistency /\ Isolation)
 
 THEOREM Spec => Safety
 
-Termination == 
-   \A i \in DOMAIN transaction :
-      /\ transaction[i].phase \in {Apply, Abort}
-      /\ transaction[i].state = Complete
+Terminated(i) ==
+   /\ i \in DOMAIN transaction
+   /\ transaction[i].phase \in {Apply, Abort}
+   /\ transaction[i].state = Complete
 
-Liveness == []<>Termination
+Termination ==
+   \A i \in 1..NumTransactions : Terminated(i)
+
+Liveness == <>Termination
 
 THEOREM Spec => Liveness
 
@@ -849,5 +848,5 @@ ASSUME /\ \A t \in DOMAIN Target :
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Feb 10 14:42:19 PST 2022 by jordanhalterman
+\* Last modified Thu Feb 10 15:59:15 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
