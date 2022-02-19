@@ -102,7 +102,15 @@ CONSTANT Target
 
 Empty == [p \in {} |-> [value |-> Nil, delete |-> FALSE]]
 
-CONSTANT TraceFile
+CONSTANT 
+   TransactionFile,
+   ProposalFile,
+   ConfigurationFile
+
+TraceFile ==
+   {TransactionFile,
+    ProposalFile,
+    ConfigurationFile}
 
 ----
 
@@ -214,18 +222,17 @@ vars == <<transaction, proposal, configuration, mastership, target>>
 
 ----
 
-InitTrace ==
-   LET ret == IOExec(<<"rm", TraceFile>>)
+InitTrace(f) ==
+   LET ret == IOExec(<<"rm", f>>)
    IN  TRUE
 
-LogTrace(a, s) ==
-   LET trace == [action |-> a,
-                 init   |-> [transactions   |-> transaction,
+LogTrace(f, s) ==
+   LET trace == [init   |-> [transactions   |-> transaction,
                              proposals      |-> proposal,
                              configurations |-> configuration,
                              masterships    |-> mastership],
                  next   |-> s]
-       ret   == IOExecTemplate(<<"/bin/sh", "-c", "echo '%s' >> %s">>, <<ToJsonObject(trace), TraceFile>>)
+       ret   == IOExecTemplate(<<"/bin/sh", "-c", "echo '%s' >> %s">>, <<ToJsonObject(trace), f>>)
    IN ret.exitValue = 0
 
 ----
@@ -370,8 +377,8 @@ ReconcileTransaction(n, i) ==
                                                           state      |-> InProgress])
                                  ELSE
                                     proposal[t]]
-                           /\ LogTrace("ReconcileTransaction", [transactions |-> transaction', 
-                                                             proposals    |-> proposal'])
+                           /\ LogTrace(TransactionFile, [transactions |-> transaction', 
+                                                         proposals    |-> proposal'])
                         \* If the transaction is a rollback, the targets affected are 
                         \* the targets of the change transaction being rolled back.
                         \/ /\ transaction[i].type = Rollback
@@ -395,15 +402,15 @@ ReconcileTransaction(n, i) ==
                                                                 state      |-> InProgress])
                                        ELSE
                                           proposal[t]]
-                                 /\ LogTrace("ReconcileTransaction", [transactions |-> transaction', 
-                                                                   proposals    |-> proposal'])
+                                 /\ LogTrace(TransactionFile, [transactions |-> transaction', 
+                                                               proposals    |-> proposal'])
                               \* If the rollback index is not a valid Change transaction
                               \* fail the Rollback transaction.
                               \/ /\ \/ /\ transaction[i].rollback \in DOMAIN transaction
                                        /\ transaction[transaction[i].rollback].type = Rollback
                                     \/ transaction[i].rollback \notin DOMAIN transaction
                                  /\ transaction' = [transaction EXCEPT ![i].state = Failed]
-                                 /\ LogTrace("ReconcileTransaction", [transactions |-> transaction'])
+                                 /\ LogTrace(TransactionFile, [transactions |-> transaction'])
                                  /\ UNCHANGED <<proposal>>
                   \* If the transaction's proposals have been initialized, check proposals
                   \* for completion or failures.
@@ -413,14 +420,14 @@ ReconcileTransaction(n, i) ==
                                  /\ proposal[t][i].phase = Initialize
                                  /\ proposal[t][i].state = Complete
                            /\ transaction' = [transaction EXCEPT ![i].state = Complete]
-                           /\ LogTrace("ReconcileTransaction", [transactions |-> transaction'])
+                           /\ LogTrace(TransactionFile, [transactions |-> transaction'])
                            /\ UNCHANGED <<proposal>>
                         \* If any proposal has been Failed, mark the transaction Failed.
                         \/ /\ \E t \in transaction[i].targets : 
                                  /\ proposal[t][i].phase  = Initialize
                                  /\ proposal[t][i].state = Failed
                            /\ transaction' = [transaction EXCEPT ![i].state = Failed]
-                           /\ LogTrace("ReconcileTransaction", [transactions |-> transaction'])
+                           /\ LogTrace(TransactionFile, [transactions |-> transaction'])
                            /\ UNCHANGED <<proposal>>
             \* Once the transaction has been Initialized, proceed to the Validate phase.
             \* If any of the transaction's proposals depend on a Serializable transaction,
@@ -433,14 +440,14 @@ ReconcileTransaction(n, i) ==
                      => transaction[proposal[t][i].dependency.index].status \in {Validated, Committed, Applied, Aborted}
                /\ transaction' = [transaction EXCEPT ![i].phase = Validate,
                                                      ![i].state = InProgress]
-               /\ LogTrace("ReconcileTransaction", [transactions |-> transaction'])
+               /\ LogTrace(TransactionFile, [transactions |-> transaction'])
                /\ UNCHANGED <<proposal>>
             \* If the transaction failed initialization, proceed to the Abort phase
             \* to ensure indexes are still updated for the target configurations.
             \/ /\ transaction[i].state = Failed
                /\ transaction' = [transaction EXCEPT ![i].phase = Abort,
                                                      ![i].state = InProgress]
-               /\ LogTrace("ReconcileTransaction", [transactions |-> transaction'])
+               /\ LogTrace(TransactionFile, [transactions |-> transaction'])
                /\ UNCHANGED <<proposal>>
       \/ /\ transaction[i].phase = Validate
          /\ \/ /\ transaction[i].state = InProgress
@@ -450,7 +457,7 @@ ReconcileTransaction(n, i) ==
                            /\ proposal' = [proposal EXCEPT ![t] = 
                                              [proposal[t] EXCEPT ![i].phase = Validate,
                                                                  ![i].state = InProgress]]
-                     /\ LogTrace("ReconcileTransaction", [proposals |-> proposal'])
+                     /\ LogTrace(TransactionFile, [proposals |-> proposal'])
                      /\ UNCHANGED <<transaction>>
                   \* If all proposals have been Complete, mark the transaction Complete.
                   \/ /\ \A t \in transaction[i].targets : 
@@ -458,14 +465,14 @@ ReconcileTransaction(n, i) ==
                            /\ proposal[t][i].state = Complete
                      /\ transaction' = [transaction EXCEPT ![i].state  = Complete,
                                                            ![i].status = Validated]
-                     /\ LogTrace("ReconcileTransaction", [transactions |-> transaction'])
+                     /\ LogTrace(TransactionFile, [transactions |-> transaction'])
                      /\ UNCHANGED <<proposal>>
                   \* If any proposal has been Failed, mark the transaction Failed.
                   \/ /\ \E t \in transaction[i].targets : 
                            /\ proposal[t][i].phase  = Validate
                            /\ proposal[t][i].state = Failed
                      /\ transaction' = [transaction EXCEPT ![i].state = Failed]
-                     /\ LogTrace("ReconcileTransaction", [transactions |-> transaction'])
+                     /\ LogTrace(TransactionFile, [transactions |-> transaction'])
                      /\ UNCHANGED <<proposal>>
             \* Once the transaction has been Validated, proceed to the Commit phase.
             \* If any of the transaction's proposals depend on a Serializable transaction,
@@ -478,14 +485,14 @@ ReconcileTransaction(n, i) ==
                      => transaction[proposal[t][i].dependency.index].status \in {Committed, Applied, Aborted}
                /\ transaction' = [transaction EXCEPT ![i].phase = Commit,
                                                      ![i].state = InProgress]
-               /\ LogTrace("ReconcileTransaction", [transactions |-> transaction'])
+               /\ LogTrace(TransactionFile, [transactions |-> transaction'])
                /\ UNCHANGED <<proposal>>
             \* If the transaction failed validation, proceed to the Abort phase
             \* to ensure indexes are still updated for the target configurations.
             \/ /\ transaction[i].state = Failed
                /\ transaction' = [transaction EXCEPT ![i].phase = Abort,
                                                      ![i].state = InProgress]
-               /\ LogTrace("ReconcileTransaction", [transactions |-> transaction'])
+               /\ LogTrace(TransactionFile, [transactions |-> transaction'])
                /\ UNCHANGED <<proposal>>
       \/ /\ transaction[i].phase = Commit
          /\ \/ /\ transaction[i].state = InProgress
@@ -495,7 +502,7 @@ ReconcileTransaction(n, i) ==
                            /\ proposal' = [proposal EXCEPT ![t] = 
                                              [proposal[t] EXCEPT ![i].phase = Commit,
                                                                  ![i].state = InProgress]]
-                           /\ LogTrace("ReconcileTransaction", [proposals |-> proposal'])
+                           /\ LogTrace(TransactionFile, [proposals |-> proposal'])
                      /\ UNCHANGED <<transaction>>
                   \* If all proposals have been Complete, mark the transaction Complete.
                   \/ /\ \A t \in transaction[i].targets : 
@@ -503,7 +510,7 @@ ReconcileTransaction(n, i) ==
                            /\ proposal[t][i].state = Complete
                      /\ transaction' = [transaction EXCEPT ![i].state  = Complete,
                                                            ![i].status = Committed]
-                     /\ LogTrace("ReconcileTransaction", [transactions |-> transaction'])
+                     /\ LogTrace(TransactionFile, [transactions |-> transaction'])
                      /\ UNCHANGED <<proposal>>
             \* Once the transaction has been Committed, proceed to the Apply phase.
             \* If any of the transaction's proposals depend on a Serializable transaction,
@@ -516,7 +523,7 @@ ReconcileTransaction(n, i) ==
                      => transaction[proposal[t][i].dependency.index].status \in {Applied, Aborted}
                /\ transaction' = [transaction EXCEPT ![i].phase = Apply,
                                                      ![i].state = InProgress]
-               /\ LogTrace("ReconcileTransaction", [transactions |-> transaction'])
+               /\ LogTrace(TransactionFile, [transactions |-> transaction'])
                /\ UNCHANGED <<proposal>>
       \/ /\ transaction[i].phase = Apply
          /\ transaction[i].state = InProgress
@@ -526,7 +533,7 @@ ReconcileTransaction(n, i) ==
                      /\ proposal' = [proposal EXCEPT ![t] = 
                                        [proposal[t] EXCEPT ![i].phase = Apply,
                                                            ![i].state = InProgress]]
-                     /\ LogTrace("ReconcileTransaction", [proposals |-> proposal'])
+                     /\ LogTrace(TransactionFile, [proposals |-> proposal'])
                /\ UNCHANGED <<transaction>>
             \* If all proposals have been Complete, mark the transaction Complete.
             \/ /\ \A t \in transaction[i].targets : 
@@ -534,14 +541,14 @@ ReconcileTransaction(n, i) ==
                      /\ proposal[t][i].state = Complete
                /\ transaction' = [transaction EXCEPT ![i].state  = Complete,
                                                      ![i].status = Applied]
-               /\ LogTrace("ReconcileTransaction", [transactions |-> transaction'])
+               /\ LogTrace(TransactionFile, [transactions |-> transaction'])
                /\ UNCHANGED <<proposal>>
             \* If any proposal has been Failed, mark the transaction Failed.
             \/ /\ \E t \in transaction[i].targets : 
                      /\ proposal[t][i].phase  = Apply
                      /\ proposal[t][i].state = Failed
                /\ transaction' = [transaction EXCEPT ![i].state = Failed]
-               /\ LogTrace("ReconcileTransaction", [transactions |-> transaction'])
+               /\ LogTrace(TransactionFile, [transactions |-> transaction'])
                /\ UNCHANGED <<proposal>>
       \* The Aborting state is used to clean up transactions that have failed during
       \* the Initializing or Validating phases.
@@ -553,7 +560,7 @@ ReconcileTransaction(n, i) ==
                      /\ proposal' = [proposal EXCEPT ![t] = 
                                        [proposal[t] EXCEPT ![i].phase = Abort,
                                                            ![i].state = InProgress]]
-                     /\ LogTrace("ReconcileTransaction", [proposals |-> proposal'])
+                     /\ LogTrace(TransactionFile, [proposals |-> proposal'])
                /\ UNCHANGED <<transaction>>
             \* If all proposals have been Complete, mark the transaction Complete.
             \/ /\ \A t \in transaction[i].targets : 
@@ -561,7 +568,7 @@ ReconcileTransaction(n, i) ==
                      /\ proposal[t][i].state = Complete
                /\ transaction' = [transaction EXCEPT ![i].state  = Complete,
                                                      ![i].status = Aborted]
-               /\ LogTrace("ReconcileTransaction", [transactions |-> transaction'])
+               /\ LogTrace(TransactionFile, [transactions |-> transaction'])
                /\ UNCHANGED <<proposal>>
    /\ UNCHANGED <<configuration, mastership, target>>
 
@@ -573,8 +580,8 @@ ReconcileProposal(n, t, i) ==
                [proposal[t] EXCEPT ![i].state = Complete,
                                    ![i].dependency.index = configuration[t].proposal.index]]
          /\ configuration' = [configuration EXCEPT ![t].proposal.index = i]
-         /\ LogTrace("ReconcileProposal", [proposals      |-> proposal',
-                                        configurations |-> configuration'])
+         /\ LogTrace(ProposalFile, [proposals      |-> proposal',
+                                    configurations |-> configuration'])
          /\ UNCHANGED <<target>>
       \* While in the Validate phase, validate the proposed changes.
       \* If validation is successful, the proposal also records the changes
@@ -604,7 +611,7 @@ ReconcileProposal(n, t, i) ==
                         \/ /\ r = Invalid
                            /\ proposal' = [proposal EXCEPT ![t] = 
                                              [proposal[t] EXCEPT ![i].state = Failed]]
-               /\ LogTrace("ReconcileProposal", [proposals |-> proposal'])
+               /\ LogTrace(ProposalFile, [proposals |-> proposal'])
             \* For Rollback proposals, validate the rollback changes which are
             \* proposal being rolled back.
             \/ /\ proposal[t][i].type = Rollback
@@ -626,22 +633,22 @@ ReconcileProposal(n, t, i) ==
                                                                  ![i].change.values   = changeValues,
                                                                  ![i].rollback.values = rollbackValues,
                                                                  ![i].state           = Complete]]
-                                       /\ LogTrace("ReconcileProposal", [proposals |-> proposal'])
+                                       /\ LogTrace(ProposalFile, [proposals |-> proposal'])
                                     \/ /\ r = Invalid
                                        /\ proposal' = [proposal EXCEPT ![t] = 
                                                          [proposal[t] EXCEPT ![i].state = Failed]]
-                                       /\ LogTrace("ReconcileProposal", [proposals |-> proposal'])
+                                       /\ LogTrace(ProposalFile, [proposals |-> proposal'])
                         \* If the Rollback target is not the most recent change to the configuration,
                         \* fail validation for the proposal.
                         \/ /\ configuration[t].config.index # proposal[t][i].rollback.index
                            /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].state = Failed]]
-                           /\ LogTrace("ReconcileProposal", [proposals |-> proposal'])
+                           /\ LogTrace(ProposalFile, [proposals |-> proposal'])
                   \* If a Rollback proposal is attempting to roll back another Rollback,
                   \* fail validation for the proposal.
                   \/ /\ proposal[t][proposal[t][i].rollback.index].type = Rollback
                      /\ proposal' = [proposal EXCEPT ![t] = 
                            [proposal[t] EXCEPT ![i].state = Failed]]
-                     /\ LogTrace("ReconcileProposal", [proposals |-> proposal'])
+                     /\ LogTrace(ProposalFile, [proposals |-> proposal'])
          /\ UNCHANGED <<configuration, target>>
       \* While in the Commit state, commit the proposed changes to the configuration.
       \/ /\ proposal[t][i].phase = Commit
@@ -652,8 +659,8 @@ ReconcileProposal(n, t, i) ==
                                                          ![t].config.index  = proposal[t][i].change.index,
                                                          ![t].commit.index  = i]
          /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].state = Complete]]
-         /\ LogTrace("ReconcileProposal", [proposals      |-> proposal',
-                                        configurations |-> configuration'])
+         /\ LogTrace(ProposalFile, [proposals      |-> proposal',
+                                    configurations |-> configuration'])
          /\ UNCHANGED <<target>>
       \* While in the Apply phase, apply the proposed changes to the target.
       \/ /\ proposal[t][i].phase = Apply
@@ -670,15 +677,15 @@ ReconcileProposal(n, t, i) ==
                                           ![t].target.values = proposal[t][i].change.values 
                                              @@ configuration[t].target.values]
                   /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].state = Complete]]
-                  /\ LogTrace("ReconcileProposal", [proposals      |-> proposal',
-                                                 configurations |-> configuration'])
+                  /\ LogTrace(ProposalFile, [proposals      |-> proposal',
+                                             configurations |-> configuration'])
                \* If the proposal could not be applied, update the configuration's applied index
                \* and mark the proposal Failed.
                \/ /\ r = Failure
                   /\ configuration' = [configuration EXCEPT ![t].target.index = i]
                   /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].state = Failed]]
-                  /\ LogTrace("ReconcileProposal", [proposals      |-> proposal',
-                                                 configurations |-> configuration'])
+                  /\ LogTrace(ProposalFile, [proposals      |-> proposal',
+                                             configurations |-> configuration'])
                   /\ UNCHANGED <<target>>
       \/ /\ proposal[t][i].phase = Abort
          /\ proposal[t][i].state = InProgress
@@ -688,7 +695,7 @@ ReconcileProposal(n, t, i) ==
             \* mark the Abort phase Complete until the target.index has been incremented.
          /\ \/ /\ configuration[t].commit.index = proposal[t][i].dependency.index
                /\ configuration' = [configuration EXCEPT ![t].commit.index = i]
-                  /\ LogTrace("ReconcileProposal", [configurations |-> configuration'])
+                  /\ LogTrace(ProposalFile, [configurations |-> configuration'])
                /\ UNCHANGED <<proposal>>
             \* If the configuration's target.index matches the proposal's dependency.index, 
             \* update the target.index and mark the proposal Complete for the Abort phase.
@@ -696,8 +703,8 @@ ReconcileProposal(n, t, i) ==
                /\ configuration[t].target.index = proposal[t][i].dependency.index
                /\ configuration' = [configuration EXCEPT ![t].target.index = i]
                /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].state = Complete]]
-               /\ LogTrace("ReconcileProposal", [proposals      |-> proposal',
-                                              configurations |-> configuration'])
+               /\ LogTrace(ProposalFile, [proposals      |-> proposal',
+                                          configurations |-> configuration'])
             \* If both the configuration's commit.index and target.index match the
             \* proposal's dependency.index, update the commit.index and target.index
             \* and mark the proposal Complete for the Abort phase.
@@ -706,8 +713,8 @@ ReconcileProposal(n, t, i) ==
                /\ configuration' = [configuration EXCEPT ![t].commit.index = i,
                                                          ![t].target.index = i]
                /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].state = Complete]]
-               /\ LogTrace("ReconcileProposal", [proposals      |-> proposal',
-                                              configurations |-> configuration'])
+               /\ LogTrace(ProposalFile, [proposals      |-> proposal',
+                                          configurations |-> configuration'])
          /\ UNCHANGED <<target>>
    /\ UNCHANGED <<transaction, mastership>>
 
@@ -779,7 +786,9 @@ Init ==
                   [path \in {} |-> 
                      [value |-> Nil]]]
    /\ mastership = [t \in DOMAIN Target |-> [master |-> Nil, term |-> 0]]
-   /\ InitTrace
+   /\ InitTrace(TransactionFile)
+   /\ InitTrace(ProposalFile)
+   /\ InitTrace(ConfigurationFile)
 
 Next ==
    \/ \E i \in 1..NumTransactions :
@@ -911,5 +920,5 @@ ASSUME /\ \A t \in DOMAIN Target :
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Feb 18 15:28:22 PST 2022 by jordanhalterman
+\* Last modified Fri Feb 18 16:20:51 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
