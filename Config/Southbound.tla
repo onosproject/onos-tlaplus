@@ -67,20 +67,34 @@ UnsetMaster(t) ==
 Formal specification, constraints, and theorems.
 *)
 
-Init ==
+InitSouthbound ==
    /\ target = [t \in DOMAIN Target |-> 
                   [path \in {} |-> 
                      [value |-> Nil]]]
    /\ mastership = [t \in DOMAIN Target |-> [master |-> Nil, term |-> 0]]
 
-Next ==
+NextSouthbound ==
    \/ \E n \in Node :
          \E t \in DOMAIN Target :
             SetMaster(n, t)
    \*\/ \E t \in DOMAIN Target :
    \*      UnsetMaster(t) 
 
+----
+
+ASSUME /\ IsFiniteSet(Node) 
+       /\ \A n \in Node : 
+             /\ n \notin DOMAIN Target 
+             /\ n \in STRING
+             
+ASSUME /\ \A t \in DOMAIN Target : 
+             /\ t \notin Node 
+             /\ t \in STRING
+             /\ Target[t].persistent \in BOOLEAN
+             /\ \A p \in DOMAIN Target[t].values :
+                   IsFiniteSet(Target[t].values[p])
+
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 20 07:53:43 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 20 09:09:52 PST 2022 by jordanhalterman
 \* Created Sun Feb 20 03:13:26 PST 2022 by jordanhalterman

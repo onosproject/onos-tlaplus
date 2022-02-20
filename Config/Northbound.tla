@@ -1,5 +1,7 @@
 ----------------------------- MODULE Northbound -----------------------------
 
+EXTENDS Transaction
+
 INSTANCE Naturals
 
 INSTANCE FiniteSets
@@ -7,65 +9,6 @@ INSTANCE FiniteSets
 INSTANCE Sequences
 
 LOCAL INSTANCE TLC
-
-----
-
-\* An empty constant
-CONSTANT Nil
-
-\* Transaction type constants
-CONSTANTS
-   Change,
-   Rollback
-
-\* Transaction isolation constants
-CONSTANTS
-   ReadCommitted,
-   Serializable
-
-\* Phase constants
-CONSTANTS
-   Initialize,
-   Validate,
-   Abort,
-   Commit,
-   Apply
-
-\* Status constants
-CONSTANTS
-   InProgress,
-   Complete,
-   Failed
-
-\* State constants
-CONSTANTS
-   Pending,
-   Validated,
-   Committed,
-   Applied,
-   Aborted
-
-(*
-Target is the set of all targets and their possible paths and values.
-
-Example:
-   Target == 
-      [target1 |-> 
-         [persistent |-> FALSE,
-          values |-> [
-            path1 |-> {"value1", "value2"},
-            path2 |-> {"value2", "value3"}]],
-      target2 |-> 
-         [persistent |-> TRUE,
-          values |-> [
-            path2 |-> {"value3", "value4"},
-            path3 |-> {"value4", "value5"}]]]
-*)
-CONSTANT Target
-
-\* A transaction log. Transactions may either request a set
-\* of changes to a set of targets or rollback a prior change.
-VARIABLE transaction
 
 ----
 
@@ -110,25 +53,25 @@ ValidChanges ==
 RequestChange(c) ==
    LET index == Len(transaction) + 1
    IN \E isolation \in {ReadCommitted, Serializable} :
-         /\ transaction' = transaction @@ (index :> [type      |-> Change,
+         /\ transaction' = transaction @@ (index :> [type      |-> TransactionChange,
                                                      isolation |-> isolation,
                                                      change    |-> c,
                                                      targets   |-> {},
-                                                     phase     |-> Initialize,
-                                                     state     |-> InProgress,
-                                                     status    |-> Pending])
+                                                     phase     |-> TransactionInitialize,
+                                                     state     |-> TransactionInProgress,
+                                                     status    |-> TransactionPending])
 
 \* Add a rollback of transaction 't' to the transaction log
 RequestRollback(i) ==
    LET index == Len(transaction) + 1
    IN \E isolation \in {ReadCommitted, Serializable} :
-         /\ transaction' = transaction @@ (index :> [type      |-> Rollback,
+         /\ transaction' = transaction @@ (index :> [type      |-> TransactionRollback,
                                                      isolation |-> isolation,
                                                      rollback  |-> i,
                                                      targets   |-> {},
-                                                     phase     |-> Initialize,
-                                                     state     |-> InProgress,
-                                                     status    |-> Pending])
+                                                     phase     |-> TransactionInitialize,
+                                                     state     |-> TransactionInProgress,
+                                                     status    |-> TransactionPending])
 
 RequestSet ==
    \/ \E c \in ValidChanges : 
@@ -142,12 +85,12 @@ RequestSet ==
 Formal specification, constraints, and theorems.
 *)
 
-Init == TRUE
+InitNorthbound == TRUE
 
-Next ==
+NextNorthbound ==
    \/ RequestSet
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 20 08:28:04 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 20 09:09:26 PST 2022 by jordanhalterman
 \* Created Sun Feb 20 03:08:25 PST 2022 by jordanhalterman
