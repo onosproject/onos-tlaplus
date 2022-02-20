@@ -103,7 +103,8 @@ ValidChanges ==
                             \A p \in DOMAIN Target[t].values :
                                Cardinality({v \in s : v.target = t /\ v.path = p}) <= 1}
    IN
-      {Changes(s) : s \in changeSets}
+      {c \in {Changes(s) : s \in changeSets} : 
+         DOMAIN c # {} /\ \A t \in DOMAIN c : DOMAIN c[t] # {}}
 
 \* Add a set of changes 'c' to the transaction log
 RequestChange(c) ==
@@ -148,5 +149,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 20 07:53:47 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 20 08:28:04 PST 2022 by jordanhalterman
 \* Created Sun Feb 20 03:08:25 PST 2022 by jordanhalterman

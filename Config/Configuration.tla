@@ -96,34 +96,37 @@ Reconcile(n, t) ==
 Formal specification, constraints, and theorems.
 *)
 
-Init == configuration = [t \in DOMAIN Target |-> 
-                           [state  |-> InProgress,
-                            config |-> 
-                              [index  |-> 0,
-                               term   |-> 0,
-                               values |-> 
-                                  [path \in {} |-> 
-                                     [path    |-> path,
-                                      value   |-> Nil,
-                                      index   |-> 0,
-                                      deleted |-> FALSE]]],
-                            proposal  |-> [index |-> 0],
-                            commit    |-> [index |-> 0],
-                            target    |-> 
-                              [index  |-> 0,
-                               term   |-> 0,
-                               values |-> 
-                                 [path \in {} |-> 
-                                    [path    |-> path,
-                                     value   |-> Nil,
-                                     index   |-> 0,
-                                     deleted |-> FALSE]]]]]
+Init == 
+   /\ configuration = [t \in DOMAIN Target |-> 
+                         [state  |-> InProgress,
+                          config |-> 
+                            [index  |-> 0,
+                             term   |-> 0,
+                             values |-> 
+                                [path \in {} |-> 
+                                   [path    |-> path,
+                                    value   |-> Nil,
+                                    index   |-> 0,
+                                    deleted |-> FALSE]]],
+                          proposal  |-> [index |-> 0],
+                          commit    |-> [index |-> 0],
+                          target    |-> 
+                            [index  |-> 0,
+                             term   |-> 0,
+                             values |-> 
+                               [path \in {} |-> 
+                                  [path    |-> path,
+                                   value   |-> Nil,
+                                   index   |-> 0,
+                                   deleted |-> FALSE]]]]]
+   /\ Trace!Init
 
-Next == \E n \in Node :
-           \E t \in DOMAIN configuration :
-                 Trace!Step("Reconcile", Reconcile(n, t), [node |-> n, target |-> t])
+Next == 
+   \/ \E n \in Node :
+         \E t \in DOMAIN configuration :
+            Trace!Step("Reconcile", Reconcile(n, t), [node |-> n, target |-> t])
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 20 08:06:07 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 20 08:17:49 PST 2022 by jordanhalterman
 \* Created Sun Feb 20 02:21:04 PST 2022 by jordanhalterman

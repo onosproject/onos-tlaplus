@@ -223,17 +223,20 @@ Reconcile(n, t, i) ==
 Formal specification, constraints, and theorems.
 *)
 
-Init == proposal = [t \in DOMAIN Target |->
-                      [i \in {} |-> 
-                         [phase |-> Initialize,
-                          state |-> InProgress]]]
+Init == 
+   /\ proposal = [t \in DOMAIN Target |->
+                    [i \in {} |-> 
+                       [phase |-> Initialize,
+                        state |-> InProgress]]]
+   /\ Trace!Init
 
-Next == \E n \in Node :
-           \E t \in DOMAIN proposal :
-              \E i \in DOMAIN proposal[t] :
-                 Trace!Step("Reconcile", Reconcile(n, t, i), [node |-> n, target |-> t, index |-> i])
+Next == 
+   \/ \E n \in Node :
+         \E t \in DOMAIN proposal :
+            \E i \in DOMAIN proposal[t] :
+               Trace!Step("Reconcile", Reconcile(n, t, i), [node |-> n, target |-> t, index |-> i])
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 20 08:05:48 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 20 08:17:38 PST 2022 by jordanhalterman
 \* Created Sun Feb 20 02:20:56 PST 2022 by jordanhalterman

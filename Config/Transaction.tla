@@ -51,7 +51,7 @@ VARIABLE proposal
 
 LOCAL InitState ==
    [transactions |-> transaction,
-    proposals    |-> proposal]
+    proposals    |-> [t \in DOMAIN proposal |-> proposal[t]]]
 
 LOCAL NextState ==
    [transactions |-> transaction',
@@ -306,5 +306,5 @@ Next ==
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 20 08:06:24 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 20 08:19:22 PST 2022 by jordanhalterman
 \* Created Sun Feb 20 02:20:45 PST 2022 by jordanhalterman
