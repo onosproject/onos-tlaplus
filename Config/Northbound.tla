@@ -1,6 +1,6 @@
 ----------------------------- MODULE Northbound -----------------------------
 
-EXTENDS Transaction
+EXTENDS Transactions
 
 INSTANCE Naturals
 
@@ -92,5 +92,5 @@ NextNorthbound ==
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 20 09:54:01 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 20 10:10:06 PST 2022 by jordanhalterman
 \* Created Sun Feb 20 03:08:25 PST 2022 by jordanhalterman

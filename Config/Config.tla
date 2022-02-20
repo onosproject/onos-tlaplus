@@ -2,9 +2,9 @@
 
 EXTENDS 
    Northbound, 
-   Transaction, 
-   Proposal, 
-   Configuration, 
+   Transactions, 
+   Proposals, 
+   Configurations, 
    Southbound
 
 INSTANCE Naturals
@@ -123,5 +123,5 @@ THEOREM Spec => Liveness
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 20 10:05:32 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 20 10:08:30 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
