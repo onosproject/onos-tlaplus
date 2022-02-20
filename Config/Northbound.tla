@@ -56,7 +56,7 @@ RequestChange(c) ==
          /\ transaction' = transaction @@ (index :> [type      |-> TransactionChange,
                                                      isolation |-> isolation,
                                                      change    |-> c,
-                                                     targets   |-> {},
+                                                     targets   |-> [t \in {} |-> 0],
                                                      phase     |-> TransactionInitialize,
                                                      state     |-> TransactionInProgress,
                                                      status    |-> TransactionPending])
@@ -68,7 +68,7 @@ RequestRollback(i) ==
          /\ transaction' = transaction @@ (index :> [type      |-> TransactionRollback,
                                                      isolation |-> isolation,
                                                      rollback  |-> i,
-                                                     targets   |-> {},
+                                                     targets   |-> [t \in {} |-> 0],
                                                      phase     |-> TransactionInitialize,
                                                      state     |-> TransactionInProgress,
                                                      status    |-> TransactionPending])
@@ -92,5 +92,5 @@ NextNorthbound ==
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 20 09:09:26 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 20 09:54:01 PST 2022 by jordanhalterman
 \* Created Sun Feb 20 03:08:25 PST 2022 by jordanhalterman

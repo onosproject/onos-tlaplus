@@ -68,7 +68,7 @@ Consistency ==
                                /\ i \in DOMAIN proposal[t]
                                /\ proposal[t][i].phase = ProposalApply
                                /\ proposal[t][i].state = ProposalComplete
-                               /\ t \in transaction[i].targets
+                               /\ t \in DOMAIN transaction[i].targets
                                /\ ~\E j \in DOMAIN transaction :
                                      /\ j > i
                                      /\ transaction[j].type = TransactionRollback
@@ -95,14 +95,14 @@ Isolation ==
          /\ transaction[i].isolation = Serializable
          => ~\E j \in DOMAIN transaction : 
                /\ j > i
-               /\ transaction[j].targets \cap transaction[i].targets # {}
+               /\ DOMAIN transaction[j].targets \cap DOMAIN transaction[i].targets # {}
                /\ transaction[j].phase = TransactionCommit
       /\ /\ transaction[i].phase = TransactionApply
          /\ transaction[i].state = TransactionInProgress
          /\ transaction[i].isolation = Serializable
          => ~\E j \in DOMAIN transaction : 
                /\ j > i
-               /\ transaction[j].targets \cap transaction[i].targets # {}
+               /\ DOMAIN transaction[j].targets \cap DOMAIN transaction[i].targets # {}
                /\ transaction[j].phase = TransactionApply
 
 Safety == [](Order /\ Consistency /\ Isolation)
@@ -123,5 +123,5 @@ THEOREM Spec => Liveness
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 20 09:10:53 PST 2022 by jordanhalterman
+\* Last modified Sun Feb 20 10:05:32 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman
