@@ -16,12 +16,12 @@ Log(name, args) ==
    LET IOUtils == INSTANCE IOUtils
        Json    == INSTANCE Json
    IN
-      LET init  == InitState
-          next  == NextState
+      LET init  == [k \in {k \in DOMAIN InitState : DOMAIN InitState[k] # {}} |-> InitState[k]]
+          next  == [k \in {k \in DOMAIN NextState : DOMAIN NextState[k] # {}} |-> NextState[k]]
           trace == [action |-> name, 
                     args   |-> args,
                     init   |-> init, 
-                    next   |-> [k \in {k \in DOMAIN next : next[k] # init[k]} |-> next[k]]]
+                    next   |-> [k \in {k \in DOMAIN next : k \notin DOMAIN init \/ next[k] # init[k]} |-> next[k]]]
           ret   == IOUtils!IOExecTemplate(<<"/bin/sh", "-c", "echo '%s' >> %s.log">>, <<Json!ToJsonObject(trace), Module>>)
       IN ret.exitValue = 0
 
@@ -31,5 +31,5 @@ Step(name, action, args) ==
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 20 08:00:38 PST 2022 by jordanhalterman
+\* Last modified Mon Feb 21 01:49:57 PST 2022 by jordanhalterman
 \* Created Sun Feb 20 01:18:19 PST 2022 by jordanhalterman
