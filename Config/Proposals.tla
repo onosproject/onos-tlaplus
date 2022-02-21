@@ -196,7 +196,7 @@ Formal specification, constraints, and theorems.
 *)
 
 InitProposal == 
-   /\ proposal = [t \in DOMAIN Target |->
+   /\ proposal = [t \in {} |->
                     [i \in {} |-> 
                        [phase |-> ProposalInitialize,
                         state |-> ProposalInProgress]]]
@@ -210,5 +210,5 @@ NextProposal ==
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 20 10:07:54 PST 2022 by jordanhalterman
+\* Last modified Mon Feb 21 01:24:12 PST 2022 by jordanhalterman
 \* Created Sun Feb 20 10:07:16 PST 2022 by jordanhalterman

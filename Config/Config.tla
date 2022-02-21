@@ -61,7 +61,7 @@ Order ==
                   /\ proposal[t][j].state = ProposalComplete
 
 Consistency == 
-   \A t \in DOMAIN target :
+   \A t \in DOMAIN proposal :
       LET 
           \* Compute the transaction indexes that have been applied to the target
           targetIndexes == {i \in DOMAIN transaction : 
@@ -123,5 +123,5 @@ THEOREM Spec => Liveness
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 20 10:08:30 PST 2022 by jordanhalterman
+\* Last modified Mon Feb 21 01:32:07 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman

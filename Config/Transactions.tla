@@ -52,7 +52,7 @@ VARIABLE transaction
 
 LOCAL InitState ==
    [transactions |-> transaction,
-    proposals    |-> [t \in DOMAIN proposal |-> proposal[t]]]
+    proposals    |-> proposal]
 
 LOCAL NextState ==
    [transactions |-> transaction',
@@ -103,22 +103,23 @@ ReconcileTransaction(i) ==
                         \* If the transaction is a change, the targets are taken
                         \* from the change values.
                      /\ \/ /\ transaction[i].type = TransactionChange
-                           /\ proposal' = [t \in DOMAIN proposal |-> 
-                                 IF t \in DOMAIN transaction[i].change THEN
-                                    Append(proposal[t], [type       |-> ProposalChange,
-                                                         index      |-> i,
-                                                         change     |-> 
-                                                           [index  |-> i,
-                                                            values |-> transaction[i].change[t]],
-                                                         rollback   |-> 
-                                                           [index  |-> 0],
-                                                         dependency |-> [index |-> 0],
-                                                         phase      |-> ProposalInitialize,
-                                                         state      |-> ProposalInProgress])
-                                 ELSE
-                                    proposal[t]]
-                           /\ transaction' = [transaction EXCEPT ![i].targets = 
-                                                [t \in DOMAIN transaction[i].change |-> Len(proposal'[t])]]
+                           /\ LET targets == DOMAIN transaction[i].change
+                              IN
+                                 /\ proposal' = [t \in DOMAIN proposal \ targets |-> proposal[t]]
+                                                @@ [t \in targets |-> 
+                                                      LET p == IF t \in DOMAIN proposal THEN proposal[t] ELSE <<>>
+                                                      IN Append(p, [type       |-> ProposalChange,
+                                                                    index      |-> i,
+                                                                    change     |-> 
+                                                                      [index  |-> i,
+                                                                       values |-> transaction[i].change[t]],
+                                                                    rollback   |-> 
+                                                                      [index  |-> 0],
+                                                                    dependency |-> [index |-> 0],
+                                                                    phase      |-> ProposalInitialize,
+                                                                    state      |-> ProposalInProgress])]
+                                 /\ transaction' = [transaction EXCEPT ![i].targets = 
+                                                      [t \in targets |-> Len(proposal'[t])]]
                         \* If the transaction is a rollback, the targets affected are 
                         \* the targets of the change transaction being rolled back.
                         \/ /\ transaction[i].type = TransactionRollback
@@ -126,22 +127,22 @@ ReconcileTransaction(i) ==
                               \* initialize proposals for all of the Change targets.
                            /\ \/ /\ transaction[i].rollback \in DOMAIN transaction
                                  /\ transaction[transaction[i].rollback].type = TransactionChange
-                                 /\ proposal' = [t \in DOMAIN proposal |-> 
-                                       IF t \in DOMAIN transaction[transaction[i].rollback].change THEN
-                                          Append(proposal[t], [type       |-> ProposalRollback,
-                                                               index      |-> i,
-                                                               change     |-> 
-                                                                 [index  |-> 0],
-                                                               rollback   |-> 
-                                                                 [index  |-> transaction[i].rollback],
-                                                               dependency |-> [index |-> 0],
-                                                               phase      |-> ProposalInitialize,
-                                                               state      |-> ProposalInProgress])
-                                       ELSE
-                                          proposal[t]]
-                                 /\ transaction' = [transaction EXCEPT ![i].targets = 
-                                                      [t \in DOMAIN transaction[transaction[i].rollback].change |-> 
-                                                         Len(proposal'[t])]]
+                                 /\ LET targets == DOMAIN transaction[transaction[i].rollback].change
+                                    IN
+                                       /\ proposal' = [t \in DOMAIN proposal \ targets |-> proposal[t]]
+                                                      @@ [t \in targets |-> 
+                                                            LET p == IF t \in DOMAIN proposal THEN proposal[t] ELSE <<>>
+                                                            IN Append(p, [type       |-> ProposalRollback,
+                                                                          index      |-> i,
+                                                                          change     |-> 
+                                                                            [index  |-> 0],
+                                                                          rollback   |-> 
+                                                                            [index  |-> transaction[i].rollback],
+                                                                          dependency |-> [index |-> 0],
+                                                                          phase      |-> ProposalInitialize,
+                                                                          state      |-> ProposalInProgress])]
+                                       /\ transaction' = [transaction EXCEPT ![i].targets = 
+                                                            [t \in targets |-> Len(proposal'[t])]]
                               \* If the rollback index is not a valid Change transaction
                               \* fail the Rollback transaction.
                               \/ /\ \/ /\ transaction[i].rollback \in DOMAIN transaction
@@ -344,5 +345,5 @@ NextTransaction ==
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Feb 20 10:08:10 PST 2022 by jordanhalterman
+\* Last modified Mon Feb 21 01:40:59 PST 2022 by jordanhalterman
 \* Created Sun Feb 20 10:07:06 PST 2022 by jordanhalterman
