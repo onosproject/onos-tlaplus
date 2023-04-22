@@ -48,18 +48,18 @@ ReconcileConfiguration(n, t) ==
          /\ configuration' = [configuration EXCEPT ![t].state = ConfigurationComplete]
          /\ UNCHANGED <<target>>
       \/ /\ ~Target[t].persistent
-         /\ \/ mastership[t].term > configuration[t].config.term
-            \/ /\ mastership[t].term = configuration[t].config.term
+         /\ \/ mastership[t].term > configuration[t].committed.term
+            \/ /\ mastership[t].term = configuration[t].committed.term
                /\ mastership[t].master = Nil
-         /\ configuration' = [configuration EXCEPT ![t].config.term = mastership[t].term,
-                                                   ![t].state       = ConfigurationInProgress]                                          
+         /\ configuration' = [configuration EXCEPT ![t].committed.term = mastership[t].term,
+                                                   ![t].state          = ConfigurationInProgress]                                          
          /\ UNCHANGED <<target>>
       \/ /\ configuration[t].state = ConfigurationInProgress
-         /\ mastership[t].term = configuration[t].config.term
+         /\ mastership[t].term = configuration[t].committed.term
          /\ mastership[t].master = n
-         /\ target' = [target EXCEPT ![t] = configuration[t].target.values]
-         /\ configuration' = [configuration EXCEPT ![t].target.term = mastership[t].term,
-                                                   ![t].state       = ConfigurationComplete]
+         /\ target' = [target EXCEPT ![t] = configuration[t].applied.values]
+         /\ configuration' = [configuration EXCEPT ![t].applied.term = mastership[t].term,
+                                                   ![t].state        = ConfigurationComplete]
    /\ UNCHANGED <<mastership>>
 
 ----
@@ -71,7 +71,8 @@ Formal specification, constraints, and theorems.
 InitConfiguration == 
    /\ configuration = [t \in DOMAIN Target |-> 
                          [state  |-> ConfigurationInProgress,
-                          config |-> 
+                          index     |-> 0,
+                          committed |-> 
                             [index  |-> 0,
                              term   |-> 0,
                              values |-> 
@@ -80,9 +81,8 @@ InitConfiguration ==
                                     value   |-> Nil,
                                     index   |-> 0,
                                     deleted |-> FALSE]]],
-                          proposal  |-> [index |-> 0],
-                          commit    |-> [index |-> 0],
-                          target    |-> 
+                          proposed  |-> [index |-> 0],
+                          applied   |-> 
                             [index  |-> 0,
                              term   |-> 0,
                              values |-> 
@@ -100,5 +100,6 @@ NextConfiguration ==
 
 =============================================================================
 \* Modification History
+\* Last modified Fri Apr 21 12:46:55 PDT 2023 by jhalterm
 \* Last modified Sun Feb 20 10:07:49 PST 2022 by jordanhalterman
 \* Created Sun Feb 20 10:06:55 PST 2022 by jordanhalterman

@@ -2,7 +2,6 @@
 
 EXTENDS 
    Northbound, 
-   Transactions, 
    Proposals, 
    Configurations, 
    Southbound
@@ -15,7 +14,7 @@ INSTANCE Sequences
 
 LOCAL INSTANCE TLC
 
-vars == <<transaction, proposal, configuration, mastership, target>>
+vars == <<proposal, configuration, mastership, target>>
 
 ----
 
@@ -24,23 +23,20 @@ Formal specification, constraints, and theorems.
 *)
 
 Init ==
-   /\ InitTransaction
    /\ InitProposal
    /\ InitConfiguration
    /\ InitNorthbound
    /\ InitSouthbound
 
 Next ==
-   \/ /\ NextTransaction
-      /\ UNCHANGED <<configuration, target, mastership>>
    \/ /\ NextProposal
-      /\ UNCHANGED <<transaction>>
+      /\ UNCHANGED <<>>
    \/ /\ NextConfiguration
-      /\ UNCHANGED <<transaction, proposal>>
+      /\ UNCHANGED <<proposal>>
    \/ /\ NextNorthbound
-      /\ UNCHANGED <<proposal, configuration, target, mastership>>
+      /\ UNCHANGED <<configuration, target, mastership>>
    \/ /\ NextSouthbound
-      /\ UNCHANGED <<transaction, proposal, configuration>>
+      /\ UNCHANGED <<proposal, configuration>>
 
 Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
 
@@ -64,21 +60,19 @@ Consistency ==
    \A t \in DOMAIN proposal :
       LET 
           \* Compute the transaction indexes that have been applied to the target
-          targetIndexes == {i \in DOMAIN transaction : 
-                               /\ i \in DOMAIN proposal[t]
+          targetIndexes == {i \in DOMAIN proposal[t] :
                                /\ proposal[t][i].phase = ProposalApply
                                /\ proposal[t][i].state = ProposalComplete
-                               /\ t \in DOMAIN transaction[i].targets
-                               /\ ~\E j \in DOMAIN transaction :
+                               /\ ~\E j \in DOMAIN proposal[t] :
                                      /\ j > i
-                                     /\ transaction[j].type = TransactionRollback
-                                     /\ transaction[j].rollback = i
-                                     /\ transaction[j].phase = TransactionApply
-                                     /\ transaction[j].state = TransactionComplete}
+                                     /\ proposal[t][j].type = ProposalRollback
+                                     /\ proposal[t][j].rollback.index = i
+                                     /\ proposal[t][j].phase = ProposalApply
+                                     /\ proposal[t][j].state = ProposalComplete}
           \* Compute the set of paths in the target that have been updated by transactions
-          appliedPaths   == UNION {DOMAIN proposal[t][i].change.values : i \in targetIndexes}
+          appliedPaths == UNION {DOMAIN proposal[t][i].change.values : i \in targetIndexes}
           \* Compute the highest index applied to the target for each path
-          pathIndexes    == [p \in appliedPaths |-> CHOOSE i \in targetIndexes : 
+          pathIndexes  == [p \in appliedPaths |-> CHOOSE i \in targetIndexes : 
                                     \A j \in targetIndexes :
                                           /\ i >= j 
                                           /\ p \in DOMAIN proposal[t][i].change.values]
@@ -88,34 +82,19 @@ Consistency ==
       IN 
           target[t] = expectedConfig
 
-Isolation ==
-   \A i \in DOMAIN transaction :
-      /\ /\ transaction[i].phase = TransactionCommit
-         /\ transaction[i].state = TransactionInProgress
-         /\ transaction[i].isolation = Serializable
-         => ~\E j \in DOMAIN transaction : 
-               /\ j > i
-               /\ DOMAIN transaction[j].targets \cap DOMAIN transaction[i].targets # {}
-               /\ transaction[j].phase = TransactionCommit
-      /\ /\ transaction[i].phase = TransactionApply
-         /\ transaction[i].state = TransactionInProgress
-         /\ transaction[i].isolation = Serializable
-         => ~\E j \in DOMAIN transaction : 
-               /\ j > i
-               /\ DOMAIN transaction[j].targets \cap DOMAIN transaction[i].targets # {}
-               /\ transaction[j].phase = TransactionApply
-
-Safety == [](Order /\ Consistency /\ Isolation)
+Safety == [](Order /\ Consistency)
 
 THEOREM Spec => Safety
 
-Terminated(i) ==
-   /\ i \in DOMAIN transaction
-   /\ transaction[i].phase \in {TransactionApply, TransactionAbort}
-   /\ transaction[i].state = TransactionComplete
+Terminated(t, i) ==
+   /\ i \in DOMAIN proposal[t]
+   /\ proposal[t][i].phase \in {ProposalApply, ProposalAbort}
+   /\ proposal[t][i].state = ProposalComplete
 
 Termination ==
-   \A i \in 1..Len(transaction) : Terminated(i)
+   \A t \in DOMAIN proposal :
+      \A i \in 1..Len(proposal[t]) :
+         Terminated(t, i)
 
 Liveness == <>Termination
 
@@ -123,5 +102,6 @@ THEOREM Spec => Liveness
 
 =============================================================================
 \* Modification History
+\* Last modified Fri Apr 21 18:30:03 PDT 2023 by jhalterm
 \* Last modified Mon Feb 21 01:32:07 PST 2022 by jordanhalterman
 \* Created Wed Sep 22 13:22:32 PDT 2021 by jordanhalterman

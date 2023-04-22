@@ -1,2 +1,7 @@
 *.toolbox
 .DS_Store
+.vscode
+states
+*.dvi
+*.tex
+*.out
