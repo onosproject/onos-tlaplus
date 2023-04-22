@@ -10,6 +10,8 @@ INSTANCE Sequences
 
 LOCAL INSTANCE TLC
 
+VARIABLE changes
+
 ----
 
 (*
@@ -21,18 +23,17 @@ Value(s, t, p) ==
    LET value == CHOOSE v \in s : v.target = t /\ v.path = p
    IN
       [value  |-> value.value,
-       delete |-> value.delete]
+       delete |-> value.delete,
+       valid  |-> value.valid]
 
 Paths(s, t) ==
    [p \in {v.path : v \in {v \in s : v.target = t}} |-> Value(s, t, p)]
 
-Changes(s) ==
-   [t \in {v.target : v \in s} |-> Paths(s, t)]
-
 ValidValues(t, p) ==
    UNION {{[value |-> v, delete |-> FALSE, valid |-> TRUE] : v \in Target[t].values[p]}, 
              {[value |-> v, delete |-> FALSE, valid |-> FALSE] : v \in Target[t].values[p]}, 
-                 {[value |-> Nil, delete |-> TRUE]}}
+             {[value |-> Nil, delete |-> TRUE, valid |-> TRUE]},
+             {[value |-> Nil, delete |-> TRUE, valid |-> FALSE]}}
 
 ValidPaths(t) ==
    UNION {{v @@ [target |-> t, path |-> p] : v \in ValidValues(t, p)} : p \in DOMAIN Target[t].values}
@@ -44,23 +45,23 @@ ValidChanges(t) ==
                         /\ \A p \in DOMAIN Target[t].values :
                            /\ Cardinality({v \in s : v.target = t /\ v.path = p}) <= 1}
    IN
-      {c \in {Changes(s) : s \in changeSets} : DOMAIN c # {}}
+      {c \in { Paths(s, t) : s \in changeSets} : DOMAIN c # {}}
 
 \* Add change 'c' to the proposal log for target 't'
 RequestChange(t, c) ==
-   LET index == Cardinality(DOMAIN proposal[t])
+   LET index == Len(proposal[t]) + 1
    IN  proposal' = [proposal EXCEPT ![t] = proposal[t] @@ 
           (index :> [type       |-> ProposalChange,
                      index      |-> index,
-                     change     |->  [index  |-> index,
-                                      values |-> c],
-                     rollback   |-> [index   |-> 0],
+                     change     |-> [index  |-> index,
+                                     values |-> c],
+                     rollback   |-> [index  |-> 0],
                      phase      |-> ProposalInitialize,
                      state      |-> ProposalInProgress])]
 
 \* Add a rollback of proposal 'i' to the proposal log for target 't'
 RequestRollback(t, i) ==
-   LET index == Cardinality(DOMAIN proposal[t])
+   LET index == Len(proposal[t]) + 1
    IN  proposal' = [proposal EXCEPT ![t] = proposal[t] @@
           (index :> [type       |-> ProposalRollback,
                      index      |-> index,
@@ -71,7 +72,7 @@ RequestRollback(t, i) ==
 
 RequestSet ==
    \/ \E t \in DOMAIN Target :
-         \E c \in ValidChanges(t) :
+         \E c \in changes[t] :
             RequestChange(t, c)
    \/ \E t \in DOMAIN proposal :
          \E i \in DOMAIN proposal[t] :
@@ -83,10 +84,11 @@ RequestSet ==
 Formal specification, constraints, and theorems.
 *)
 
-InitNorthbound == TRUE
+InitNorthbound == 
+   /\ changes = [t \in DOMAIN Target |-> ValidChanges(t)]
 
 NextNorthbound ==
-   \/ RequestSet
+   \/ RequestSet /\ UNCHANGED <<changes>>
 
 =============================================================================
 \* Modification History

@@ -60,76 +60,91 @@ LOCAL Trace == INSTANCE Trace WITH
 \* Reconcile a proposal
 ReconcileProposal(n, t, i) ==
    /\ \/ /\ proposal[t][i].phase = ProposalInitialize
-         /\ proposal[t][i].state = ProposalInProgress
-         /\ proposal' = [proposal EXCEPT ![t] = 
-               [proposal[t] EXCEPT ![i].state = ProposalComplete]]
-         /\ configuration' = [configuration EXCEPT ![t].proposed.index = i]
-         /\ UNCHANGED <<target>>
+         /\ \/ /\ proposal[t][i].state = ProposalInProgress
+               /\ proposal' = [proposal EXCEPT ![t] = 
+                     [proposal[t] EXCEPT ![i].state = ProposalComplete]]
+               /\ configuration' = [configuration EXCEPT ![t].proposed.index = i]
+               /\ UNCHANGED <<target>>
+            \/ /\ proposal[t][i].state = ProposalComplete
+               /\ proposal' = [proposal EXCEPT ![t] = 
+                     [proposal[t] EXCEPT ![i].phase = ProposalValidate,
+                                         ![i].state = ProposalInProgress]]
+               /\ UNCHANGED <<configuration, target>>
       \* While in the Validate phase, validate the proposed changes.
       \* If validation is successful, the proposal also records the changes
       \* required to roll back the proposal and the index to which to roll back.
       \/ /\ proposal[t][i].phase = ProposalValidate
-         /\ proposal[t][i].state = ProposalInProgress
-         /\ configuration[t].index = i-1
-            \* For Change proposals validate the set of requested changes.
-         /\ \/ /\ proposal[t][i].type = ProposalChange
-               /\ LET rollbackIndex  == configuration[t].committed.index
-                      rollbackValues == [p \in DOMAIN proposal[t][i].change.values |-> 
-                                           IF p \in DOMAIN configuration[t].committed.values THEN
-                                              configuration[t].committed.values[p]
-                                           ELSE
-                                              [delete |-> TRUE]]
-                  \* If all the change values are valid,record the changes required to roll
-                  \* back the proposal and the index to which the rollback changes
-                  \* will roll back the configuration.
-                  IN 
-                     \/ /\ \A v \in proposal[t][i].change.values : v.valid
-                        /\ proposal' = [proposal EXCEPT ![t] = 
-                                          [proposal[t] EXCEPT ![i].rollback = [index  |-> rollbackIndex,
-                                                                               values |-> rollbackValues],
-                                                              ![i].state    = ProposalComplete]]
-                     \/ /\ \E v \in proposal[t][i].change.values : ~v.valid
-                        /\ proposal' = [proposal EXCEPT ![t] = 
-                                          [proposal[t] EXCEPT ![i].state = ProposalFailed]]
-            \* For Rollback proposals, validate the rollback changes which are
-            \* proposal being rolled back.
-            \/ /\ proposal[t][i].type = ProposalRollback
-                  \* Rollbacks can only be performed on Change type proposals.
-               /\ \/ /\ proposal[t][proposal[t][i].rollback.index].type = ProposalChange
-                        \* Only roll back the change if it's the lastest change made
-                        \* to the configuration based on the configuration index.
-                     /\ \/ /\ configuration[t].committed.index = proposal[t][i].rollback.index
-                           /\ LET changeIndex    == proposal[t][proposal[t][i].rollback.index].rollback.index
-                                  changeValues   == proposal[t][proposal[t][i].rollback.index].rollback.values
-                                  rollbackValues == proposal[t][proposal[t][i].rollback.index].change.values
-                              \* Record the changes required to roll back the target proposal and the index to 
-                              \* which the configuration is being rolled back.
-                              IN /\ proposal' = [proposal EXCEPT ![t] = 
-                                      [proposal[t] EXCEPT ![i].change = [index  |-> changeIndex,
-                                                                         values |-> changeValues],
-                                                          ![i].change = [index  |-> proposal[t][i].change.index,
-                                                                         values |-> changeValues],
-                                                          ![i].state  = ProposalComplete]]
-                        \* If the Rollback target is not the most recent change to the configuration,
+         /\ \/ /\ proposal[t][i].state = ProposalInProgress
+               /\ configuration[t].index = i-1
+                  \* For Change proposals validate the set of requested changes.
+               /\ \/ /\ proposal[t][i].type = ProposalChange
+                     /\ LET rollbackIndex  == configuration[t].committed.index
+                            rollbackValues == [p \in DOMAIN proposal[t][i].change.values |-> 
+                                                 IF p \in DOMAIN configuration[t].committed.values THEN
+                                                    configuration[t].committed.values[p]
+                                                 ELSE
+                                                    [delete |-> TRUE]]
+                        \* If all the change values are valid,record the changes required to roll
+                        \* back the proposal and the index to which the rollback changes
+                        \* will roll back the configuration.
+                        IN 
+                           \/ /\ \A p \in DOMAIN proposal[t][i].change.values : proposal[t][i].change.values[p].valid
+                              /\ proposal' = [proposal EXCEPT ![t] = 
+                                                [proposal[t] EXCEPT ![i].rollback = [index  |-> rollbackIndex,
+                                                                                     values |-> rollbackValues],
+                                                                    ![i].state    = ProposalComplete]]
+                           \/ /\ \E p \in DOMAIN proposal[t][i].change.values : ~proposal[t][i].change.values[p].valid
+                              /\ proposal' = [proposal EXCEPT ![t] = 
+                                                [proposal[t] EXCEPT ![i].state = ProposalFailed]]
+                  \* For Rollback proposals, validate the rollback changes which are
+                  \* proposal being rolled back.
+                  \/ /\ proposal[t][i].type = ProposalRollback
+                        \* Rollbacks can only be performed on Change type proposals.
+                     /\ \/ /\ proposal[t][proposal[t][i].rollback.index].type = ProposalChange
+                              \* Only roll back the change if it's the lastest change made
+                              \* to the configuration based on the configuration index.
+                           /\ \/ /\ configuration[t].committed.index = proposal[t][i].rollback.index
+                                 /\ LET changeIndex    == proposal[t][proposal[t][i].rollback.index].rollback.index
+                                        changeValues   == proposal[t][proposal[t][i].rollback.index].rollback.values
+                                        rollbackValues == proposal[t][proposal[t][i].rollback.index].change.values
+                                    \* Record the changes required to roll back the target proposal and the index to 
+                                    \* which the configuration is being rolled back.
+                                    IN /\ proposal' = [proposal EXCEPT ![t] = 
+                                             [proposal[t] EXCEPT ![i].change = [index  |-> changeIndex,
+                                                                                values |-> changeValues],
+                                                                 ![i].change = [index  |-> proposal[t][i].change.index,
+                                                                                values |-> changeValues],
+                                                                 ![i].state  = ProposalComplete]]
+                              \* If the Rollback target is not the most recent change to the configuration,
+                              \* fail validation for the proposal.
+                              \/ /\ configuration[t].committed.index # proposal[t][i].rollback.index
+                                 /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].state = ProposalFailed]]
+                        \* If a Rollback proposal is attempting to roll back another Rollback,
                         \* fail validation for the proposal.
-                        \/ /\ configuration[t].committed.index # proposal[t][i].rollback.index
-                           /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].state = ProposalFailed]]
-                  \* If a Rollback proposal is attempting to roll back another Rollback,
-                  \* fail validation for the proposal.
-                  \/ /\ proposal[t][proposal[t][i].rollback.index].type = ProposalRollback
-                     /\ proposal' = [proposal EXCEPT ![t] = 
-                           [proposal[t] EXCEPT ![i].state = ProposalFailed]]
-         /\ UNCHANGED <<configuration, target>>
+                        \/ /\ proposal[t][proposal[t][i].rollback.index].type = ProposalRollback
+                           /\ proposal' = [proposal EXCEPT ![t] = 
+                                 [proposal[t] EXCEPT ![i].state = ProposalFailed]]
+               /\ UNCHANGED <<configuration, target>>
+            \/ /\ proposal[t][i].state = ProposalComplete
+               /\ proposal' = [proposal EXCEPT ![t] = 
+                     [proposal[t] EXCEPT ![i].phase = ProposalCommit,
+                                         ![i].state = ProposalInProgress]]
+               /\ UNCHANGED <<configuration, target>>
       \* While in the Commit state, commit the proposed changes to the configuration.
       \/ /\ proposal[t][i].phase = ProposalCommit
-         /\ proposal[t][i].state = ProposalInProgress
-         \* Only commit the proposal if the prior proposal has already been committed.
-         /\ configuration[t].index = i-1
-         /\ configuration' = [configuration EXCEPT ![t].committed.values = proposal[t][i].change.values,
-                                                   ![t].committed.index  = proposal[t][i].change.index,
-                                                   ![t].index            = i]
-         /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].state = ProposalComplete]]
-         /\ UNCHANGED <<target>>
+         /\ \/ /\ proposal[t][i].state = ProposalInProgress
+               \* Only commit the proposal if the prior proposal has already been committed.
+               /\ configuration[t].index = i-1
+               /\ configuration' = [configuration EXCEPT ![t].committed.values = proposal[t][i].change.values,
+                                                         ![t].committed.index  = proposal[t][i].change.index,
+                                                         ![t].index            = i]
+               /\ proposal' = [proposal EXCEPT ![t] = [proposal[t] EXCEPT ![i].state = ProposalComplete]]
+               /\ UNCHANGED <<target>>
+            \/ /\ proposal[t][i].state = ProposalComplete
+               /\ proposal' = [proposal EXCEPT ![t] = 
+                     [proposal[t] EXCEPT ![i].phase = ProposalApply,
+                                         ![i].state = ProposalInProgress]]
+               /\ UNCHANGED <<configuration, target>>
       \* While in the Apply phase, apply the proposed changes to the target.
       \/ /\ proposal[t][i].phase = ProposalApply
          /\ proposal[t][i].state = ProposalInProgress

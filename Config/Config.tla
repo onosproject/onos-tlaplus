@@ -14,7 +14,7 @@ INSTANCE Sequences
 
 LOCAL INSTANCE TLC
 
-vars == <<proposal, configuration, mastership, target>>
+vars == <<changes, proposal, configuration, mastership, target>>
 
 ----
 
@@ -30,13 +30,13 @@ Init ==
 
 Next ==
    \/ /\ NextProposal
-      /\ UNCHANGED <<>>
+      /\ UNCHANGED <<changes>>
    \/ /\ NextConfiguration
-      /\ UNCHANGED <<proposal>>
+      /\ UNCHANGED <<changes, proposal>>
    \/ /\ NextNorthbound
       /\ UNCHANGED <<configuration, target, mastership>>
    \/ /\ NextSouthbound
-      /\ UNCHANGED <<proposal, configuration>>
+      /\ UNCHANGED <<changes, proposal, configuration>>
 
 Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
 
