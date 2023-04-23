@@ -1,6 +1,6 @@
 --------------------------- MODULE Configurations ---------------------------
 
-EXTENDS Southbound
+EXTENDS Mastership
 
 INSTANCE Naturals
 
@@ -42,25 +42,14 @@ LOCAL Trace == INSTANCE Trace WITH
 This section models the Configuration reconciler.
 *)
 
-ReconcileConfiguration(n, t) ==
-   /\ \/ /\ Target[t].persistent
-         /\ configuration[t].state # ConfigurationComplete
-         /\ configuration' = [configuration EXCEPT ![t].state = ConfigurationComplete]
-         /\ UNCHANGED <<target>>
-      \/ /\ ~Target[t].persistent
-         /\ \/ mastership[t].term > configuration[t].committed.term
-            \/ /\ mastership[t].term = configuration[t].committed.term
-               /\ mastership[t].master = Nil
-         /\ configuration' = [configuration EXCEPT ![t].committed.term = mastership[t].term,
-                                                   ![t].state          = ConfigurationInProgress]                                          
-         /\ UNCHANGED <<target>>
-      \/ /\ configuration[t].state = ConfigurationInProgress
-         /\ mastership[t].term = configuration[t].committed.term
-         /\ mastership[t].master = n
-         /\ target' = [target EXCEPT ![t] = configuration[t].applied.values]
-         /\ configuration' = [configuration EXCEPT ![t].applied.term = mastership[t].term,
-                                                   ![t].state        = ConfigurationComplete]
-   /\ UNCHANGED <<mastership>>
+ReconcileConfiguration(n) ==
+   /\ \/ /\ configuration.state = ConfigurationInProgress
+         /\ mastership.term = configuration.committed.term
+         /\ mastership.master = n
+         /\ target' = [target EXCEPT !.values = configuration.applied.values]
+         /\ configuration' = [configuration EXCEPT !.applied.term = mastership.term,
+                                                   !.state        = ConfigurationComplete]
+   /\ UNCHANGED <<mastership, conn>>
 
 ----
 
@@ -69,34 +58,33 @@ Formal specification, constraints, and theorems.
 *)
 
 InitConfiguration == 
-   /\ configuration = [t \in DOMAIN Target |-> 
-                         [state  |-> ConfigurationInProgress,
-                          index     |-> 0,
-                          committed |-> 
-                            [index  |-> 0,
-                             term   |-> 0,
-                             values |-> 
-                                [path \in {} |-> 
-                                   [path    |-> path,
-                                    value   |-> Nil,
-                                    index   |-> 0,
-                                    deleted |-> FALSE]]],
-                          proposed  |-> [index |-> 0],
-                          applied   |-> 
-                            [index  |-> 0,
-                             term   |-> 0,
-                             values |-> 
-                               [path \in {} |-> 
-                                  [path    |-> path,
-                                   value   |-> Nil,
-                                   index   |-> 0,
-                                   deleted |-> FALSE]]]]]
+   /\ configuration = [
+         state  |-> ConfigurationInProgress,
+         index     |-> 0,
+         committed |-> [
+            index  |-> 0,
+            term   |-> 0,
+            values |-> [
+               path \in {} |-> [
+                  path    |-> path,
+                   value   |-> Nil,
+                   index   |-> 0,
+                   deleted |-> FALSE]]],
+        proposed  |-> [index |-> 0],
+        applied   |-> [
+           index  |-> 0,
+           term   |-> 0,
+           values |-> [
+              path \in {} |-> [
+                 path    |-> path,
+                 value   |-> Nil,
+                 index   |-> 0,
+                 deleted |-> FALSE]]]]
    /\ Trace!Init
 
 NextConfiguration == 
    \/ \E n \in Node :
-         \E t \in DOMAIN configuration :
-            Trace!Step("Reconcile", ReconcileConfiguration(n, t), [node |-> n, target |-> t])
+         Trace!Step(ReconcileConfiguration(n), [node |-> n])
 
 =============================================================================
 \* Modification History

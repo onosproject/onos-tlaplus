@@ -12,22 +12,21 @@ Init ==
       LET ret == IOUtils!IOExecTemplate(<<"rm", "%s.log">>, <<Module>>)
       IN  TRUE
 
-Log(name, args) ==
+Log(context) ==
    LET IOUtils == INSTANCE IOUtils
        Json    == INSTANCE Json
    IN
       LET init  == [k \in {k \in DOMAIN InitState : DOMAIN InitState[k] # {}} |-> InitState[k]]
           next  == [k \in {k \in DOMAIN NextState : DOMAIN NextState[k] # {}} |-> NextState[k]]
-          trace == [action |-> name, 
-                    args   |-> args,
-                    init   |-> init, 
-                    next   |-> [k \in {k \in DOMAIN next : k \notin DOMAIN init \/ next[k] # init[k]} |-> next[k]]]
+          trace == [context |-> context,
+                    init    |-> init, 
+                    next    |-> [k \in {k \in DOMAIN next : k \notin DOMAIN init \/ next[k] # init[k]} |-> next[k]]]
           ret   == IOUtils!IOExecTemplate(<<"/bin/sh", "-c", "echo '%s' >> %s.log">>, <<Json!ToJsonObject(trace), Module>>)
       IN ret.exitValue = 0
 
-Step(name, action, args) ==
+Step(action, context) ==
    /\ action
-   /\ action => Log(name, args)
+   /\ action => Log(context)
 
 =============================================================================
 \* Modification History

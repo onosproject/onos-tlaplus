@@ -4,7 +4,9 @@ EXTENDS
    Northbound, 
    Proposals, 
    Configurations, 
-   Southbound
+   Mastership,
+   Southbound,
+   Target
 
 INSTANCE Naturals
 
@@ -14,7 +16,7 @@ INSTANCE Sequences
 
 LOCAL INSTANCE TLC
 
-vars == <<changes, proposal, configuration, mastership, target>>
+vars == <<proposal, configuration, mastership, target>>
 
 ----
 
@@ -23,20 +25,26 @@ Formal specification, constraints, and theorems.
 *)
 
 Init ==
+   /\ InitNorthbound
    /\ InitProposal
    /\ InitConfiguration
-   /\ InitNorthbound
+   /\ InitMastership
    /\ InitSouthbound
+   /\ InitTarget
 
 Next ==
-   \/ /\ NextProposal
-      /\ UNCHANGED <<changes>>
-   \/ /\ NextConfiguration
-      /\ UNCHANGED <<changes, proposal>>
    \/ /\ NextNorthbound
-      /\ UNCHANGED <<configuration, target, mastership>>
+      /\ UNCHANGED <<configuration, mastership, conn, target>>
+   \/ /\ NextProposal
+      /\ UNCHANGED <<mastership, conn>>
+   \/ /\ NextConfiguration
+      /\ UNCHANGED <<proposal, conn>>
+   \/ /\ NextMastership
+      /\ UNCHANGED <<proposal, configuration, conn, target>>
    \/ /\ NextSouthbound
-      /\ UNCHANGED <<changes, proposal, configuration>>
+      /\ UNCHANGED <<proposal, configuration, mastership>>
+   \/ /\ NextTarget
+      /\ UNCHANGED <<proposal, configuration, mastership, conn>>
 
 Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
 

@@ -1,9 +1,21 @@
 ---- MODULE MC ----
 EXTENDS Config, TLC
 
-target_log_constraint ==
-    /\ \A t \in DOMAIN proposal : Len(proposal[t]) <= 2
-    /\ \A t \in DOMAIN mastership : mastership[t].term <= 2
+proposal_constraint == Len(proposal) <= 2
+
+mastership_constraint == mastership.term <= 1
+
+conn_constraint == conn.id <= 1
+
+target_constraint == target.instance <= 1
+
+const_alive == "Alive"
+
+const_dead == "Dead"
+
+const_connected == "Connected"
+
+const_disconnected == "Disconnected"
 
 \* CONSTANT definitions @modelParameterConstants:1ConfigurationInProgress
 const_1682129771341599000 == 
@@ -76,17 +88,10 @@ const_1682129771341613000 ==
 ----
 
 \* CONSTANT definitions @modelParameterConstants:16Target
-const_1682129771341614000 == 
-[target1 |-> 
-   [persistent |-> FALSE,
-    values |-> [
+const_1682129771341614000 == [
+   values |-> [
       path1 |-> {"value1", "value2"},
-      path2 |-> {"value3"}]],
-target2 |-> 
-   [persistent |-> TRUE,
-    values |-> [
-      path2 |-> {"value3", "value4"},
-      path3 |-> {"value5"}]]]
+      path2 |-> {"value3"}]]
 ----
 
 \* CONSTANT definitions @modelParameterConstants:17ProposalSuccess

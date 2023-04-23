@@ -10,8 +10,6 @@ INSTANCE Sequences
 
 LOCAL INSTANCE TLC
 
-VARIABLE changes
-
 ----
 
 (*
@@ -19,64 +17,56 @@ This section models configuration changes and rollbacks. Changes
 are appended to the proposal log and processed asynchronously.
 *)
 
-Value(s, t, p) ==
-   LET value == CHOOSE v \in s : v.target = t /\ v.path = p
+Value(s, p) ==
+   LET value == CHOOSE v \in s : v.path = p
    IN
       [value  |-> value.value,
        delete |-> value.delete,
        valid  |-> value.valid]
 
-Paths(s, t) ==
-   [p \in {v.path : v \in {v \in s : v.target = t}} |-> Value(s, t, p)]
+Paths(s) ==
+   [p \in {v.path : v \in s} |-> Value(s, p)]
 
-ValidValues(t, p) ==
-   UNION {{[value |-> v, delete |-> FALSE, valid |-> TRUE] : v \in Target[t].values[p]}, 
-             {[value |-> v, delete |-> FALSE, valid |-> FALSE] : v \in Target[t].values[p]}, 
+ValidValues(p) ==
+   UNION {{[value |-> v, delete |-> FALSE, valid |-> TRUE] : v \in Target.values[p]}, 
+             {[value |-> v, delete |-> FALSE, valid |-> FALSE] : v \in Target.values[p]}, 
              {[value |-> Nil, delete |-> TRUE, valid |-> TRUE]},
              {[value |-> Nil, delete |-> TRUE, valid |-> FALSE]}}
 
-ValidPaths(t) ==
-   UNION {{v @@ [target |-> t, path |-> p] : v \in ValidValues(t, p)} : p \in DOMAIN Target[t].values}
+ValidPaths ==
+   UNION {{v @@ [path |-> p] : v \in ValidValues(p)} : p \in DOMAIN Target.values}
 
 \* The set of all valid sets of changes to all targets and their paths. 
 \* The set of possible changes is computed from the Target model value.
-ValidChanges(t) == 
-   LET changeSets == {s \in SUBSET ValidPaths(t) :
-                        /\ \A p \in DOMAIN Target[t].values :
-                           /\ Cardinality({v \in s : v.target = t /\ v.path = p}) <= 1}
+ValidChanges == 
+   LET changeSets == {s \in SUBSET ValidPaths :
+                        /\ \A p \in DOMAIN Target.values :
+                           /\ Cardinality({v \in s : v.path = p}) <= 1}
    IN
-      {c \in { Paths(s, t) : s \in changeSets} : DOMAIN c # {}}
+      {c \in {Paths(s) : s \in changeSets} : DOMAIN c # {}}
 
 \* Add change 'c' to the proposal log for target 't'
-RequestChange(t, c) ==
-   LET index == Len(proposal[t]) + 1
-   IN  proposal' = [proposal EXCEPT ![t] = proposal[t] @@ 
+RequestChange(c) ==
+   LET index == Len(proposal) + 1
+   IN  proposal' = proposal @@ 
           (index :> [type       |-> ProposalChange,
                      index      |-> index,
                      change     |-> [index  |-> index,
                                      values |-> c],
                      rollback   |-> [index  |-> 0],
                      phase      |-> ProposalInitialize,
-                     state      |-> ProposalInProgress])]
+                     state      |-> ProposalInProgress])
 
 \* Add a rollback of proposal 'i' to the proposal log for target 't'
-RequestRollback(t, i) ==
-   LET index == Len(proposal[t]) + 1
-   IN  proposal' = [proposal EXCEPT ![t] = proposal[t] @@
+RequestRollback(i) ==
+   LET index == Len(proposal) + 1
+   IN  proposal' = proposal @@
           (index :> [type       |-> ProposalRollback,
                      index      |-> index,
                      change     |-> [index   |-> 0],
                      rollback   |-> [index   |-> i],
                      phase      |-> ProposalInitialize,
-                     state      |-> ProposalInProgress])]
-
-RequestSet ==
-   \/ \E t \in DOMAIN Target :
-         \E c \in changes[t] :
-            RequestChange(t, c)
-   \/ \E t \in DOMAIN proposal :
-         \E i \in DOMAIN proposal[t] :
-            RequestRollback(t, i)
+                     state      |-> ProposalInProgress])
 
 ----
 
@@ -84,11 +74,13 @@ RequestSet ==
 Formal specification, constraints, and theorems.
 *)
 
-InitNorthbound == 
-   /\ changes = [t \in DOMAIN Target |-> ValidChanges(t)]
+InitNorthbound == TRUE
 
 NextNorthbound ==
-   \/ RequestSet /\ UNCHANGED <<changes>>
+   \/ \E c \in ValidChanges :
+         RequestChange(c)
+   \/ \E i \in DOMAIN proposal :
+         RequestRollback(i)
 
 =============================================================================
 \* Modification History
