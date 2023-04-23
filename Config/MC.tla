@@ -5,7 +5,7 @@ proposal_constraint == Len(proposal) <= 2
 
 mastership_constraint == mastership.term <= 1
 
-conn_constraint == conn.id <= 1
+conn_constraint == \A n \in DOMAIN conn : conn[n].id <= 1
 
 target_constraint == target.instance <= 1
 
@@ -62,9 +62,9 @@ const_1682129771341608000 ==
 "Change"
 ----
 
-\* CONSTANT definitions @modelParameterConstants:11ProposalFailure
+\* CONSTANT definitions @modelParameterConstants:11ProposalPending
 const_1682129771341609000 == 
-"Failure"
+"Pending"
 ----
 
 \* CONSTANT definitions @modelParameterConstants:12ProposalCommit

@@ -45,8 +45,8 @@ ValidChanges ==
    IN
       {c \in {Paths(s) : s \in changeSets} : DOMAIN c # {}}
 
-\* Add change 'c' to the proposal log for target 't'
-RequestChange(c) ==
+\* Add change 'c' to the proposal log 
+Change(c) ==
    LET index == Len(proposal) + 1
    IN  proposal' = proposal @@ 
           (index :> [type       |-> ProposalChange,
@@ -57,8 +57,8 @@ RequestChange(c) ==
                      phase      |-> ProposalInitialize,
                      state      |-> ProposalInProgress])
 
-\* Add a rollback of proposal 'i' to the proposal log for target 't'
-RequestRollback(i) ==
+\* Add a rollback of proposal 'i' to the proposal log
+Rollback(i) ==
    LET index == Len(proposal) + 1
    IN  proposal' = proposal @@
           (index :> [type       |-> ProposalRollback,
@@ -67,6 +67,13 @@ RequestRollback(i) ==
                      rollback   |-> [index   |-> i],
                      phase      |-> ProposalInitialize,
                      state      |-> ProposalInProgress])
+
+\* Abort aborts proposal 'i'
+Abort(i) ==
+   /\ proposal[i].phase # ProposalAbort
+   /\ proposal[i].state # ProposalFailed
+   /\ proposal' = [proposal EXCEPT ![i].phase = ProposalAbort,
+                                   ![i].state = ProposalInProgress]
 
 ----
 
@@ -78,9 +85,11 @@ InitNorthbound == TRUE
 
 NextNorthbound ==
    \/ \E c \in ValidChanges :
-         RequestChange(c)
+         Change(c)
    \/ \E i \in DOMAIN proposal :
-         RequestRollback(i)
+         Rollback(i)
+   \/ \E i \in DOMAIN proposal :
+         Abort(i)
 
 =============================================================================
 \* Modification History

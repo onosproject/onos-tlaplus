@@ -43,9 +43,15 @@ This section models the Configuration reconciler.
 *)
 
 ReconcileConfiguration(n) ==
-   /\ \/ /\ configuration.state = ConfigurationInProgress
-         /\ mastership.term = configuration.committed.term
-         /\ mastership.master = n
+   /\ mastership.master = n
+   /\ \/ /\ configuration.state # ConfigurationInProgress
+         /\ configuration.applied.term < mastership.term
+         /\ configuration' = [configuration EXCEPT !.state = ConfigurationInProgress]
+         /\ UNCHANGED <<target>>
+      \/ /\ configuration.state = ConfigurationInProgress
+         /\ configuration.applied.term < mastership.term
+         /\ conn[n].state = Connected
+         /\ target.state = Alive
          /\ target' = [target EXCEPT !.values = configuration.applied.values]
          /\ configuration' = [configuration EXCEPT !.applied.term = mastership.term,
                                                    !.state        = ConfigurationComplete]

@@ -10,6 +10,9 @@ LOCAL INSTANCE TLC
 
 ----
 
+\* The set of all nodes
+CONSTANT Node
+
 \* A connected state
 CONSTANT Connected
 
@@ -25,26 +28,32 @@ VARIABLE conn
 This section models target states.
 *)
 
-Connect ==
-   /\ conn.state # Connected
+Connect(n) ==
+   /\ conn[n].state # Connected
    /\ target.state = Alive
-   /\ conn' = [conn EXCEPT !.id = conn.id + 1,
-                           !.state = Connected]
+   /\ conn' = [conn EXCEPT ![n].id    = conn[n].id + 1,
+                           ![n].state = Connected]
    /\ UNCHANGED <<target>>
 
-Disconnect ==
-   /\ conn.state = Connected
-   /\ conn' = [conn EXCEPT !.state = Disconnected]
+Disconnect(n) ==
+   /\ conn[n].state = Connected
+   /\ conn' = [conn EXCEPT ![n].state = Disconnected]
    /\ UNCHANGED <<target>>
 
 ----
 
 InitSouthbound ==
-   /\ conn = [id |-> 0, state |-> Disconnected]
+   /\ conn = [n \in Node |-> [id |-> 0, state |-> Disconnected]]
 
 NextSouthbound ==
-   \/ Connect
-   \/ Disconnect
+   \/ \E n \in Node : Connect(n)
+   \/ \E n \in Node : Disconnect(n)
+
+----
+
+ASSUME /\ IsFiniteSet(Node) 
+       /\ \A n \in Node : 
+             /\ n \in STRING
 
 =============================================================================
 \* Modification History

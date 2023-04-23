@@ -10,9 +10,6 @@ LOCAL INSTANCE TLC
 
 ----
 
-\* The set of all nodes
-CONSTANT Node
-
 \* A record of target masterships
 VARIABLE mastership
 
@@ -36,10 +33,10 @@ This section models mastership reconciliation.
 *)
 
 ReconcileMastership(n) ==
-   /\ \/ /\ conn.state = Connected
+   /\ \/ /\ conn[n].state = Connected
          /\ mastership.master # n
          /\ mastership' = [master |-> n, term |-> mastership.term + 1]
-      \/ /\ conn.state = Disconnected
+      \/ /\ conn[n].state = Disconnected
          /\ mastership.master # Nil
          /\ mastership' = [mastership EXCEPT !.master = Nil]
    /\ UNCHANGED <<conn, target>>
@@ -56,12 +53,6 @@ InitMastership ==
 NextMastership == 
    \/ \E n \in Node :
          Trace!Step(ReconcileMastership(n), [node |-> n])
-
-----
-
-ASSUME /\ IsFiniteSet(Node) 
-       /\ \A n \in Node : 
-             /\ n \in STRING
 
 =============================================================================
 \* Modification History

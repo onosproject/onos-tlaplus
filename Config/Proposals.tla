@@ -25,6 +25,7 @@ CONSTANTS
 
 \* Status constants
 CONSTANTS
+   ProposalPending,
    ProposalInProgress,
    ProposalComplete,
    ProposalFailed
@@ -81,10 +82,12 @@ ReconcileProposal(n, i) ==
                         \* If all the change values are valid, record the changes required to roll
                         \* back the proposal and the index to which the rollback changes
                         \* will roll back the configuration.
-                        IN 
+                        IN
                            \/ proposal' = [proposal EXCEPT ![i].rollback = [index  |-> rollbackIndex,
-                                                                               values |-> rollbackValues],
-                                                              ![i].state    = ProposalComplete]
+                                                                            values |-> rollbackValues],
+                                                           ![i].state    = ProposalComplete]
+                           \* A proposal can fail validation at this point, in which case the proposal
+                           \* is marked failed.
                            \/ proposal' = [proposal EXCEPT ![i].state = ProposalFailed]
                   \* For Rollback proposals, validate the rollback changes which are
                   \* proposal being rolled back.
@@ -117,6 +120,11 @@ ReconcileProposal(n, i) ==
                /\ proposal' = [proposal EXCEPT ![i].phase = ProposalCommit,
                                                ![i].state = ProposalInProgress]
                /\ UNCHANGED <<configuration, target>>
+            \* When a proposal is marked failed, set the configuration index to the proposal
+            \* index to unblock subsequent proposals.
+            \/ /\ proposal[i].state = ProposalFailed
+               /\ configuration' = [configuration EXCEPT !.index = i]
+               /\ UNCHANGED <<proposal, target>>
       \* While in the Commit state, commit the proposed changes to the configuration.
       \/ /\ proposal[i].phase = ProposalCommit
          /\ \/ /\ proposal[i].state = ProposalInProgress
@@ -133,46 +141,69 @@ ReconcileProposal(n, i) ==
                /\ UNCHANGED <<configuration, target>>
       \* While in the Apply phase, apply the proposed changes to the target.
       \/ /\ proposal[i].phase = ProposalApply
-         /\ proposal[i].state = ProposalInProgress
-         /\ configuration.applied.index = i-1
-         /\ configuration.applied.term  = mastership.term
-         /\ mastership.master = n
-         \* Model successful and failed target update requests.
-         /\ \/ /\ target' = [target EXCEPT !.values = proposal[i].change.values]
-               /\ configuration' = [configuration EXCEPT 
-                                       !.applied.index  = i,
-                                       !.applied.values = proposal[i].change.values 
-                                           @@ configuration.applied.values]
-               /\ proposal' = [proposal EXCEPT ![i].state = ProposalComplete]
-            \* If the proposal could not be applied, update the configuration's applied index
-            \* and mark the proposal Failed.
-            \/ /\ configuration' = [configuration EXCEPT !.applied.index = i]
-               /\ proposal' = [proposal EXCEPT ![i].state = ProposalFailed]
-               /\ UNCHANGED <<target>>
+            \* If the node has no connection to the target, the proposal will be put in the
+            \* pending state, otherwise the proposal will be in-progress until the changes
+            \* can either be applied or fail.
+         /\ \/ /\ proposal[i].state = ProposalPending
+               /\ conn[n].state = Connected
+               /\ proposal' = [proposal EXCEPT ![i].state = ProposalInProgress]
+               /\ UNCHANGED <<configuration, target>>
+            \/ /\ proposal[i].state = ProposalInProgress
+               /\ mastership.master = n
+               /\ conn[n].state = Disconnected
+               /\ proposal' = [proposal EXCEPT ![i].state = ProposalPending]
+               /\ UNCHANGED <<configuration, target>>
+            \/ /\ proposal[i].state = ProposalInProgress
+               /\ mastership.master = n
+               /\ conn[n].state = Connected
+               /\ target.state = Alive
+               \* Verify the applied index is the previous proposal index to ensure
+               \* changes are applied to the target in order.
+               /\ configuration.applied.index = i-1
+               \* Verify the applied term is the current mastership term to ensure the
+               \* configuration has been synchronized following restarts.
+               /\ configuration.applied.term = mastership.term
+               \* Model successful and failed target update requests.
+               /\ \/ /\ target' = [target EXCEPT !.values = proposal[i].change.values]
+                     /\ configuration' = [configuration EXCEPT 
+                                             !.applied.index  = i,
+                                             !.applied.values = proposal[i].change.values 
+                                                 @@ configuration.applied.values]
+                     /\ proposal' = [proposal EXCEPT ![i].state = ProposalComplete]
+                  \* If the proposal could not be applied, update the configuration's applied index
+                  \* and mark the proposal Failed.
+                  \/ /\ configuration' = [configuration EXCEPT !.applied.index = i]
+                     /\ proposal' = [proposal EXCEPT ![i].state = ProposalFailed]
+                     /\ UNCHANGED <<target>>
       \/ /\ proposal[i].phase = ProposalAbort
          /\ proposal[i].state = ProposalInProgress
-            \* The index will always be greater than or equal to the applied.index.
-            \* If only the index matches the previous proposal index, update
-            \* the index to enable commits of later proposals, but do not
-            \* mark the Abort phase Complete until the applied.index has been incremented.
+            \* If the configuration index is less than the proposal index, the proposal has
+            \* not been committed, so it can be aborted without any additional changes required.
          /\ \/ /\ configuration.index = i-1
                /\ configuration' = [configuration EXCEPT !.index = i]
-               /\ UNCHANGED <<proposal>>
-            \* If the configuration's applied.index matches the previous proposal index, 
-            \* update the applied.index and mark the proposal Complete for the Abort phase.
+               /\ proposal' = [proposal EXCEPT ![i].state = ProposalComplete]
+               /\ UNCHANGED <<target>>
+            \* If the proposal has already been committed to the configuration but hasn't yet
+            \* been applied to the target, we need to finish applying the proposal and fail
+            \* the abort attempt.
             \/ /\ configuration.index >= i
                /\ configuration.applied.index = i-1
-               /\ configuration' = [configuration EXCEPT !.applied.index = i]
-               /\ proposal' = [proposal EXCEPT ![i].state = ProposalComplete]
-            \* If both the configuration's index and applied.index match the
-            \* previous proposal index, update the index and applied.index
-            \* and mark the proposal Complete for the Abort phase.
-            \/ /\ configuration.index = i-1
-               /\ configuration.applied.index = i-1
-               /\ configuration' = [configuration EXCEPT !.index         = i,
-                                                         !.applied.index = i]
-               /\ proposal' = [proposal EXCEPT ![i].state = ProposalComplete]
-         /\ UNCHANGED <<target>>
+               /\ configuration.applied.term = mastership.term
+               /\ mastership.master = n
+               /\ conn[n].state = Connected
+               /\ target.state = Alive
+               \* Model successful and failed target update requests.
+               /\ \/ /\ target' = [target EXCEPT !.values = proposal[i].change.values]
+                     /\ configuration' = [configuration EXCEPT 
+                                             !.applied.index  = i,
+                                             !.applied.values = proposal[i].change.values 
+                                                 @@ configuration.applied.values]
+                     /\ proposal' = [proposal EXCEPT ![i].state = ProposalComplete]
+                  \* If the proposal could not be applied, update the configuration's applied index
+                  \* and mark the proposal Failed.
+                  \/ /\ configuration' = [configuration EXCEPT !.applied.index = i]
+                     /\ proposal' = [proposal EXCEPT ![i].state = ProposalFailed]
+                     /\ UNCHANGED <<target>>
    /\ UNCHANGED <<mastership, conn>>
 
 ----

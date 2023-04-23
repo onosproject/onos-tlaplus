@@ -5,3 +5,4 @@ states
 *.dvi
 *.tex
 *.out
+*.log
