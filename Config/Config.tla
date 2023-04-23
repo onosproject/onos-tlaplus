@@ -49,60 +49,57 @@ Next ==
 Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
 
 Order ==
-   \A t \in DOMAIN proposal :
-      \A i \in DOMAIN proposal[t] :
-         /\ /\ proposal[t][i].phase = ProposalCommit
-            /\ proposal[t][i].state = ProposalInProgress
-            => ~\E j \in DOMAIN proposal[t] :
-                  /\ j > i
-                  /\ proposal[t][j].phase = ProposalCommit
-                  /\ proposal[t][j].state = ProposalComplete
-         /\ /\ proposal[t][i].phase = ProposalApply
-            /\ proposal[t][i].state = ProposalInProgress
-            => ~\E j \in DOMAIN proposal[t] :
-                  /\ j > i
-                  /\ proposal[t][j].phase = ProposalApply
-                  /\ proposal[t][j].state = ProposalComplete
+   \A i \in DOMAIN proposal :
+       /\ /\ proposal[i].phase = ProposalCommit
+       /\ proposal[i].state = ProposalInProgress
+       => ~\E j \in DOMAIN proposal :
+               /\ j > i
+               /\ proposal[j].phase = ProposalCommit
+               /\ proposal[j].state = ProposalComplete
+       /\ /\ proposal[i].phase = ProposalApply
+       /\ proposal[i].state = ProposalInProgress
+       => ~\E j \in DOMAIN proposal :
+               /\ j > i
+               /\ proposal[j].phase = ProposalApply
+               /\ proposal[j].state = ProposalComplete
 
 Consistency == 
-   \A t \in DOMAIN proposal :
-      LET 
-          \* Compute the transaction indexes that have been applied to the target
-          targetIndexes == {i \in DOMAIN proposal[t] :
-                               /\ proposal[t][i].phase = ProposalApply
-                               /\ proposal[t][i].state = ProposalComplete
-                               /\ ~\E j \in DOMAIN proposal[t] :
-                                     /\ j > i
-                                     /\ proposal[t][j].type = ProposalRollback
-                                     /\ proposal[t][j].rollback.index = i
-                                     /\ proposal[t][j].phase = ProposalApply
-                                     /\ proposal[t][j].state = ProposalComplete}
-          \* Compute the set of paths in the target that have been updated by transactions
-          appliedPaths == UNION {DOMAIN proposal[t][i].change.values : i \in targetIndexes}
-          \* Compute the highest index applied to the target for each path
-          pathIndexes  == [p \in appliedPaths |-> CHOOSE i \in targetIndexes : 
-                                    \A j \in targetIndexes :
-                                          /\ i >= j 
-                                          /\ p \in DOMAIN proposal[t][i].change.values]
-          \* Compute the expected target configuration based on the last indexes applied
-          \* to the target for each path.
-          expectedConfig == [p \in DOMAIN pathIndexes |-> proposal[t][pathIndexes[p]].change.values[p]]
-      IN 
-          target[t] = expectedConfig
+   LET 
+      \* Compute the transaction indexes that have been applied to the target
+      targetIndexes == {i \in DOMAIN proposal :
+                           /\ proposal[i].phase = ProposalApply
+                           /\ proposal[i].state = ProposalComplete
+                           /\ ~\E j \in DOMAIN proposal :
+                                 /\ j > i
+                                 /\ proposal[j].type = ProposalRollback
+                                 /\ proposal[j].rollback.index = i
+                                 /\ proposal[j].phase = ProposalApply
+                                 /\ proposal[j].state = ProposalComplete}
+      \* Compute the set of paths in the target that have been updated by transactions
+      appliedPaths == UNION {DOMAIN proposal[i].change.values : i \in targetIndexes}
+      \* Compute the highest index applied to the target for each path
+      pathIndexes  == [p \in appliedPaths |-> CHOOSE i \in targetIndexes : 
+                          \A j \in targetIndexes :
+                             /\ i >= j 
+                             /\ p \in DOMAIN proposal[i].change.values]
+      \* Compute the expected target configuration based on the last indexes applied
+      \* to the target for each path.
+      expectedConfig == [p \in DOMAIN pathIndexes |-> proposal[pathIndexes[p]].change.values[p]]
+   IN 
+      target = expectedConfig
 
 Safety == [](Order /\ Consistency)
 
 THEOREM Spec => Safety
 
-Terminated(t, i) ==
-   /\ i \in DOMAIN proposal[t]
-   /\ proposal[t][i].phase \in {ProposalApply, ProposalAbort}
-   /\ proposal[t][i].state = ProposalComplete
+Terminated(i) ==
+   /\ i \in DOMAIN proposal
+   /\ proposal[i].phase \in {ProposalApply, ProposalAbort}
+   /\ proposal[i].state = ProposalComplete
 
 Termination ==
-   \A t \in DOMAIN proposal :
-      \A i \in 1..Len(proposal[t]) :
-         Terminated(t, i)
+   \A i \in 1..Len(proposal) :
+      Terminated(i)
 
 Liveness == <>Termination
 
