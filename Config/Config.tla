@@ -51,14 +51,14 @@ Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
 Order ==
    \A i \in DOMAIN proposal :
        /\ /\ proposal[i].phase = ProposalCommit
-       /\ proposal[i].state = ProposalInProgress
-       => ~\E j \in DOMAIN proposal :
+          /\ proposal[i].state = ProposalInProgress
+          => ~\E j \in DOMAIN proposal :
                /\ j > i
                /\ proposal[j].phase = ProposalCommit
                /\ proposal[j].state = ProposalComplete
        /\ /\ proposal[i].phase = ProposalApply
-       /\ proposal[i].state = ProposalInProgress
-       => ~\E j \in DOMAIN proposal :
+          /\ proposal[i].state = ProposalInProgress
+          => ~\E j \in DOMAIN proposal :
                /\ j > i
                /\ proposal[j].phase = ProposalApply
                /\ proposal[j].state = ProposalComplete

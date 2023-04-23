@@ -3,11 +3,11 @@ EXTENDS Config, TLC
 
 proposal_constraint == Len(proposal) <= 2
 
-mastership_constraint == mastership.term <= 1
+mastership_constraint == mastership.term <= 2
 
-conn_constraint == \A n \in DOMAIN conn : conn[n].id <= 1
+conn_constraint == \A n \in DOMAIN conn : conn[n].id <= 2
 
-target_constraint == target.instance <= 1
+target_constraint == target.instance <= 2
 
 const_alive == "Alive"
 
