@@ -49,7 +49,7 @@ constraint_target ==
 \*     [] target.incarnation = 2 -> target.running
 \*     [] OTHER -> FALSE
 
-const_TraceEnabled == FALSE
+const_TraceEnabled == TRUE
 
 const_Nil == "<nil>"
 

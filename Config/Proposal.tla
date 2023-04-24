@@ -48,7 +48,7 @@ LOCAL NextState == [
    nodes          |-> node']
 
 LOCAL Trace == INSTANCE Trace WITH
-   Module    <- "Proposals",
+   Module    <- "Proposal",
    InitState <- InitState,
    NextState <- NextState,
    Enabled   <- TraceProposal
