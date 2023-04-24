@@ -2,11 +2,10 @@
 
 EXTENDS 
    Northbound, 
-   Proposals, 
-   Configurations, 
+   Proposal, 
+   Configuration, 
    Mastership,
-   Southbound,
-   Target
+   Southbound
 
 INSTANCE Naturals
 
@@ -30,21 +29,18 @@ Init ==
    /\ InitConfiguration
    /\ InitMastership
    /\ InitSouthbound
-   /\ InitTarget
 
 Next ==
    \/ /\ NextNorthbound
-      /\ UNCHANGED <<configuration, mastership, conn, target>>
+      /\ UNCHANGED <<>>
    \/ /\ NextProposal
-      /\ UNCHANGED <<mastership, conn>>
+      /\ UNCHANGED <<>>
    \/ /\ NextConfiguration
-      /\ UNCHANGED <<proposal, conn>>
+      /\ UNCHANGED <<proposal>>
    \/ /\ NextMastership
-      /\ UNCHANGED <<proposal, configuration, conn, target>>
+      /\ UNCHANGED <<proposal, configuration>>
    \/ /\ NextSouthbound
       /\ UNCHANGED <<proposal, configuration, mastership>>
-   \/ /\ NextTarget
-      /\ UNCHANGED <<proposal, configuration, mastership, conn>>
 
 Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
 

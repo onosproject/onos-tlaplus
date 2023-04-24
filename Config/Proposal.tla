@@ -1,6 +1,6 @@
------------------------------ MODULE Proposals -----------------------------
+----------------------------- MODULE Proposal -----------------------------
 
-EXTENDS Configurations, Mastership
+EXTENDS Configuration, Mastership
 
 INSTANCE Naturals
 
@@ -17,18 +17,18 @@ CONSTANTS
 
 \* Phase constants
 CONSTANTS
-   ProposalInitialize,
    ProposalValidate,
-   ProposalAbort,
    ProposalCommit,
-   ProposalApply
+   ProposalApply,
+   ProposalAbort
 
 \* Status constants
 CONSTANTS
-   ProposalPending,
    ProposalInProgress,
    ProposalComplete,
    ProposalFailed
+
+CONSTANT TraceProposal
 
 \* A record of per-target proposals
 VARIABLE proposal
@@ -39,38 +39,51 @@ LOCAL InitState == [
    proposals      |-> proposal,
    configurations |-> configuration,
    targets        |-> target,
-   masterships    |-> mastership]
+   masterships    |-> mastership,
+   node           |-> node]
 
 LOCAL NextState == [
    proposals      |-> proposal',
    configurations |-> configuration',
    targets        |-> target',
-   masterships    |-> mastership']
+   masterships    |-> mastership',
+   node           |-> node']
 
 LOCAL Trace == INSTANCE Trace WITH
    Module    <- "Proposals",
    InitState <- InitState,
-   NextState <- NextState
+   NextState <- NextState,
+   Enabled   <- TraceProposal
 
 ----
 
+IsCommitted(i) ==
+   i \in DOMAIN proposal =>
+      CASE proposal[i].phase = ProposalValidate -> 
+              proposal[i].state = ProposalFailed
+        [] proposal[i].phase = ProposalCommit -> 
+              proposal[i].state \in {ProposalComplete, ProposalFailed}
+        [] OTHER -> TRUE
+
+IsApplied(i) ==
+   i \in DOMAIN proposal =>
+      CASE proposal[i].phase \in {ProposalValidate, ProposalCommit} ->
+              proposal[i].state = ProposalFailed
+        [] proposal[i].phase = ProposalCommit ->
+              proposal[i].state \in {ProposalComplete, ProposalFailed}
+        [] OTHER -> TRUE
+
 \* Reconcile a proposal
 ReconcileProposal(n, i) ==
-   /\ \/ /\ proposal[i].phase = ProposalInitialize
-         /\ \/ /\ proposal[i].state = ProposalInProgress
-               /\ proposal' = [proposal EXCEPT ![i].state = ProposalComplete]
-               /\ configuration' = [configuration EXCEPT !.proposed.index = i]
-               /\ UNCHANGED <<target>>
-            \/ /\ proposal[i].state = ProposalComplete
-               /\ proposal' = [proposal EXCEPT ![i].phase = ProposalValidate,
-                                               ![i].state = ProposalInProgress]
-               /\ UNCHANGED <<configuration, target>>
+   \* Only the master can process proposals for the target.
+   /\ mastership.master = n
       \* While in the Validate phase, validate the proposed changes.
       \* If validation is successful, the proposal also records the changes
       \* required to roll back the proposal and the index to which to roll back.
-      \/ /\ proposal[i].phase = ProposalValidate
+   /\ \/ /\ proposal[i].phase = ProposalValidate
+         \* Validate proposals once the prior proposal has been committed.
+         /\ IsCommitted(i-1)
          /\ \/ /\ proposal[i].state = ProposalInProgress
-               /\ configuration.index = i-1
                   \* For Change proposals validate the set of requested changes.
                /\ \/ /\ proposal[i].type = ProposalChange
                      /\ LET rollbackIndex  == configuration.committed.index
@@ -141,22 +154,10 @@ ReconcileProposal(n, i) ==
                /\ UNCHANGED <<configuration, target>>
       \* While in the Apply phase, apply the proposed changes to the target.
       \/ /\ proposal[i].phase = ProposalApply
-            \* If the node has no connection to the target, the proposal will be put in the
-            \* pending state, otherwise the proposal will be in-progress until the changes
-            \* can either be applied or fail.
-         /\ \/ /\ proposal[i].state = ProposalPending
-               /\ conn[n].state = Connected
-               /\ proposal' = [proposal EXCEPT ![i].state = ProposalInProgress]
-               /\ UNCHANGED <<configuration, target>>
-            \/ /\ proposal[i].state = ProposalInProgress
-               /\ mastership.master = n
-               /\ conn[n].state = Disconnected
-               /\ proposal' = [proposal EXCEPT ![i].state = ProposalPending]
-               /\ UNCHANGED <<configuration, target>>
-            \/ /\ proposal[i].state = ProposalInProgress
-               /\ mastership.master = n
-               /\ conn[n].state = Connected
-               /\ target.state = Alive
+            \* For the proposal to be applied, the node must be connected to a running target.
+         /\ \/ /\ proposal[i].state = ProposalInProgress
+               /\ node[n].connected
+               /\ target.running
                \* Verify the applied index is the previous proposal index to ensure
                \* changes are applied to the target in order.
                /\ configuration.applied.index = i-1
@@ -189,9 +190,8 @@ ReconcileProposal(n, i) ==
             \/ /\ configuration.index >= i
                /\ configuration.applied.index = i-1
                /\ configuration.applied.term = mastership.term
-               /\ mastership.master = n
-               /\ conn[n].state = Connected
-               /\ target.state = Alive
+               /\ node[n].connected
+               /\ target.running
                \* Model successful and failed target update requests.
                /\ \/ /\ target' = [target EXCEPT !.values = proposal[i].change.values]
                      /\ configuration' = [configuration EXCEPT 
@@ -204,7 +204,7 @@ ReconcileProposal(n, i) ==
                   \/ /\ configuration' = [configuration EXCEPT !.applied.index = i]
                      /\ proposal' = [proposal EXCEPT ![i].state = ProposalFailed]
                      /\ UNCHANGED <<target>>
-   /\ UNCHANGED <<mastership, conn>>
+   /\ UNCHANGED <<mastership, node>>
 
 ----
 
@@ -215,7 +215,7 @@ Formal specification, constraints, and theorems.
 InitProposal == 
    /\ proposal = [
          i \in {} |-> [
-            phase |-> ProposalInitialize,
+            phase |-> ProposalValidate,
             state |-> ProposalInProgress]]
    /\ Trace!Init
 

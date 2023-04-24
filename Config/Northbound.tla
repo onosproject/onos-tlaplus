@@ -1,6 +1,6 @@
 ----------------------------- MODULE Northbound -----------------------------
 
-EXTENDS Proposals
+EXTENDS Proposal
 
 INSTANCE Naturals
 
@@ -47,26 +47,28 @@ ValidChanges ==
 
 \* Add change 'c' to the proposal log 
 Change(c) ==
-   LET index == Len(proposal) + 1
-   IN  proposal' = proposal @@ 
-          (index :> [type       |-> ProposalChange,
-                     index      |-> index,
-                     change     |-> [index  |-> index,
-                                     values |-> c],
-                     rollback   |-> [index  |-> 0],
-                     phase      |-> ProposalInitialize,
-                     state      |-> ProposalInProgress])
+   /\ LET index == Len(proposal) + 1
+      IN  proposal' = proposal @@ 
+             (index :> [type       |-> ProposalChange,
+                        index      |-> index,
+                        change     |-> [index  |-> index,
+                                        values |-> c],
+                        rollback   |-> [index  |-> 0],
+                        phase      |-> ProposalValidate,
+                        state      |-> ProposalInProgress])
+   /\ UNCHANGED <<configuration, mastership, node, target>>
 
 \* Add a rollback of proposal 'i' to the proposal log
 Rollback(i) ==
-   LET index == Len(proposal) + 1
-   IN  proposal' = proposal @@
-          (index :> [type       |-> ProposalRollback,
-                     index      |-> index,
-                     change     |-> [index   |-> 0],
-                     rollback   |-> [index   |-> i],
-                     phase      |-> ProposalInitialize,
-                     state      |-> ProposalInProgress])
+   /\ LET index == Len(proposal) + 1
+      IN  proposal' = proposal @@
+             (index :> [type       |-> ProposalRollback,
+                        index      |-> index,
+                        change     |-> [index   |-> 0],
+                        rollback   |-> [index   |-> i],
+                        phase      |-> ProposalValidate,
+                        state      |-> ProposalInProgress])
+   /\ UNCHANGED <<configuration, mastership, node, target>>
 
 \* Abort aborts proposal 'i'
 Abort(i) ==
@@ -74,6 +76,7 @@ Abort(i) ==
    /\ proposal[i].state # ProposalFailed
    /\ proposal' = [proposal EXCEPT ![i].phase = ProposalAbort,
                                    ![i].state = ProposalInProgress]
+   /\ UNCHANGED <<configuration, mastership, node, target>>
 
 ----
 

@@ -1,4 +1,4 @@
---------------------------- MODULE Configurations ---------------------------
+--------------------------- MODULE Configuration ---------------------------
 
 EXTENDS Mastership
 
@@ -16,6 +16,8 @@ CONSTANTS
    ConfigurationComplete,
    ConfigurationFailed
 
+CONSTANT TraceConfiguration
+
 \* A record of per-target configurations
 VARIABLE configuration
 
@@ -24,17 +26,20 @@ VARIABLE configuration
 LOCAL InitState ==
    [configurations |-> configuration,
     targets        |-> target,
-    masterships    |-> mastership]
+    masterships    |-> mastership,
+    node           |-> node]
 
 LOCAL NextState ==
    [configurations |-> configuration',
     targets        |-> target',
-    masterships    |-> mastership']
+    masterships    |-> mastership',
+    node           |-> node']
 
 LOCAL Trace == INSTANCE Trace WITH
    Module    <- "Configurations",
    InitState <- InitState,
-   NextState <- NextState
+   NextState <- NextState,
+   Enabled   <- TraceConfiguration
 
 ----
 
@@ -50,12 +55,12 @@ ReconcileConfiguration(n) ==
          /\ UNCHANGED <<target>>
       \/ /\ configuration.state = ConfigurationInProgress
          /\ configuration.applied.term < mastership.term
-         /\ conn[n].state = Connected
-         /\ target.state = Alive
+         /\ node[n].connected
+         /\ target.running
          /\ target' = [target EXCEPT !.values = configuration.applied.values]
          /\ configuration' = [configuration EXCEPT !.applied.term = mastership.term,
                                                    !.state        = ConfigurationComplete]
-   /\ UNCHANGED <<mastership, conn>>
+   /\ UNCHANGED <<mastership, node>>
 
 ----
 
@@ -65,7 +70,7 @@ Formal specification, constraints, and theorems.
 
 InitConfiguration == 
    /\ configuration = [
-         state  |-> ConfigurationInProgress,
+         state     |-> ConfigurationInProgress,
          index     |-> 0,
          committed |-> [
             index  |-> 0,
@@ -76,16 +81,16 @@ InitConfiguration ==
                    value   |-> Nil,
                    index   |-> 0,
                    deleted |-> FALSE]]],
-        proposed  |-> [index |-> 0],
-        applied   |-> [
-           index  |-> 0,
-           term   |-> 0,
-           values |-> [
-              path \in {} |-> [
-                 path    |-> path,
-                 value   |-> Nil,
-                 index   |-> 0,
-                 deleted |-> FALSE]]]]
+         proposed  |-> [index |-> 0],
+         applied   |-> [
+            index  |-> 0,
+            term   |-> 0,
+            values |-> [
+               path \in {} |-> [
+                  path    |-> path,
+                  value   |-> Nil,
+                  index   |-> 0,
+                  deleted |-> FALSE]]]]
    /\ Trace!Init
 
 NextConfiguration == 
