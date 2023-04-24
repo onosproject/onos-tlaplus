@@ -130,7 +130,8 @@ ReconcileProposal(n, i) ==
             \/ /\ proposal[i].state = ProposalFailed
                /\ \/ /\ configuration.committed.index = i-1
                      /\ configuration' = [configuration EXCEPT !.committed.index = i]
-                  \/ /\ configuration.applied.index = i-1
+                  \/ /\ configuration.committed.index >= i
+                     /\ configuration.applied.index = i-1
                      /\ configuration' = [configuration EXCEPT !.applied.index = i]
                /\ UNCHANGED <<proposal, target>>
       \* While in the Apply phase, apply the proposed changes to the target.
@@ -150,8 +151,7 @@ ReconcileProposal(n, i) ==
                /\ \/ /\ target' = [target EXCEPT !.values = proposal[i].change.values]
                      /\ LET revision == proposal[i].change.revision
                             values   == proposal[i].change.values @@ configuration.applied.values
-                        IN configuration' = [configuration EXCEPT !.applied.index    = i,
-                                                                  !.applied.revision = revision,
+                        IN configuration' = [configuration EXCEPT !.applied.revision = revision,
                                                                   !.applied.values   = values]
                      /\ proposal' = [proposal EXCEPT ![i].state = ProposalComplete]
                   \* If the proposal could not be applied, update the configuration's applied index
@@ -160,6 +160,7 @@ ReconcileProposal(n, i) ==
                      /\ UNCHANGED <<configuration, target>>
             \* Once the proposal is applied, update the configuration's applied index.
             \/ /\ proposal[i].state = ProposalComplete
+               /\ configuration.applied.index = i-1
                /\ configuration' = [configuration EXCEPT !.applied.index = i]
                /\ UNCHANGED <<proposal, target>>
             \* If the proposal fails, mark the configuration applied for the proposal index.
