@@ -1,7 +1,7 @@
 ---- MODULE MC ----
 EXTENDS Config, TLC
 
-constraint_proposal == Len(proposal) <= 2
+constraint_proposal == Len(proposal) <= 3
 
 constraint_mastership ==
    CASE mastership.term < 2 -> TRUE
