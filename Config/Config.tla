@@ -90,8 +90,9 @@ THEOREM Spec => Safety
 
 Terminated(i) ==
    /\ i \in DOMAIN proposal
-   /\ proposal[i].phase \in {ProposalApply, ProposalAbort}
-   /\ proposal[i].state = ProposalComplete
+   /\ \/ /\ proposal[i].phase = ProposalApply
+         /\ proposal[i].state = ProposalComplete
+      \/ proposal[i].state = ProposalFailed
 
 Termination ==
    \A i \in 1..Len(proposal) :

@@ -27,13 +27,13 @@ LOCAL InitState ==
    [configurations |-> configuration,
     targets        |-> target,
     masterships    |-> mastership,
-    node           |-> node]
+    nodes          |-> node]
 
 LOCAL NextState ==
    [configurations |-> configuration',
     targets        |-> target',
     masterships    |-> mastership',
-    node           |-> node']
+    nodes          |-> node']
 
 LOCAL Trace == INSTANCE Trace WITH
    Module    <- "Configurations",
@@ -71,21 +71,21 @@ Formal specification, constraints, and theorems.
 InitConfiguration == 
    /\ configuration = [
          state     |-> ConfigurationInProgress,
-         index     |-> 0,
          committed |-> [
-            index  |-> 0,
-            term   |-> 0,
-            values |-> [
+            index    |-> 0,
+            revision |-> 0,
+            term     |-> 0,
+            values   |-> [
                path \in {} |-> [
                   path    |-> path,
                    value   |-> Nil,
                    index   |-> 0,
                    deleted |-> FALSE]]],
-         proposed  |-> [index |-> 0],
          applied   |-> [
-            index  |-> 0,
-            term   |-> 0,
-            values |-> [
+            index    |-> 0,
+            revision |-> 0,
+            term     |-> 0,
+            values   |-> [
                path \in {} |-> [
                   path    |-> path,
                   value   |-> Nil,

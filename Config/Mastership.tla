@@ -16,11 +16,11 @@ CONSTANT TraceMastership
 VARIABLE mastership
 
 LOCAL InitState ==
-   [node        |-> node,
+   [nodes       |-> node,
     masterships |-> mastership]
 
 LOCAL NextState ==
-   [node        |-> node',
+   [nodes       |-> node',
     masterships |-> mastership']
 
 LOCAL Trace == INSTANCE Trace WITH

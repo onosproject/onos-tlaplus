@@ -50,11 +50,9 @@ Change(c) ==
    /\ LET index == Len(proposal) + 1
       IN  proposal' = proposal @@ 
              (index :> [type       |-> ProposalChange,
-                        index      |-> index,
-                        change     |-> [index  |-> index,
-                                        values |-> c],
+                        change     |-> [values |-> c],
                         rollback   |-> [index  |-> 0],
-                        phase      |-> ProposalValidate,
+                        phase      |-> ProposalCommit,
                         state      |-> ProposalInProgress])
    /\ UNCHANGED <<configuration, mastership, node, target>>
 
@@ -63,19 +61,10 @@ Rollback(i) ==
    /\ LET index == Len(proposal) + 1
       IN  proposal' = proposal @@
              (index :> [type       |-> ProposalRollback,
-                        index      |-> index,
-                        change     |-> [index   |-> 0],
-                        rollback   |-> [index   |-> i],
-                        phase      |-> ProposalValidate,
+                        change     |-> [index |-> 0],
+                        rollback   |-> [index |-> i],
+                        phase      |-> ProposalCommit,
                         state      |-> ProposalInProgress])
-   /\ UNCHANGED <<configuration, mastership, node, target>>
-
-\* Abort aborts proposal 'i'
-Abort(i) ==
-   /\ proposal[i].phase # ProposalAbort
-   /\ proposal[i].state # ProposalFailed
-   /\ proposal' = [proposal EXCEPT ![i].phase = ProposalAbort,
-                                   ![i].state = ProposalInProgress]
    /\ UNCHANGED <<configuration, mastership, node, target>>
 
 ----
@@ -91,8 +80,6 @@ NextNorthbound ==
          Change(c)
    \/ \E i \in DOMAIN proposal :
          Rollback(i)
-   \/ \E i \in DOMAIN proposal :
-         Abort(i)
 
 =============================================================================
 \* Modification History

@@ -3,11 +3,21 @@ EXTENDS Config, TLC
 
 constraint_proposal == Len(proposal) <= 2
 
-constraint_mastership == mastership.term <= 1
+constraint_mastership ==
+   CASE mastership.term < 2 -> TRUE
+     [] mastership.term = 2 -> mastership.master # Nil
+     [] OTHER -> FALSE
 
-constraint_conn == \A n \in DOMAIN node : node[n].incarnation <= 1
+constraint_node == 
+   \A n \in DOMAIN node : 
+      CASE node[n].incarnation < 2 -> TRUE
+        [] node[n].incarnation = 2 -> node[n].connected
+        [] OTHER -> FALSE
 
-constraint_target == target.incarnation <= 1
+constraint_target == 
+   CASE target.incarnation < 2 -> TRUE
+     [] target.incarnation = 2 -> target.running
+     [] OTHER -> FALSE
 
 const_TraceEnabled == FALSE
 
@@ -23,15 +33,11 @@ const_ProposalChange == "Change"
 
 const_ProposalRollback == "Rollback"
 
-const_ProposalValidate == "Validate"
-
-const_ProposalInProgress == "InProgress"
-
 const_ProposalCommit == "Commit"
 
 const_ProposalApply == "Apply"
 
-const_ProposalAbort == "Abort"
+const_ProposalInProgress == "InProgress"
 
 const_ProposalComplete == "Complete"
 
