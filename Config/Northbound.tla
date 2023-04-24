@@ -12,59 +12,25 @@ LOCAL INSTANCE TLC
 
 ----
 
-(*
-This section models configuration changes and rollbacks. Changes
-are appended to the proposal log and processed asynchronously.
-*)
-
-Value(s, p) ==
-   LET value == CHOOSE v \in s : v.path = p
-   IN
-      [value  |-> value.value,
-       delete |-> value.delete,
-       valid  |-> value.valid]
-
-Paths(s) ==
-   [p \in {v.path : v \in s} |-> Value(s, p)]
-
-ValidValues(p) ==
-   UNION {{[value |-> v, delete |-> FALSE, valid |-> TRUE] : v \in Target.values[p]}, 
-             {[value |-> v, delete |-> FALSE, valid |-> FALSE] : v \in Target.values[p]}, 
-             {[value |-> Nil, delete |-> TRUE, valid |-> TRUE]},
-             {[value |-> Nil, delete |-> TRUE, valid |-> FALSE]}}
-
-ValidPaths ==
-   UNION {{v @@ [path |-> p] : v \in ValidValues(p)} : p \in DOMAIN Target.values}
-
-\* The set of all valid sets of changes to all targets and their paths. 
-\* The set of possible changes is computed from the Target model value.
-ValidChanges == 
-   LET changeSets == {s \in SUBSET ValidPaths :
-                        /\ \A p \in DOMAIN Target.values :
-                           /\ Cardinality({v \in s : v.path = p}) <= 1}
-   IN
-      {c \in {Paths(s) : s \in changeSets} : DOMAIN c # {}}
+CONSTANT Changes
 
 \* Add change 'c' to the proposal log 
 Change(c) ==
-   /\ LET index == Len(proposal) + 1
-      IN  proposal' = proposal @@ 
-             (index :> [type       |-> ProposalChange,
-                        change     |-> [values |-> c],
-                        rollback   |-> [index  |-> 0],
-                        phase      |-> ProposalCommit,
-                        state      |-> ProposalInProgress])
+   /\ proposal' = Append(proposal, [type     |-> ProposalChange,
+                                    change   |-> [values |-> [
+                                       p \in DOMAIN c |-> [value |-> c[p]]]],
+                                    rollback |-> [index  |-> 0],
+                                    phase    |-> ProposalCommit,
+                                    state    |-> ProposalInProgress])
    /\ UNCHANGED <<configuration, mastership, node, target>>
 
 \* Add a rollback of proposal 'i' to the proposal log
 Rollback(i) ==
-   /\ LET index == Len(proposal) + 1
-      IN  proposal' = proposal @@
-             (index :> [type       |-> ProposalRollback,
-                        change     |-> [index |-> 0],
-                        rollback   |-> [index |-> i],
-                        phase      |-> ProposalCommit,
-                        state      |-> ProposalInProgress])
+   /\ proposal' = Append(proposal, [type     |-> ProposalRollback,
+                                    change   |-> [index |-> 0],
+                                    rollback |-> [index |-> i],
+                                    phase    |-> ProposalCommit,
+                                    state    |-> ProposalInProgress])
    /\ UNCHANGED <<configuration, mastership, node, target>>
 
 ----
@@ -76,10 +42,17 @@ Formal specification, constraints, and theorems.
 InitNorthbound == TRUE
 
 NextNorthbound ==
-   \/ \E c \in ValidChanges :
+   \/ \E c \in Changes :
          Change(c)
    \/ \E i \in DOMAIN proposal :
          Rollback(i)
+
+----
+
+ASSUME \A c \in Changes :
+          /\ Cardinality(DOMAIN c) > 0
+          /\ \A p \in DOMAIN c : c[p] \in STRING
+                
 
 =============================================================================
 \* Modification History

@@ -11,22 +11,11 @@ LOCAL INSTANCE TLC
 \* An empty constant
 CONSTANT Nil
 
-(*
-Target is the set of all targets and their possible paths and values.
-
-Example:
-   Target == [
-      values |-> [
-         path1 |-> {"value1", "value2"},
-         path2 |-> {"value3"}]
-*)
-CONSTANT Target
-
 \* A record of target states
 VARIABLE target
 
 \* The set of all nodes
-CONSTANT Node
+CONSTANT Nodes
 
 \* The state of nodes
 VARIABLE node
@@ -67,21 +56,18 @@ InitSouthbound ==
    /\ target = [incarnation |-> 0, 
                 running     |-> FALSE,
                 values      |-> [p \in {} |-> [value |-> Nil]]]
-   /\ node = [n \in Node |-> [incarnation |-> 0, connected |-> FALSE]]
+   /\ node = [n \in Nodes |-> [incarnation |-> 0, connected |-> FALSE]]
 
 NextSouthbound ==
    \/ Start
    \/ Stop
-   \/ \E n \in Node : Connect(n)
-   \/ \E n \in Node : Disconnect(n)
+   \/ \E n \in Nodes : Connect(n)
+   \/ \E n \in Nodes : Disconnect(n)
 
 ----
 
-ASSUME /\ \A p \in DOMAIN Target.values :
-             IsFiniteSet(Target.values[p])
-
-ASSUME /\ IsFiniteSet(Node) 
-       /\ \A n \in Node : 
+ASSUME /\ IsFiniteSet(Nodes) 
+       /\ \A n \in Nodes : 
              /\ n \in STRING
 
 =============================================================================

@@ -54,7 +54,7 @@ InitMastership ==
    /\ mastership = [master |-> Nil, term |-> 0]
 
 NextMastership == 
-   \/ \E n \in Node :
+   \/ \E n \in Nodes :
          Trace!Step(ReconcileMastership(n), [node |-> n])
 
 =============================================================================

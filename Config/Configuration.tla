@@ -77,24 +77,20 @@ InitConfiguration ==
             term     |-> 0,
             values   |-> [
                path \in {} |-> [
-                  path    |-> path,
-                   value   |-> Nil,
-                   index   |-> 0,
-                   deleted |-> FALSE]]],
+                  index |-> 0,
+                  value |-> Nil]]],
          applied   |-> [
             index    |-> 0,
             revision |-> 0,
             term     |-> 0,
             values   |-> [
                path \in {} |-> [
-                  path    |-> path,
-                  value   |-> Nil,
-                  index   |-> 0,
-                  deleted |-> FALSE]]]]
+                  index |-> 0,
+                  value |-> Nil]]]]
    /\ Trace!Init
 
 NextConfiguration == 
-   \/ \E n \in Node :
+   \/ \E n \in Nodes :
          Trace!Step(ReconcileConfiguration(n), [node |-> n])
 
 =============================================================================

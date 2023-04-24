@@ -77,7 +77,7 @@ ReconcileProposal(n, i) ==
                                                      IF p \in DOMAIN configuration.committed.values THEN
                                                         configuration.committed.values[p]
                                                      ELSE
-                                                        [delete |-> TRUE]]
+                                                        [index |-> 0, value |-> Nil]]
                                changeValues   == [p \in DOMAIN proposal[i].change.values |->
                                                      proposal[i].change.values[p] @@ [index |-> i]]
                            IN /\ configuration' = [configuration EXCEPT !.committed.index  = i,
@@ -178,7 +178,7 @@ InitProposal ==
    /\ Trace!Init
 
 NextProposal == 
-   \/ \E n \in Node :
+   \/ \E n \in Nodes :
          \E i \in DOMAIN proposal :
             Trace!Step(ReconcileProposal(n, i), [node |-> n, index |-> i])
 
