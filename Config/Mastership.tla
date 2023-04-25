@@ -16,12 +16,12 @@ CONSTANT TraceMastership
 VARIABLE mastership
 
 LOCAL InitState ==
-   [nodes       |-> node,
-    masterships |-> mastership]
+   [nodes      |-> node,
+    mastership |-> mastership]
 
 LOCAL NextState ==
-   [nodes       |-> node',
-    masterships |-> mastership']
+   [nodes      |-> node',
+    mastership |-> mastership']
 
 LOCAL Trace == INSTANCE Trace WITH
    Module    <- "Mastership",

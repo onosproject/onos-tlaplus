@@ -24,16 +24,16 @@ VARIABLE configuration
 ----
 
 LOCAL InitState ==
-   [configurations |-> configuration,
-    targets        |-> target,
-    masterships    |-> mastership,
-    nodes          |-> node]
+   [configuration |-> configuration,
+    target        |-> target,
+    mastership    |-> mastership,
+    nodes         |-> node]
 
 LOCAL NextState ==
-   [configurations |-> configuration',
-    targets        |-> target',
-    masterships    |-> mastership',
-    nodes          |-> node']
+   [configuration |-> configuration',
+    target        |-> target',
+    mastership    |-> mastership',
+    nodes         |-> node']
 
 LOCAL Trace == INSTANCE Trace WITH
    Module    <- "Configuration",

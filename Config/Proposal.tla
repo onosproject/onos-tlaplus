@@ -34,18 +34,18 @@ VARIABLE proposal
 ----
 
 LOCAL InitState == [
-   proposals      |-> proposal,
-   configurations |-> configuration,
-   targets        |-> target,
-   masterships    |-> mastership,
-   nodes          |-> node]
+   proposals     |-> proposal,
+   configuration |-> configuration,
+   target        |-> target,
+   mastership    |-> mastership,
+   nodes         |-> node]
 
 LOCAL NextState == [
-   proposals      |-> proposal',
-   configurations |-> configuration',
-   targets        |-> target',
-   masterships    |-> mastership',
-   nodes          |-> node']
+   proposals     |-> proposal',
+   configuration |-> configuration',
+   target        |-> target',
+   mastership    |-> mastership',
+   nodes         |-> node']
 
 LOCAL Trace == INSTANCE Trace WITH
    Module    <- "Proposal",
