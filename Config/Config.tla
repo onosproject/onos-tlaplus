@@ -46,15 +46,13 @@ Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
 
 Order ==
    \A i \in DOMAIN proposal :
-      /\ proposal[i].phase = ProposalCommit /\ proposal[i].state \in {ProposalComplete, ProposalFailed} =>
-            \A j \in DOMAIN proposal :
-               j < i => 
-                  /\ proposal[j].phase = ProposalCommit => proposal[j].state # ProposalInProgress
-      /\ proposal[i].phase = ProposalApply /\ proposal[i].state \in {ProposalComplete, ProposalFailed} => 
-            \A j \in DOMAIN proposal : 
-               j < i => 
-                  /\ proposal[j].phase = ProposalCommit => proposal[j].state = ProposalFailed
-                  /\ proposal[j].phase = ProposalApply => proposal[j].state \in {ProposalComplete, ProposalFailed}
+      /\ proposal[i].type = ProposalChange 
+      /\ proposal[i].phase = ProposalApply 
+      /\ proposal[i].state \in {ProposalComplete, ProposalFailed} 
+      => \A j \in DOMAIN proposal : 
+            j < i => 
+               /\ proposal[j].phase = ProposalCommit => proposal[j].state = ProposalFailed
+               /\ proposal[j].phase = ProposalApply => proposal[j].state \in {ProposalComplete, ProposalFailed}
 
 IsConsistent(indexes, values) ==
    LET 
@@ -74,7 +72,8 @@ IsConsistent(indexes, values) ==
       actualConfig # expectedConfig => ~(PrintT(indexes)/\PrintT(appliedPaths)/\PrintT(pathIndexes)/\PrintT(expectedConfig)/\PrintT(actualConfig))
 
 Consistency == 
-   /\ LET indexes == {i \in DOMAIN proposal : /\ \/ /\ proposal[i].phase = ProposalCommit
+   /\ LET indexes == {i \in DOMAIN proposal : /\ \/ /\ proposal[i].type = ProposalChange
+                                                    /\ proposal[i].phase = ProposalCommit
                                                     /\ proposal[i].state = ProposalComplete
                                                  \/ proposal[i].phase = ProposalApply
                                               /\ ~\E j \in DOMAIN proposal :
@@ -84,7 +83,8 @@ Consistency ==
                                                       /\ proposal[j].phase = ProposalCommit
                                                       /\ proposal[j].state = ProposalComplete}
       IN IsConsistent(indexes, configuration.committed.values)
-   /\ LET indexes == {i \in DOMAIN proposal : /\ proposal[i].phase = ProposalApply
+   /\ LET indexes == {i \in DOMAIN proposal : /\ proposal[i].type = ProposalChange
+                                              /\ proposal[i].phase = ProposalApply
                                               /\ proposal[i].state = ProposalComplete
                                               /\ ~\E j \in DOMAIN proposal :
                                                       /\ j > i

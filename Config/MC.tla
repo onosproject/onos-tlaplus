@@ -21,6 +21,30 @@ const_Nodes ==
 \*const_Nodes == 
 \*   {"node1"}
 
+const_TraceEnabled == FALSE
+
+const_Nil == "<nil>"
+
+const_ConfigurationInProgress == "InProgress"
+
+const_ConfigurationComplete == "Complete"
+
+const_ConfigurationFailed == "Failed"
+
+const_ProposalChange == "Change"
+
+const_ProposalRollback == "Rollback"
+
+const_ProposalCommit == "Commit"
+
+const_ProposalApply == "Apply"
+
+const_ProposalInProgress == "InProgress"
+
+const_ProposalComplete == "Complete"
+
+const_ProposalFailed == "Failed"
+
 constraint_proposal == 
    Len(proposal) <= 3
 
@@ -48,30 +72,6 @@ constraint_target ==
 \*   CASE target.incarnation < 2 -> TRUE
 \*     [] target.incarnation = 2 -> target.running
 \*     [] OTHER -> FALSE
-
-const_TraceEnabled == TRUE
-
-const_Nil == "<nil>"
-
-const_ConfigurationInProgress == "InProgress"
-
-const_ConfigurationComplete == "Complete"
-
-const_ConfigurationFailed == "Failed"
-
-const_ProposalChange == "Change"
-
-const_ProposalRollback == "Rollback"
-
-const_ProposalCommit == "Commit"
-
-const_ProposalApply == "Apply"
-
-const_ProposalInProgress == "InProgress"
-
-const_ProposalComplete == "Complete"
-
-const_ProposalFailed == "Failed"
 
 =============================================================================
 \* Modification History
