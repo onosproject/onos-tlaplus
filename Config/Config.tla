@@ -42,7 +42,16 @@ Next ==
    \/ /\ NextSouthbound
       /\ UNCHANGED <<proposal, configuration, mastership>>
 
-Spec == Init /\ [][Next]_vars /\ WF_vars(NextProposal)
+Spec == 
+   /\ Init
+   /\ [][Next]_vars 
+   /\ \A i \in 1..NumProposals : WF_vars(Change(i) \/ Rollback(i))
+   /\ \A n \in Nodes, i \in 1..NumProposals : WF_vars(ReconcileProposal(n, i))
+   /\ \A n \in Nodes : WF_<<configuration, mastership, node, target>>(ReconcileConfiguration(n))
+   /\ \A n \in Nodes : WF_<<mastership, node, target>>(ReconcileMastership(n))
+   /\ \A n \in Nodes : WF_<<node, target>>(Connect(n) \/ Disconnect(n))
+   /\ WF_<<target>>(Start)
+   /\ WF_<<target>>(Stop)
 
 IsCommittedChange(i) ==
    /\ proposal[i].state = ProposalChange
@@ -101,13 +110,27 @@ Safety == [](Order /\ Consistency)
 
 THEOREM Spec => Safety
 
+ChangeCommitting(i) ==
+   /\ proposal[i].state = ProposalChange 
+   /\ proposal[i].change.phase = ProposalCommit 
+   /\ proposal[i].change.status = ProposalInProgress
+
+ChangeApplied(i) ==
+   /\ proposal[i].change.phase = ProposalApply
+   /\ proposal[i].change.status = ProposalComplete
+
+RollbackCommitting(i) ==
+   /\ proposal[i].state = ProposalRollback 
+   /\ proposal[i].rollback.phase = ProposalCommit 
+   /\ proposal[i].rollback.status = ProposalInProgress
+
+RollbackApplied(i) ==
+   /\ proposal[i].rollback.phase = ProposalApply
+   /\ proposal[i].rollback.status = ProposalComplete
+
 Terminates(i) ==
-   /\ proposal[i].state = ProposalChange ~>
-      /\ proposal[i].change.phase = ProposalApply
-      /\ proposal[i].change.status = ProposalComplete
-   /\ proposal[i].state = ProposalRollback ~>
-      /\ proposal[i].rollback.phase = ProposalApply
-      /\ proposal[i].rollback.status = ProposalComplete
+   /\ ChangeCommitting(i) ~> ChangeApplied(i)
+   /\ RollbackCommitting(i) ~> RollbackApplied(i)
 
 Termination ==
    \A i \in 1..NumProposals : Terminates(i)

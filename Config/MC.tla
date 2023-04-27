@@ -21,7 +21,7 @@ const_Changes ==
 const_Nodes == 
    {"node1"}
 
-const_LogEnabled == TRUE
+const_LogEnabled == FALSE
 
 const_NumProposals == 3
 

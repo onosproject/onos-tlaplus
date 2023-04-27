@@ -141,10 +141,16 @@ ApplyChange(n, i) ==
 \* rolled back.
 CommitRollback(n, i) == 
    /\ \/ /\ proposal[i].rollback.status = ProposalPending
-         /\ configuration.commit.target = i
-         /\ configuration.commit.revision = i
-         /\ configuration' = [configuration EXCEPT !.commit.target = proposal[i].rollback.revision]
-         /\ proposal' = [proposal EXCEPT ![i].rollback.status = ProposalInProgress]
+         /\ \/ /\ configuration.commit.target = i
+               /\ configuration.commit.revision = i
+               /\ configuration' = [configuration EXCEPT !.commit.target = proposal[i].rollback.revision]
+               /\ proposal' = [proposal EXCEPT ![i].rollback.status = ProposalInProgress]
+            \/ /\ configuration.commit.target = i
+               /\ configuration.commit.revision < i
+               /\ CommitChange(n, i)
+            \/ /\ configuration.commit.target < i
+               /\ proposal' = [proposal EXCEPT ![i].rollback.status = ProposalComplete]
+               /\ UNCHANGED <<configuration, target>>
       \/ /\ proposal[i].rollback.status = ProposalInProgress
          /\ LET revision == proposal[i].rollback.revision
                 values   == proposal[i].rollback.values
@@ -159,11 +165,17 @@ CommitRollback(n, i) ==
 \* rolled back.
 ApplyRollback(n, i) == 
    /\ \/ /\ proposal[i].rollback.status = ProposalPending
-         /\ configuration.apply.target = i
-         /\ configuration.apply.revision = i
-         /\ configuration' = [configuration EXCEPT !.apply.target = proposal[i].rollback.revision]
-         /\ proposal' = [proposal EXCEPT ![i].rollback.status = ProposalInProgress]
-         /\ UNCHANGED <<target>>
+         /\ \/ /\ configuration.apply.target = i
+               /\ configuration.apply.revision = i
+               /\ configuration' = [configuration EXCEPT !.apply.target = proposal[i].rollback.revision]
+               /\ proposal' = [proposal EXCEPT ![i].rollback.status = ProposalInProgress]
+               /\ UNCHANGED <<target>>
+            \/ /\ configuration.apply.target = i
+               /\ configuration.apply.revision < i
+               /\ ApplyChange(n, i)
+            \/ /\ configuration.apply.target < i
+               /\ proposal' = [proposal EXCEPT ![i].rollback.status = ProposalComplete]
+               /\ UNCHANGED <<configuration, target>>
       \/ /\ proposal[i].rollback.status = ProposalInProgress
          \* Verify the applied term is the current mastership term to ensure the
          \* configuration has been synchronized following restarts.
