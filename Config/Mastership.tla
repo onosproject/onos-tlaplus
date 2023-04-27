@@ -38,7 +38,7 @@ This section models mastership reconciliation.
 ReconcileMastership(n) ==
    /\ \/ /\ node[n].connected
          /\ mastership.master = Nil
-         /\ mastership' = [master |-> n, term |-> mastership.term + 1]
+         /\ mastership' = [master |-> n, term |-> mastership.term + 1, conn |-> node[n].incarnation]
       \/ /\ ~node[n].connected
          /\ mastership.master = n
          /\ mastership' = [mastership EXCEPT !.master = Nil]
@@ -51,7 +51,7 @@ Formal specification, constraints, and theorems.
 *)
 
 InitMastership ==
-   /\ mastership = [master |-> Nil, term |-> 0]
+   /\ mastership = [master |-> Nil, term |-> 0, conn |-> 0]
 
 NextMastership == 
    \/ \E n \in Nodes :

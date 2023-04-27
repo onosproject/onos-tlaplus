@@ -50,16 +50,17 @@ This section models the Configuration reconciler.
 ReconcileConfiguration(n) ==
    /\ mastership.master = n
    /\ \/ /\ configuration.state # ConfigurationInProgress
-         /\ configuration.applied.term < mastership.term
+         /\ configuration.apply.term < mastership.term
          /\ configuration' = [configuration EXCEPT !.state = ConfigurationInProgress]
          /\ UNCHANGED <<target>>
       \/ /\ configuration.state = ConfigurationInProgress
-         /\ configuration.applied.term < mastership.term
+         /\ configuration.apply.term < mastership.term
          /\ node[n].connected
          /\ target.running
-         /\ target' = [target EXCEPT !.values = configuration.applied.values]
-         /\ configuration' = [configuration EXCEPT !.applied.term = mastership.term,
-                                                   !.state        = ConfigurationComplete]
+         /\ target' = [target EXCEPT !.values = configuration.apply.values]
+         /\ configuration' = [configuration EXCEPT !.apply.term        = mastership.term,
+                                                   !.apply.incarnation = target.incarnation,
+                                                   !.state             = ConfigurationComplete]
    /\ UNCHANGED <<mastership, node>>
 
 ----
@@ -70,20 +71,23 @@ Formal specification, constraints, and theorems.
 
 InitConfiguration == 
    /\ configuration = [
-         state     |-> ConfigurationInProgress,
-         committed |-> [
+         state  |-> ConfigurationInProgress,
+         commit |-> [
             index    |-> 0,
+            target   |-> 0,
             revision |-> 0,
             term     |-> 0,
             values   |-> [
                path \in {} |-> [
                   index |-> 0,
                   value |-> Nil]]],
-         applied   |-> [
-            index    |-> 0,
-            revision |-> 0,
-            term     |-> 0,
-            values   |-> [
+         apply  |-> [
+            index       |-> 0,
+            target      |-> 0,
+            revision    |-> 0,
+            term        |-> 0,
+            incarnation |-> 0,
+            values      |-> [
                path \in {} |-> [
                   index |-> 0,
                   value |-> Nil]]]]

@@ -10,6 +10,8 @@ LOCAL INSTANCE TLC
 
 ----
 
+CONSTANT NumProposals
+
 \* Transaction type constants
 CONSTANTS
    ProposalChange,
@@ -22,6 +24,7 @@ CONSTANTS
 
 \* Status constants
 CONSTANTS
+   ProposalPending,
    ProposalInProgress,
    ProposalComplete,
    ProposalFailed
@@ -34,14 +37,14 @@ VARIABLE proposal
 ----
 
 LOCAL InitState == [
-   proposals     |-> proposal,
+   proposals     |-> [i \in {i \in DOMAIN proposal : proposal[i].state # Nil} |-> proposal[i]],
    configuration |-> configuration,
    target        |-> target,
    mastership    |-> mastership,
    nodes         |-> node]
 
 LOCAL NextState == [
-   proposals     |-> proposal',
+   proposals     |-> [i \in {i \in DOMAIN proposal' : proposal'[i].state # Nil} |-> proposal'[i]],
    configuration |-> configuration',
    target        |-> target',
    mastership    |-> mastership',
@@ -55,136 +58,134 @@ LOCAL Trace == INSTANCE Trace WITH
 
 ----
 
+\* Commit a change to the configuration.
+\* A change can be committed once all prior changes have been committed.
+\* If a prior change is being rolled back, the rollback must complete
+\* before the change can be committed. Changes must be committed in
+\* sequential order.
+\* Once a change commit is in progress, the change must be committed or
+\* failed before it can be applied or rolled back.
 CommitChange(n, i) == 
-   \* Change proposals cannot be validated and committed until the prior index has
-   \* been validated and committed and the configuration values updated.
-   /\ configuration.committed.index = i-1
-   \* If all the change values are valid, record the changes required to roll
-   \* back the proposal and the index to which the rollback changes
-   \* will roll back the configuration.
-   /\ \/ LET rollbackIndex  == configuration.committed.revision
-             rollbackValues == [p \in DOMAIN proposal[i].change.values |-> 
-                                  IF p \in DOMAIN configuration.committed.values THEN
-                                     configuration.committed.values[p]
-                                  ELSE
-                                     [index |-> 0, value |-> Nil]]
-             changeValues   == [p \in DOMAIN proposal[i].change.values |->
-                                  proposal[i].change.values[p] @@ [index |-> i]]
-         IN /\ configuration' = [configuration EXCEPT !.committed.index    = i,
-                                                      !.committed.revision = i,
-                                                      !.committed.values   = changeValues]
-            /\ proposal' = [proposal EXCEPT ![i].change = [
-                                                index  |-> i,
-                                                values |-> changeValues],
-                                             ![i].rollback = [
-                                                index  |-> rollbackIndex,
-                                                values |-> rollbackValues],
-                                             ![i].phase  = ProposalApply,
-                                             ![i].state  = ProposalInProgress]
-      \* A proposal can fail validation at this point, in which case the proposal
-      \* is marked failed.
-      \/ /\ configuration' = [configuration EXCEPT !.committed.index = i]
-         /\ proposal' = [proposal EXCEPT ![i].state = ProposalFailed]
+   /\ \/ /\ proposal[i].change.status = ProposalPending
+         \* To commit a change, the commit index must be the prior index,
+         \* and the target commit index must match the commit revision.
+         /\ configuration.commit.index = i-1
+         /\ configuration.commit.revision = configuration.commit.target
+         /\ configuration' = [configuration EXCEPT !.commit.index  = i,
+                                                   !.commit.target = i]
+         /\ proposal' = [proposal EXCEPT ![i].change.status = ProposalInProgress]
+      \/ /\ proposal[i].change.status = ProposalInProgress
+         \* If all the change values are valid, record the changes required to roll
+         \* back the proposal and the index to which the rollback changes
+         \* will roll back the configuration.
+         /\ \/ LET rollbackRevision == configuration.commit.revision
+                   rollbackValues   == [p \in DOMAIN proposal[i].change.values |-> 
+                                          IF p \in DOMAIN configuration.commit.values THEN
+                                             configuration.commit.values[p]
+                                          ELSE
+                                             [index |-> 0, value |-> Nil]]
+                   changeValues     == [p \in DOMAIN proposal[i].change.values |->
+                                          proposal[i].change.values[p] @@ [index |-> i]]
+               IN /\ configuration' = [configuration EXCEPT !.commit.revision = i,
+                                                            !.commit.values   = changeValues]
+                  /\ proposal' = [proposal EXCEPT ![i].change.values     = changeValues,
+                                                  ![i].change.phase      = ProposalApply,
+                                                  ![i].change.status     = ProposalPending,
+                                                  ![i].rollback.revision = rollbackRevision,
+                                                  ![i].rollback.values   = rollbackValues]
+            \/ /\ configuration' = [configuration EXCEPT !.commit.revision = i]
+               /\ proposal' = [proposal EXCEPT ![i].change.status = ProposalFailed]
    /\ UNCHANGED <<target>>
 
-CommitRollback(n, i) == 
-   \* Rollbacks can only be done on change type proposals.
-   /\ \/ /\ proposal[proposal[i].rollback.index].type = ProposalChange
-         \* If the change is the latest made to the configuration, roll it back.
-         /\ \/ /\ configuration.committed.revision = proposal[i].rollback.index
-               \* Record the changes required to roll back the target proposal and the index to 
-               \* which the configuration is being rolled back.
-               /\ LET changeIndex  == proposal[proposal[i].rollback.index].rollback.index
-                      changeValues == proposal[proposal[i].rollback.index].rollback.values
-                     \* Note: these two changes must be implemented as an atomic, idempotent update.
-                     \* Implementations should check if the configuration has already been updated and 
-                     \* skip the configuration update if the committed index is >= the proposal index.
-                  IN /\ configuration' = [configuration EXCEPT !.committed.index    = i,
-                                                               !.committed.revision = changeIndex,
-                                                               !.committed.values   = changeValues]
-                     /\ proposal' = [proposal EXCEPT ![i].change = [
-                                                         index  |-> changeIndex,
-                                                         values |-> changeValues],
-                                                     ![i].phase  = ProposalApply,
-                                                     ![i].state  = ProposalInProgress]
-            \* If the change has not yet been committed to the configuration, abort it.
-            \/ /\ configuration.committed.revision < proposal[i].rollback.index
-               /\ proposal' = [proposal EXCEPT ![i].state = ProposalComplete,
-                                               ![proposal[i].rollback.index].state = ProposalFailed]
-               /\ UNCHANGED <<configuration>>
-            \* If another change needs to be rolled back before this change can be,
-            \* fail the rollback.
-            \/ /\ configuration.committed.revision > proposal[i].rollback.index
-               /\ proposal' = [proposal EXCEPT ![i].state = ProposalFailed]
-               /\ UNCHANGED <<configuration>>
-      \* If a Rollback proposal is attempting to roll back another Rollback,
-      \* fail validation for the proposal.
-      \/ /\ proposal[proposal[i].rollback.index].type = ProposalRollback
-         /\ proposal' = [proposal EXCEPT ![i].state = ProposalFailed]
-         /\ UNCHANGED <<configuration>>
-   /\ UNCHANGED <<target>>
-
+\* Apply a change to the target.
+\* A change can be applied once all prior changes have been applied.
+\* If a prior change failed being applied, it must be rolled back before
+\* any subsequent change can be applied.
 ApplyChange(n, i) == 
-   \* Change proposals cannot be applied until the prior index has
-   \* been applied and the configuration's applied index updated.
-   /\ configuration.applied.index = i-1
-   \* Verify the applied term is the current mastership term to ensure the
-   \* configuration has been synchronized following restarts.
-   /\ configuration.applied.term = mastership.term
-   \* Verify the node's connection to the target.
-   /\ node[n].connected
-   /\ target.running
-   \* Model successful and failed target update requests.
-   /\ \/ /\ target' = [target EXCEPT !.values = proposal[i].change.values @@ target.values]
-         /\ LET index  == proposal[i].change.index
-                values == proposal[i].change.values @@ configuration.applied.values
-            IN configuration' = [configuration EXCEPT !.applied.index    = i,
-                                                      !.applied.revision = index,
-                                                      !.applied.values   = values]
-         /\ proposal' = [proposal EXCEPT ![i].state = ProposalComplete]
-      \* If the proposal could not be applied, mark it failed but do not update the
-      \* last applied index. The proposal must be rolled back before new proposals
-      \* can be applied to the configuration/target.
-      \/ /\ proposal' = [proposal EXCEPT ![i].state = ProposalFailed]
-         /\ UNCHANGED <<configuration, target>>
+   /\ \/ /\ proposal[i].change.status = ProposalPending
+         \* To apply a change, the apply index must be the prior index.
+         /\ configuration.apply.index = i-1
+         /\ configuration.apply.revision = configuration.apply.target
+         /\ configuration' = [configuration EXCEPT !.apply.index  = i,
+                                                   !.apply.target = i]
+         /\ proposal' = [proposal EXCEPT ![i].change.status = ProposalInProgress]
+         /\ UNCHANGED <<target>>
+      \/ /\ proposal[i].change.status = ProposalInProgress
+         \* Verify the applied term is the current mastership term to ensure the
+         \* configuration has been synchronized following restarts.
+         /\ configuration.apply.term = mastership.term
+         \* Verify the node's connection to the target.
+         /\ node[n].connected
+         /\ mastership.conn = node[n].incarnation
+         /\ target.running
+         /\ node[n].target = target.incarnation
+         \* Model successful and failed target update requests.
+         /\ \/ /\ target' = [target EXCEPT !.values = proposal[i].change.values @@ target.values]
+               /\ LET values == proposal[i].change.values @@ configuration.apply.values
+                  IN configuration' = [configuration EXCEPT !.apply.revision    = i,
+                                                            !.apply.incarnation = target.incarnation,
+                                                            !.apply.values      = values]
+               /\ proposal' = [proposal EXCEPT ![i].change.status = ProposalComplete]
+            \* If the proposal could not be applied, mark it failed but do not update the
+            \* last applied index. The proposal must be rolled back before new proposals
+            \* can be applied to the configuration/target.
+            \/ /\ proposal' = [proposal EXCEPT ![i].change.status = ProposalFailed]
+               /\ UNCHANGED <<configuration, target>>
 
+\* Commit a rollback to the configuration.
+\* A change can be rolled back once all subsequent, non-pending changes have been 
+\* rolled back.
+CommitRollback(n, i) == 
+   /\ \/ /\ proposal[i].rollback.status = ProposalPending
+         /\ configuration.commit.target = i
+         /\ configuration.commit.revision = i
+         /\ configuration' = [configuration EXCEPT !.commit.target = proposal[i].rollback.revision]
+         /\ proposal' = [proposal EXCEPT ![i].rollback.status = ProposalInProgress]
+      \/ /\ proposal[i].rollback.status = ProposalInProgress
+         /\ LET revision == proposal[i].rollback.revision
+                values   == proposal[i].rollback.values
+            IN /\ configuration' = [configuration EXCEPT !.commit.revision = revision,
+                                                         !.commit.values   = values]
+               /\ proposal' = [proposal EXCEPT ![i].rollback.phase  = ProposalApply,
+                                               ![i].rollback.status = ProposalPending]
+   /\ UNCHANGED <<target>>
+
+\* Commit a rollback to the target.
+\* A change can be rolled back once all subsequent, non-pending changes have been 
+\* rolled back.
 ApplyRollback(n, i) == 
-   \* The target change cannot be rolled back until it has been applied or failed.
-   /\ configuration.applied.index = proposal[i].rollback.index
-   \* Verify the applied term is the current mastership term to ensure the
-   \* configuration has been synchronized following restarts.
-   /\ configuration.applied.term = mastership.term
-   \* Verify the node's connection to the target.
-   /\ node[n].connected
-   /\ target.running
-   /\ target' = [target EXCEPT !.values = proposal[i].change.values @@ target.values]
-   /\ LET index  == proposal[i].change.index
-          values == proposal[i].change.values @@ configuration.applied.values
-      IN configuration' = [configuration EXCEPT !.applied.index    = i,
-                                                !.applied.revision = index,
-                                                !.applied.values   = values]
-   /\ proposal' = [proposal EXCEPT ![i].state = ProposalComplete]
+   /\ \/ /\ proposal[i].rollback.status = ProposalPending
+         /\ configuration.apply.target = i
+         /\ configuration.apply.revision = i
+         /\ configuration' = [configuration EXCEPT !.apply.target = proposal[i].rollback.revision]
+         /\ proposal' = [proposal EXCEPT ![i].rollback.status = ProposalInProgress]
+         /\ UNCHANGED <<target>>
+      \/ /\ proposal[i].rollback.status = ProposalInProgress
+         \* Verify the applied term is the current mastership term to ensure the
+         \* configuration has been synchronized following restarts.
+         /\ configuration.apply.term = mastership.term
+         \* Verify the node's connection to the target.
+         /\ node[n].connected
+         /\ target.running
+         /\ target' = [target EXCEPT !.values = proposal[i].rollback.values @@ target.values]
+         /\ LET revision == proposal[i].rollback.revision
+                values   == proposal[i].rollback.values @@ configuration.apply.values
+            IN configuration' = [configuration EXCEPT !.apply.revision = revision,
+                                                      !.apply.values   = values]
+         /\ proposal' = [proposal EXCEPT ![i].rollback.status = ProposalComplete]
 
 ReconcileProposal(n, i) ==
    /\ mastership.master = n
-   /\ \/ /\ proposal[i].phase = ProposalCommit
-         /\ proposal[i].state = ProposalInProgress
-         /\ \/ /\ proposal[i].type = ProposalChange
+   /\ \/ /\ proposal[i].state = ProposalChange
+         /\ \/ /\ proposal[i].change.phase = ProposalCommit
                /\ CommitChange(n, i)
-            \/ /\ proposal[i].type = ProposalRollback
-               /\ CommitRollback(n, i)
-      \/ /\ proposal[i].phase = ProposalApply
-         /\ proposal[i].state = ProposalInProgress
-         /\ \/ /\ proposal[i].type = ProposalChange
+            \/ /\ proposal[i].change.phase = ProposalApply
                /\ ApplyChange(n, i)
-            \/ /\ proposal[i].type = ProposalRollback
+      \/ /\ proposal[i].state = ProposalRollback
+         /\ \/ /\ proposal[i].rollback.phase = ProposalCommit
+               /\ CommitRollback(n, i)
+            \/ /\ proposal[i].rollback.phase = ProposalApply
                /\ ApplyRollback(n, i)
-      \* If the proposal is complete, increment the applied index in sequential order
-      \* to unblock proposals in the apply phase.
-      \/ /\ proposal[i].state \in {ProposalComplete, ProposalFailed}
-         /\ configuration.applied.index = i-1
-         /\ configuration' = [configuration EXCEPT !.applied.index = i]
-         /\ UNCHANGED <<proposal, target>>
    /\ UNCHANGED <<mastership, node>>
 
 ----
@@ -195,16 +196,17 @@ Formal specification, constraints, and theorems.
 
 InitProposal == 
    /\ proposal = [
-         i \in {} |-> [
-            type     |-> ProposalChange,
+         i \in 1..NumProposals |-> [
+            state    |-> Nil,
             change   |-> [
-               index  |-> 0,
-               values |-> [p \in {} |-> [index |-> 0, value |-> Nil, delete |-> FALSE]]],
+               values |-> [p \in {} |-> [index |-> 0, value |-> Nil]],
+               phase  |-> Nil,
+               status |-> Nil],
             rollback |-> [
-               index  |-> 0,
-               values |-> [p \in {} |-> [index |-> 0, value |-> Nil, delete |-> FALSE]]],
-            phase    |-> ProposalCommit,
-            state    |-> ProposalInProgress]]
+               revision |-> 0,
+               values   |-> [p \in {} |-> [index |-> 0, value |-> Nil]],
+               phase    |-> Nil,
+               status   |-> Nil]]]
    /\ Trace!Init
 
 NextProposal == 

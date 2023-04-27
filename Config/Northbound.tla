@@ -15,22 +15,28 @@ LOCAL INSTANCE TLC
 CONSTANT Changes
 
 \* Add change 'c' to the proposal log 
-Change(c) ==
-   /\ proposal' = Append(proposal, [type     |-> ProposalChange,
-                                    change   |-> [values |-> [
-                                       p \in DOMAIN c |-> [value |-> c[p]]]],
-                                    rollback |-> [index  |-> 0],
-                                    phase    |-> ProposalCommit,
-                                    state    |-> ProposalInProgress])
+Change(i) ==
+   /\ proposal[i].state = Nil
+   /\ i-1 \in DOMAIN proposal => proposal[i-1].state # Nil
+   /\ \E c \in Changes :
+         /\ proposal' = [proposal EXCEPT ![i] = [state    |-> ProposalChange,
+                                                 change   |-> [
+                                                    values |-> [p \in DOMAIN c |-> [value |-> c[p]]],
+                                                    phase  |-> ProposalCommit,
+                                                    status |-> ProposalPending],
+                                                 rollback |-> [
+                                                    revision |-> 0,
+                                                    phase    |-> Nil,
+                                                    status   |-> Nil,
+                                                    values   |-> [p \in {} |-> [value |-> Nil]]]]]
    /\ UNCHANGED <<configuration, mastership, node, target>>
 
 \* Add a rollback of proposal 'i' to the proposal log
 Rollback(i) ==
-   /\ proposal' = Append(proposal, [type     |-> ProposalRollback,
-                                    change   |-> [index |-> 0],
-                                    rollback |-> [index |-> i],
-                                    phase    |-> ProposalCommit,
-                                    state    |-> ProposalInProgress])
+   /\ proposal[i].state = ProposalChange
+   /\ proposal' = [proposal EXCEPT ![i].state           = ProposalRollback,
+                                   ![i].rollback.phase  = ProposalCommit,
+                                   ![i].rollback.status = ProposalPending]
    /\ UNCHANGED <<configuration, mastership, node, target>>
 
 ----
@@ -42,10 +48,9 @@ Formal specification, constraints, and theorems.
 InitNorthbound == TRUE
 
 NextNorthbound ==
-   \/ \E c \in Changes :
-         Change(c)
-   \/ \E i \in DOMAIN proposal :
-         Rollback(i)
+   \E i \in 1..NumProposals : 
+      \/ Change(i)
+      \/ Rollback(i)
 
 ----
 

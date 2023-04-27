@@ -15,13 +15,15 @@ const_Changes ==
 \*    [path1 |-> "value1",
 \*     path2 |-> Nil]}
 
-const_Nodes == 
-   {"node1", "node2"}
-
 \*const_Nodes == 
-\*   {"node1"}
+\*   {"node1", "node2"}
+
+const_Nodes == 
+   {"node1"}
 
 const_TraceEnabled == FALSE
+
+const_NumProposals == 3
 
 const_Nil == "<nil>"
 
@@ -39,14 +41,13 @@ const_ProposalCommit == "Commit"
 
 const_ProposalApply == "Apply"
 
+const_ProposalPending == "Pending"
+
 const_ProposalInProgress == "InProgress"
 
 const_ProposalComplete == "Complete"
 
 const_ProposalFailed == "Failed"
-
-constraint_proposal == 
-   Len(proposal) <= 3
 
 constraint_mastership == 
    mastership.term <= 2

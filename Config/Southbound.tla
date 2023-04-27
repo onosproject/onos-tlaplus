@@ -41,7 +41,8 @@ Stop ==
 Connect(n) ==
    /\ ~node[n].connected
    /\ target.running
-   /\ node' = [node EXCEPT ![n].incarnation = node[n].incarnation + 1,
+   /\ node' = [node EXCEPT ![n].target      = target.incarnation,
+                           ![n].incarnation = node[n].incarnation + 1,
                            ![n].connected   = TRUE]
    /\ UNCHANGED <<target>>
 
@@ -56,7 +57,7 @@ InitSouthbound ==
    /\ target = [incarnation |-> 0, 
                 running     |-> FALSE,
                 values      |-> [p \in {} |-> [value |-> Nil]]]
-   /\ node = [n \in Nodes |-> [incarnation |-> 0, connected |-> FALSE]]
+   /\ node = [n \in Nodes |-> [target |-> 0, incarnation |-> 0, connected |-> FALSE]]
 
 NextSouthbound ==
    \/ Start
