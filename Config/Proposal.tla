@@ -12,6 +12,8 @@ LOCAL INSTANCE TLC
 
 CONSTANT NumProposals
 
+ASSUME NumProposals \in Nat 
+
 \* Transaction type constants
 CONSTANTS
    ProposalChange,
@@ -29,32 +31,34 @@ CONSTANTS
    ProposalComplete,
    ProposalFailed
 
-CONSTANT TraceProposal
+CONSTANT LogProposal
+
+ASSUME LogProposal \in BOOLEAN 
 
 \* A record of per-target proposals
 VARIABLE proposal
 
 ----
 
-LOCAL InitState == [
+LOCAL CurrentState == [
    proposals     |-> [i \in {i \in DOMAIN proposal : proposal[i].state # Nil} |-> proposal[i]],
    configuration |-> configuration,
    target        |-> target,
    mastership    |-> mastership,
    nodes         |-> node]
 
-LOCAL NextState == [
+LOCAL SuccessorState == [
    proposals     |-> [i \in {i \in DOMAIN proposal' : proposal'[i].state # Nil} |-> proposal'[i]],
    configuration |-> configuration',
    target        |-> target',
    mastership    |-> mastership',
    nodes         |-> node']
 
-LOCAL Trace == INSTANCE Trace WITH
-   Module    <- "Proposal",
-   InitState <- InitState,
-   NextState <- NextState,
-   Enabled   <- TraceProposal
+LOCAL Log == INSTANCE Log WITH
+   File           <- "Proposal.log",
+   CurrentState   <- CurrentState,
+   SuccessorState <- SuccessorState,
+   Enabled        <- LogProposal
 
 ----
 
@@ -195,6 +199,7 @@ Formal specification, constraints, and theorems.
 *)
 
 InitProposal == 
+   /\ Log!Init
    /\ proposal = [
          i \in 1..NumProposals |-> [
             state    |-> Nil,
@@ -207,12 +212,11 @@ InitProposal ==
                values   |-> [p \in {} |-> [index |-> 0, value |-> Nil]],
                phase    |-> Nil,
                status   |-> Nil]]]
-   /\ Trace!Init
 
 NextProposal == 
    \/ \E n \in Nodes :
          \E i \in DOMAIN proposal :
-            Trace!Step(ReconcileProposal(n, i), [node |-> n, index |-> i])
+            Log!Action(ReconcileProposal(n, i), [node |-> n, index |-> i])
 
 =============================================================================
 \* Modification History

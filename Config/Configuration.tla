@@ -16,30 +16,32 @@ CONSTANTS
    ConfigurationComplete,
    ConfigurationFailed
 
-CONSTANT TraceConfiguration
+CONSTANT LogConfiguration
+
+ASSUME LogConfiguration \in BOOLEAN 
 
 \* A record of per-target configurations
 VARIABLE configuration
 
 ----
 
-LOCAL InitState ==
+LOCAL CurrentState ==
    [configuration |-> configuration,
     target        |-> target,
     mastership    |-> mastership,
     nodes         |-> node]
 
-LOCAL NextState ==
+LOCAL SuccessorState ==
    [configuration |-> configuration',
     target        |-> target',
     mastership    |-> mastership',
     nodes         |-> node']
 
-LOCAL Trace == INSTANCE Trace WITH
-   Module    <- "Configuration",
-   InitState <- InitState,
-   NextState <- NextState,
-   Enabled   <- TraceConfiguration
+LOCAL Log == INSTANCE Log WITH
+   File           <- "Configuration.log",
+   CurrentState   <- CurrentState,
+   SuccessorState <- SuccessorState,
+   Enabled        <- LogConfiguration
 
 ----
 
@@ -70,6 +72,7 @@ Formal specification, constraints, and theorems.
 *)
 
 InitConfiguration == 
+   /\ Log!Init
    /\ configuration = [
          state  |-> ConfigurationInProgress,
          commit |-> [
@@ -91,11 +94,10 @@ InitConfiguration ==
                path \in {} |-> [
                   index |-> 0,
                   value |-> Nil]]]]
-   /\ Trace!Init
 
 NextConfiguration == 
    \/ \E n \in Nodes :
-         Trace!Step(ReconcileConfiguration(n), [node |-> n])
+         Log!Action(ReconcileConfiguration(n), [node |-> n])
 
 =============================================================================
 \* Modification History

@@ -10,24 +10,26 @@ LOCAL INSTANCE TLC
 
 ----
 
-CONSTANT TraceMastership
+CONSTANT LogMastership
+
+ASSUME LogMastership \in BOOLEAN 
 
 \* A record of target masterships
 VARIABLE mastership
 
-LOCAL InitState ==
+LOCAL CurrentState ==
    [nodes      |-> node,
     mastership |-> mastership]
 
-LOCAL NextState ==
+LOCAL SuccessorState ==
    [nodes      |-> node',
     mastership |-> mastership']
 
-LOCAL Trace == INSTANCE Trace WITH
-   Module    <- "Mastership",
-   InitState <- InitState,
-   NextState <- NextState,
-   Enabled   <- TraceMastership
+LOCAL Log == INSTANCE Log WITH
+   File           <- "Mastership.log",
+   CurrentState   <- CurrentState,
+   SuccessorState <- SuccessorState,
+   Enabled        <- LogMastership
 
 ----
 
@@ -51,11 +53,12 @@ Formal specification, constraints, and theorems.
 *)
 
 InitMastership ==
+   /\ Log!Init
    /\ mastership = [master |-> Nil, term |-> 0, conn |-> 0]
 
 NextMastership == 
    \/ \E n \in Nodes :
-         Trace!Step(ReconcileMastership(n), [node |-> n])
+         Log!Action(ReconcileMastership(n), [node |-> n])
 
 =============================================================================
 \* Modification History

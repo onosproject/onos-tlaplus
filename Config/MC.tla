@@ -21,7 +21,7 @@ const_Changes ==
 const_Nodes == 
    {"node1"}
 
-const_TraceEnabled == FALSE
+const_LogEnabled == TRUE
 
 const_NumProposals == 3
 
