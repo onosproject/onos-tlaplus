@@ -42,7 +42,7 @@ Next ==
    \/ /\ NextSouthbound
       /\ UNCHANGED <<proposal, configuration, mastership>>
 
-Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
+Spec == Init /\ [][Next]_vars /\ WF_vars(NextProposal)
 
 IsCommittedChange(i) ==
    /\ proposal[i].state = ProposalChange
