@@ -60,9 +60,9 @@ ReconcileConfiguration(n) ==
          /\ node[n].connected
          /\ target.running
          /\ target' = [target EXCEPT !.values = configuration.apply.values]
-         /\ configuration' = [configuration EXCEPT !.apply.term        = mastership.term,
-                                                   !.apply.incarnation = target.incarnation,
-                                                   !.state             = ConfigurationComplete]
+         /\ configuration' = [configuration EXCEPT !.apply.term   = mastership.term,
+                                                   !.apply.target = target.incarnation,
+                                                   !.state        = ConfigurationComplete]
    /\ UNCHANGED <<mastership, node>>
 
 ----
@@ -76,21 +76,19 @@ InitConfiguration ==
    /\ configuration = [
          state  |-> ConfigurationInProgress,
          commit |-> [
+            proposal |-> 0,
             index    |-> 0,
-            target   |-> 0,
-            revision |-> 0,
             term     |-> 0,
             values   |-> [
                path \in {} |-> [
                   index |-> 0,
                   value |-> Nil]]],
          apply  |-> [
-            index       |-> 0,
-            target      |-> 0,
-            revision    |-> 0,
-            term        |-> 0,
-            incarnation |-> 0,
-            values      |-> [
+            proposal |-> 0,
+            index    |-> 0,
+            term     |-> 0,
+            target   |-> 0,
+            values   |-> [
                path \in {} |-> [
                   index |-> 0,
                   value |-> Nil]]]]

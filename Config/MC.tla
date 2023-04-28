@@ -6,17 +6,21 @@ const_Changes ==
     [path1 |-> "value2"],
     [path1 |-> Nil]}
 
-\*const_Changes == 
-\*   {[path1 |-> "value1"],
-\*    [path1 |-> "value2"],
-\*    [path1 |-> Nil],
-\*    [path2 |-> "value1"],
-\*    [path2 |-> Nil],
-\*    [path1 |-> "value1",
-\*     path2 |-> Nil]}
+(*
+const_Changes == 
+   {[path1 |-> "value1"],
+    [path1 |-> "value2"],
+    [path1 |-> Nil],
+    [path2 |-> "value1"],
+    [path2 |-> Nil],
+    [path1 |-> "value1",
+     path2 |-> Nil]}
+*)
 
-\*const_Nodes == 
-\*   {"node1", "node2"}
+(*
+const_Nodes == 
+   {"node1", "node2"}
+*)
 
 const_Nodes == 
    {"node1"}
@@ -47,32 +51,42 @@ const_ProposalInProgress == "InProgress"
 
 const_ProposalComplete == "Complete"
 
+const_ProposalAborted == "Aborted"
+
 const_ProposalFailed == "Failed"
 
+(*
 constraint_mastership == 
    mastership.term <= 2
+*)
 
-\*constraint_mastership == 
-\*   CASE mastership.term < 2 -> TRUE
-\*     [] mastership.term = 2 -> mastership.master # Nil
-\*     [] OTHER -> FALSE
+constraint_mastership == 
+   CASE mastership.term < 2 -> TRUE
+     [] mastership.term = 2 -> mastership.master # Nil
+     [] OTHER -> FALSE
 
+(*
 constraint_node == 
    \A n \in DOMAIN node : node[n].incarnation <= 2
 
-\*constraint_node == 
-\*   \A n \in DOMAIN node : 
-\*      CASE node[n].incarnation < 2 -> TRUE
-\*        [] node[n].incarnation = 2 -> node[n].connected
-\*        [] OTHER -> FALSE
+*)
 
+constraint_node == 
+   \A n \in DOMAIN node : 
+      CASE node[n].incarnation < 2 -> TRUE
+        [] node[n].incarnation = 2 -> node[n].connected
+        [] OTHER -> FALSE
+
+(*
 constraint_target == 
    target.incarnation <= 2
 
-\*constraint_target == 
-\*   CASE target.incarnation < 2 -> TRUE
-\*     [] target.incarnation = 2 -> target.running
-\*     [] OTHER -> FALSE
+*)
+
+constraint_target == 
+   CASE target.incarnation < 2 -> TRUE
+     [] target.incarnation = 2 -> target.running
+     [] OTHER -> FALSE
 
 =============================================================================
 \* Modification History

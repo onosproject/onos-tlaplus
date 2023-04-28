@@ -16,27 +16,27 @@ CONSTANT Changes
 
 \* Add change 'c' to the proposal log 
 Change(i) ==
-   /\ proposal[i].state = Nil
-   /\ i-1 \in DOMAIN proposal => proposal[i-1].state # Nil
+   /\ proposal[i].phase = Nil
+   /\ i-1 \in DOMAIN proposal => proposal[i-1].phase # Nil
    /\ \E c \in Changes :
-         /\ proposal' = [proposal EXCEPT ![i] = [state    |-> ProposalChange,
+         /\ proposal' = [proposal EXCEPT ![i] = [phase    |-> ProposalChange,
                                                  change   |-> [
                                                     values |-> [p \in DOMAIN c |-> [value |-> c[p]]],
-                                                    phase  |-> ProposalCommit,
-                                                    status |-> ProposalPending],
+                                                    commit   |-> ProposalPending,
+                                                    apply    |-> ProposalPending],
                                                  rollback |-> [
-                                                    revision |-> 0,
-                                                    phase    |-> Nil,
-                                                    status   |-> Nil,
-                                                    values   |-> [p \in {} |-> [value |-> Nil]]]]]
+                                                    index  |-> 0,
+                                                    values |-> [p \in {} |-> [value |-> Nil]],
+                                                    commit |-> Nil,
+                                                    apply  |-> Nil]]]
    /\ UNCHANGED <<configuration, mastership, node, target>>
 
 \* Add a rollback of proposal 'i' to the proposal log
 Rollback(i) ==
-   /\ proposal[i].state = ProposalChange
-   /\ proposal' = [proposal EXCEPT ![i].state           = ProposalRollback,
-                                   ![i].rollback.phase  = ProposalCommit,
-                                   ![i].rollback.status = ProposalPending]
+   /\ proposal[i].phase = ProposalChange
+   /\ proposal' = [proposal EXCEPT ![i].phase = ProposalRollback,
+                                   ![i].rollback.commit = ProposalPending,
+                                   ![i].rollback.apply  = ProposalPending]
    /\ UNCHANGED <<configuration, mastership, node, target>>
 
 ----

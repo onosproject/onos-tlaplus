@@ -53,55 +53,44 @@ Spec ==
    /\ WF_<<target>>(Start)
    /\ WF_<<target>>(Stop)
 
-IsCommittedChange(i) ==
-   /\ proposal[i].state = ProposalChange
-   /\ \/ /\ proposal[i].change.phase = ProposalCommit
-         /\ proposal[i].change.status = ProposalFailed
-      \/ proposal[i].change.phase = ProposalApply
-
-IsAppliedChange(i) ==
-   /\ proposal[i].state = ProposalChange
-   /\ proposal[i].change.phase = ProposalApply
-   /\ proposal[i].change.status = ProposalComplete
-
-
-IsCommittedRollback(i) ==
-   /\ proposal[i].state = ProposalRollback
-   /\ \/ /\ proposal[i].change.phase = ProposalCommit
-         /\ proposal[i].change.status = ProposalFailed
-      \/ proposal[i].change.phase = ProposalApply
-
-IsAppliedRollback(i) ==
-   /\ proposal[i].state = ProposalRollback
-   /\ \/ proposal[i].rollback.phase = ProposalCommit
-      \/ /\ proposal[i].rollback.phase = ProposalApply
-         /\ proposal[i].rollback.status \in {ProposalPending, ProposalComplete}
-
 Order ==
-   \A i \in DOMAIN proposal :
-      /\ IsCommittedChange(i) =>
-         \A j \in DOMAIN proposal : j < i =>
-            /\ proposal[j].state = ProposalChange => IsCommittedChange(j)
-            /\ proposal[j].state = ProposalRollback => IsCommittedRollback(j)
-      /\ IsAppliedChange(i) =>
-         \A j \in DOMAIN proposal : j < i =>
-            /\ proposal[j].state = ProposalChange => IsAppliedChange(j)
-            /\ proposal[j].state = ProposalRollback => IsAppliedRollback(j)
+    \A i \in DOMAIN proposal :
+      /\ proposal[i].change.commit \in {ProposalInProgress, ProposalAborted} => 
+         ~\E j \in DOMAIN proposal :
+            /\ j < i
+            /\ proposal[j].change.commit \in {ProposalPending, ProposalInProgress}
+      /\ proposal[i].change.commit = ProposalComplete =>
+         ~\E j \in DOMAIN proposal :
+            /\ j < i
+            /\ proposal[j].change.commit \in {ProposalPending, ProposalInProgress}
+      /\ proposal[i].change.apply \in {ProposalInProgress, ProposalAborted} => 
+         ~\E j \in DOMAIN proposal :
+            /\ j < i
+            /\ \/ proposal[j].change.apply \in {ProposalPending, ProposalInProgress}
+               \/ /\ proposal[j].change.apply = ProposalFailed
+                  /\ proposal[j].rollback.apply \notin ProposalDone
+      /\ proposal[i].change.apply = ProposalComplete =>
+         ~\E j \in DOMAIN proposal :
+            /\ j < i
+            /\ \/ proposal[j].change.apply \in {ProposalPending, ProposalInProgress}
+               \/ /\ proposal[j].change.apply = ProposalFailed
+                  /\ proposal[j].rollback.apply \notin ProposalDone
+      /\ proposal[i].rollback.commit = ProposalInProgress =>
+         \A j \in DOMAIN proposal : j > i /\ proposal[j].phase = ProposalRollback => 
+            proposal[j].change.commit \in ProposalDone
 
 Consistency ==
    /\ target.running 
    /\ configuration.state = ConfigurationComplete
-   /\ configuration.apply.incarnation = target.incarnation
+   /\ configuration.apply.target = target.incarnation
    => \A i \in DOMAIN proposal :
-         IsAppliedChange(i) =>
-            \A p \in DOMAIN proposal[i].change.values :
+         /\ proposal[i].change.apply = ProposalComplete 
+         /\ proposal[i].rollback.apply # ProposalComplete
+         => \A p \in DOMAIN proposal[i].change.values :
                /\ ~\E j \in DOMAIN proposal : 
                      /\ j > i 
-                     /\ proposal[j].change.phase = ProposalApply
-                     /\ proposal[j].change.status = ProposalComplete
-                     /\ proposal[j].rollback.phase = ProposalApply
-                        => proposal[j].rollback.status # ProposalComplete
-                     /\ p \in DOMAIN proposal[j].change.values 
+                     /\ proposal[i].change.apply = ProposalComplete 
+                     /\ proposal[i].rollback.apply # ProposalComplete
                => /\ p \in DOMAIN target.values 
                   /\ target.values[p].value = proposal[i].change.values[p].value
                   /\ target.values[p].index = proposal[i].change.values[p].index
@@ -110,30 +99,14 @@ Safety == [](Order /\ Consistency)
 
 THEOREM Spec => Safety
 
-ChangeCommitting(i) ==
-   /\ proposal[i].state = ProposalChange 
-   /\ proposal[i].change.phase = ProposalCommit 
-   /\ proposal[i].change.status = ProposalInProgress
-
-ChangeApplied(i) ==
-   /\ proposal[i].change.phase = ProposalApply
-   /\ proposal[i].change.status = ProposalComplete
-
-RollbackCommitting(i) ==
-   /\ proposal[i].state = ProposalRollback 
-   /\ proposal[i].rollback.phase = ProposalCommit 
-   /\ proposal[i].rollback.status = ProposalInProgress
-
-RollbackApplied(i) ==
-   /\ proposal[i].rollback.phase = ProposalApply
-   /\ proposal[i].rollback.status = ProposalComplete
-
-Terminates(i) ==
-   /\ ChangeCommitting(i) ~> ChangeApplied(i)
-   /\ RollbackCommitting(i) ~> RollbackApplied(i)
-
 Termination ==
-   \A i \in 1..NumProposals : Terminates(i)
+   \A i \in 1..NumProposals :
+      /\ proposal[i].phase = ProposalChange ~>
+         /\ proposal[i].change.commit \in ProposalDone
+         /\ proposal[i].change.apply \in ProposalDone
+      /\ proposal[i].phase = ProposalRollback ~>
+         /\ proposal[i].rollback.commit \in ProposalDone
+         /\ proposal[i].rollback.apply \in ProposalDone
 
 Liveness == Termination
 
