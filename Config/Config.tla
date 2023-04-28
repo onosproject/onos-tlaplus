@@ -81,7 +81,7 @@ Order ==
 
 Consistency ==
    /\ target.running 
-   /\ configuration.state = ConfigurationComplete
+   /\ configuration.status = ConfigurationComplete
    /\ configuration.apply.target = target.incarnation
    => \A i \in DOMAIN proposal :
          /\ proposal[i].change.apply = ProposalComplete 

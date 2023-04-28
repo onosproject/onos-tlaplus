@@ -51,18 +51,18 @@ This section models the Configuration reconciler.
 
 ReconcileConfiguration(n) ==
    /\ mastership.master = n
-   /\ \/ /\ configuration.state # ConfigurationInProgress
+   /\ \/ /\ configuration.status # ConfigurationInProgress
          /\ configuration.apply.term < mastership.term
-         /\ configuration' = [configuration EXCEPT !.state = ConfigurationInProgress]
+         /\ configuration' = [configuration EXCEPT !.status = ConfigurationInProgress]
          /\ UNCHANGED <<target>>
-      \/ /\ configuration.state = ConfigurationInProgress
+      \/ /\ configuration.status = ConfigurationInProgress
          /\ configuration.apply.term < mastership.term
          /\ node[n].connected
          /\ target.running
          /\ target' = [target EXCEPT !.values = configuration.apply.values]
          /\ configuration' = [configuration EXCEPT !.apply.term   = mastership.term,
                                                    !.apply.target = target.incarnation,
-                                                   !.state        = ConfigurationComplete]
+                                                   !.status        = ConfigurationComplete]
    /\ UNCHANGED <<mastership, node>>
 
 ----
@@ -74,7 +74,7 @@ Formal specification, constraints, and theorems.
 InitConfiguration == 
    /\ Log!Init
    /\ configuration = [
-         state  |-> ConfigurationInProgress,
+         status |-> ConfigurationInProgress,
          commit |-> [
             proposal |-> 0,
             index    |-> 0,
