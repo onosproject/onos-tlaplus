@@ -25,9 +25,9 @@ const_Nodes ==
 const_Nodes == 
    {"node1"}
 
-const_LogEnabled == FALSE
+const_LogEnabled == TRUE
 
-const_NumProposals == 3
+const_NumProposals == 2
 
 const_Nil == "<nil>"
 

@@ -4,9 +4,9 @@ INSTANCE Naturals
 
 INSTANCE Sequences
 
-LOCAL IOUtils == INSTANCE IOUtils
+LOCAL INSTANCE IOUtils
 
-LOCAL Json == INSTANCE Json
+LOCAL INSTANCE Json
 
 CONSTANT Enabled
 
@@ -22,17 +22,17 @@ FormatOpts ==
     openOptions |-> <<"WRITE", "CREATE", "APPEND">>]
 
 Init ==
-   /\ IOUtils!IOExec(<<"rm", "-f", File>>).exitValue = 0
+   /\ IOExec(<<"rm", "-f", File>>).exitValue = 0
 
 Log(context) ==
    Enabled => 
-      LET current   == [k \in {k \in DOMAIN CurrentState : DOMAIN CurrentState[k] # {}} |-> CurrentState[k]]
-          successor == [k \in {k \in DOMAIN SuccessorState : DOMAIN SuccessorState[k] # {}} |-> SuccessorState[k]]
-          record    == [context   |-> context,
-                        current   |-> current, 
-                        successor |-> [k \in {k \in DOMAIN successor : k \in DOMAIN current => current[k] # successor[k]} |-> successor[k]]]
-      IN /\ IOUtils!Serialize(Json!ToJsonObject(record), File, FormatOpts).exitValue = 0
-         /\ IOUtils!Serialize("\n", File, FormatOpts).exitValue = 0
+      LET currentState   == [k \in {k \in DOMAIN CurrentState : DOMAIN CurrentState[k] # {}} |-> CurrentState[k]]
+          successorState == [k \in {k \in DOMAIN SuccessorState : DOMAIN SuccessorState[k] # {}} |-> SuccessorState[k]]
+          record         == [context        |-> context,
+                             currentState   |-> currentState, 
+                             successorState |-> [k \in {k \in DOMAIN successorState : k \in DOMAIN currentState => 
+                                                    currentState[k] # successorState[k]} |-> successorState[k]]]
+      IN Serialize(ToJsonObject(record) \o "\n", File, FormatOpts).exitValue = 0
 
 Action(action, context) ==
    /\ action
