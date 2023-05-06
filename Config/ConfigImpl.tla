@@ -292,23 +292,28 @@ CommitChange(n, i) ==
       \/ /\ proposal[i].change.commit = Failed
          /\ configuration.committed.proposal = i
          /\ configuration.committed.index # i
-         /\ configuration' = [configuration EXCEPT !.committed.index = configuration.committed.index]
+         /\ configuration' = [configuration EXCEPT !.committed.index = i]
          /\ UNCHANGED <<proposal, history>>
-   /\ UNCHANGED <<mastership, conn, target>>
+   /\ UNCHANGED <<target>>
 
 ApplyChange(n, i) == 
    /\ \/ /\ proposal[i].change.apply = Pending
+         /\ i-1 \in DOMAIN proposal => proposal[i-1].change.apply \in Finished
          /\ proposal[i].rollback.apply = None
          /\ \/ /\ proposal[i].change.commit = Complete
-               /\ \A j \in DOMAIN proposal : j < i =>
-                     \/ /\ proposal[j].change.apply = Complete
-                        /\ proposal[j].rollback.apply \notin Working
-                     \/ /\ proposal[j].change.apply = Failed
-                        /\ proposal[j].rollback.apply = Complete
-               /\ proposal' = [proposal EXCEPT ![i].change.apply = InProgress]
+               /\ configuration.applied.proposal < i
+               /\ configuration.applied.index = configuration.applied.proposal
+               /\ configuration' = [configuration EXCEPT !.applied.proposal = i]
+               /\ UNCHANGED <<proposal>>
             \/ /\ proposal[i].change.commit \in {Aborted, Failed}
+               /\ configuration.applied.proposal < i
+               /\ configuration.applied.index = configuration.applied.proposal
                /\ proposal' = [proposal EXCEPT ![i].change.apply = Aborted]
-         /\ UNCHANGED <<configuration, target, history>>
+            \/ /\ configuration.applied.proposal = i
+               /\ configuration.applied.index # i
+               /\ proposal' = [proposal EXCEPT ![i].change.apply = InProgress]
+               /\ UNCHANGED <<configuration>>
+         /\ UNCHANGED <<target, history>>
       \/ /\ proposal[i].change.apply = InProgress
          \* Verify the applied term is the current mastership term to ensure the
          \* configuration has been synchronized following restarts.
@@ -318,17 +323,29 @@ ApplyChange(n, i) ==
          /\ mastership.conn = conn[n].id
          /\ target.running
          \* Model successful and failed target update requests.
-         /\ \/ /\ LET values == [p \in DOMAIN proposal[i].change.values |-> 
+         /\ \/ /\ configuration.applied.proposal = i
+               /\ configuration.applied.index # i
+               /\ LET values == [p \in DOMAIN proposal[i].change.values |-> 
                                     proposal[i].change.values[p] @@ [index |-> i]]
                   IN /\ target' = [target EXCEPT !.values = values @@ target.values]
                      /\ configuration' = [configuration EXCEPT !.applied.index  = i,
                                                                !.applied.values = values @@ 
                                                                   configuration.applied.values]
-                     /\ proposal' = [proposal EXCEPT ![i].change.apply = Complete]
                      /\ history' = Append(history, [type |-> Change, phase |-> Apply, index |-> i])
-            \/ /\ proposal' = [proposal EXCEPT ![i].change.apply = Failed]
+                     /\ UNCHANGED <<proposal>>
+            \/ /\ configuration.applied.proposal = i
+               /\ configuration.applied.index # i
+               /\ proposal' = [proposal EXCEPT ![i].change.apply = Failed]
                /\ UNCHANGED <<configuration, target, history>>
-   /\ UNCHANGED <<mastership, conn>>
+            \/ /\ configuration.applied.proposal = i
+               /\ configuration.applied.index = i
+               /\ proposal' = [proposal EXCEPT ![i].change.apply = Complete]
+               /\ UNCHANGED <<configuration, target, history>>
+      \/ /\ proposal[i].change.apply = Failed
+         /\ configuration.applied.proposal = i
+         /\ configuration.applied.index # i
+         /\ configuration' = [configuration EXCEPT !.applied.index = i]
+         /\ UNCHANGED <<proposal, target, history>>
 
 CommitRollback(n, i) == 
    /\ \/ /\ proposal[i].rollback.commit = Pending
@@ -360,35 +377,46 @@ CommitRollback(n, i) ==
                /\ configuration.committed.index = i
                /\ proposal' = [proposal EXCEPT ![i].rollback.commit = Complete]
                /\ UNCHANGED <<configuration, history>>
-   /\ UNCHANGED <<mastership, conn, target>>
+   /\ UNCHANGED <<target>>
 
 ApplyRollback(n, i) == 
    /\ \/ /\ proposal[i].rollback.apply = Pending
+         /\ i+1 \in DOMAIN proposal => proposal[i+1].rollback.apply = Complete
          /\ proposal[i].rollback.commit = Complete
-         /\ \A j \in DOMAIN proposal : j > i /\ proposal[j].phase # None =>
-               proposal[j].rollback.apply \in Finished
          /\ \/ /\ proposal[i].change.apply = Pending
                /\ proposal' = [proposal EXCEPT ![i].change.apply   = Aborted,
                                                ![i].rollback.apply = Complete]
-            \/ /\ proposal[i].change.apply \in Finished
+               /\ UNCHANGED <<configuration>>
+            \/ /\ proposal[i].change.apply # Pending
+               /\ configuration.applied.proposal = i
+               /\ configuration.applied.index = i
+               /\ configuration' = [configuration EXCEPT !.applied.proposal = proposal[i].rollback.index]
+               /\ UNCHANGED <<proposal>>
+            \/ /\ proposal[i].change.apply # Pending
+               /\ configuration.applied.proposal = proposal[i].rollback.index
+               /\ configuration.applied.index = i
                /\ proposal' = [proposal EXCEPT ![i].rollback.apply = InProgress]
-         /\ UNCHANGED <<configuration, target, history>>
+               /\ UNCHANGED <<configuration>>
+         /\ UNCHANGED <<target, history>>
       \/ /\ proposal[i].rollback.apply = InProgress
-         \* Verify the applied term is the current mastership term to ensure the
-         \* configuration has been synchronized following restarts.
-         /\ configuration.applied.term = mastership.term
-         \* Verify the node's connection to the target.
-         /\ conn[n].connected
-         /\ target.running
-         /\ target' = [target EXCEPT !.values = proposal[i].rollback.values @@ target.values]
-         /\ LET index  == proposal[i].rollback.index
-                values == proposal[i].rollback.values @@ configuration.applied.values
-            IN 
-               /\ configuration' = [configuration EXCEPT !.applied.index  = index,
-                                                         !.applied.values = values]
-               /\ proposal' = [proposal EXCEPT ![i].rollback.apply = Complete]
+         /\ \/ /\ configuration.applied.proposal = proposal[i].rollback.index
+               /\ configuration.applied.index = i
+               \* Verify the applied term is the current mastership term to ensure the
+               \* configuration has been synchronized following restarts.
+               /\ configuration.applied.term = mastership.term
+               \* Verify the node's connection to the target.
+               /\ conn[n].connected
+               /\ target.running
+               /\ target' = [target EXCEPT !.values = proposal[i].rollback.values @@ target.values]
+               /\ configuration' = [configuration EXCEPT !.applied.index  = proposal[i].rollback.index,
+                                                         !.applied.values = proposal[i].rollback.values @@ 
+                                                                              configuration.applied.values]
                /\ history' = Append(history, [type |-> Rollback, phase |-> Apply, index |-> i])
-   /\ UNCHANGED <<mastership, conn>>
+               /\ UNCHANGED <<proposal>>
+            \/ /\ configuration.applied.proposal = proposal[i].rollback.index
+               /\ configuration.applied.index = proposal[i].rollback.index
+               /\ proposal' = [proposal EXCEPT ![i].rollback.apply = Complete]
+               /\ UNCHANGED <<configuration, target, history>>
 
 ReconcileProposal(n, i) ==
    /\ mastership.master = n
