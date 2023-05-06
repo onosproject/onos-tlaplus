@@ -47,7 +47,8 @@ CONSTANTS
 
 State == {Pending, InProgress, Complete, Aborted, Failed}
 
-Done == {Complete, Aborted, Failed}
+Working == {Pending, InProgress}
+Finished == {Complete, Aborted, Failed}
 
 ASSUME \A s \in State : s \in STRING
 
@@ -58,6 +59,8 @@ ASSUME \A p \in Path : p \in STRING
 CONSTANT Value
 
 ASSUME \A v \in Value : v \in STRING
+
+AllValues == Value \union {None}
 
 CONSTANT NumProposals
 
@@ -70,15 +73,16 @@ This section defines model state variables.
 
 proposal == [
    i \in 1..Nat |-> [
+      phase  |-> Phase,
       change |-> [
          values |-> Change,
-         phase  |-> Phase,
-         state  |-> State],
+         commit |-> State,
+         apply  |-> State],
       rollback |-> [
          index  |-> Nat,
          values |-> Change,
-         phase  |-> Phase,
-         state  |-> State]]]
+         commit |-> State,
+         apply  |-> State]]]
 
 configuration == [
    committed |-> [
@@ -200,59 +204,52 @@ This section models proposal reconcilation.
 *)
 
 CommitChange(n, i) == 
-   /\ proposal[i].change.phase = Commit
-   /\ \/ /\ proposal[i].change.state = Pending
-         /\ proposal[i].rollback.phase = None
-         /\ \A j \in DOMAIN proposal : j < i =>
-               /\ \/ /\ proposal[j].change.phase = Commit
-                     /\ proposal[j].change.state \in Done
-                  \/ proposal[j].change.phase = Apply
-               /\ proposal[j].rollback.phase # None =>
-                  proposal[j].rollback.phase = Apply
-         /\ proposal' = [proposal EXCEPT ![i].change.state = InProgress]
+   /\ \/ /\ proposal[i].change.commit = Pending
+         /\ proposal[i].rollback.commit = None
+         /\ \A j \in DOMAIN proposal : j < i => 
+               /\ proposal[j].change.commit \in Finished
+               /\ proposal[j].rollback.commit \notin Working
+         /\ proposal' = [proposal EXCEPT ![i].change.commit = InProgress]
          /\ UNCHANGED <<configuration, history>>
-      \/ /\ proposal[i].change.state = InProgress
+      \/ /\ proposal[i].change.commit = InProgress
          \* Changes are validated during the commit phase. If a change fails validation,
          \* it will be marked failed before being applied to the configuration.
          \* If all the change values are valid, record the changes required to roll
          \* back the proposal and the index to which the rollback changes
          \* will roll back the configuration.
-         /\ \/ LET rollbackIndex  == configuration.committed.index
-                   rollbackValues == [p \in DOMAIN proposal[i].change.values |-> 
-                                        IF p \in DOMAIN configuration.committed.values THEN
-                                           configuration.committed.values[p]
-                                        ELSE
-                                           [index |-> 0, value |-> None]]
-                   changeValues   == [p \in DOMAIN proposal[i].change.values |->
-                                        proposal[i].change.values[p] @@ [index |-> i]]
+         /\ \/ LET rollbackIndex   == configuration.committed.index
+                   rollbackValues  == [p \in DOMAIN proposal[i].change.values |-> 
+                                         IF p \in DOMAIN configuration.committed.values THEN
+                                            configuration.committed.values[p]
+                                         ELSE
+                                            [index |-> 0, value |-> None]]
+                   committedValues == [p \in DOMAIN proposal[i].change.values |->
+                                         proposal[i].change.values[p] @@ [index |-> i]] @@
+                                            configuration.committed.values
                IN /\ configuration' = [configuration EXCEPT !.committed.index  = i,
-                                                            !.committed.values = changeValues]
-                  /\ proposal' = [proposal EXCEPT ![i].change.values   = changeValues,
+                                                            !.committed.values = committedValues]
+                  /\ proposal' = [proposal EXCEPT ![i].rollback.index  = rollbackIndex,
                                                   ![i].rollback.values = rollbackValues,
-                                                  ![i].change.phase    = Apply,
-                                                  ![i].change.state    = Pending]
+                                                  ![i].change.commit   = Complete]
                   /\ history' = Append(history, [type |-> Change, phase |-> Commit, index |-> i])
-            \/ /\ proposal' = [proposal EXCEPT ![i].change.state = Failed]
+            \/ /\ proposal' = [proposal EXCEPT ![i].change.commit = Failed]
                /\ UNCHANGED <<configuration, history>>
    /\ UNCHANGED <<mastership, conn, target>>
 
 ApplyChange(n, i) == 
-   /\ proposal[i].change.phase = Apply
-   /\ \/ /\ proposal[i].change.state = Pending
-         /\ proposal[i].rollback.phase = None
-         /\ \A j \in DOMAIN proposal : j < i =>
-               \/ /\ proposal[j].change.phase = Commit
-                  /\ proposal[j].rollback.state = Complete
-               \/ /\ proposal[j].change.phase = Apply
-                  /\ proposal[j].change.state = Complete
-                  /\ proposal[j].rollback.phase = None
-               \/ /\ proposal[j].change.phase = Apply
-                  /\ proposal[j].change.state = Failed
-                  /\ proposal[j].rollback.phase = Apply
-                  /\ proposal[j].rollback.state = Complete
-         /\ proposal' = [proposal EXCEPT ![i].change.state = InProgress]
+   /\ \/ /\ proposal[i].change.apply = Pending
+         /\ proposal[i].rollback.apply = None
+         /\ \/ /\ proposal[i].change.commit = Complete
+               /\ \A j \in DOMAIN proposal : j < i =>
+                     \/ /\ proposal[j].change.apply = Complete
+                        /\ proposal[j].rollback.apply \notin Working
+                     \/ /\ proposal[j].change.apply = Failed
+                        /\ proposal[j].rollback.apply = Complete
+               /\ proposal' = [proposal EXCEPT ![i].change.apply = InProgress]
+            \/ /\ proposal[i].change.commit \in {Aborted, Failed}
+               /\ proposal' = [proposal EXCEPT ![i].change.apply = Aborted]
          /\ UNCHANGED <<configuration, target, history>>
-      \/ /\ proposal[i].change.state = InProgress
+      \/ /\ proposal[i].change.apply = InProgress
          \* Verify the applied term is the current mastership term to ensure the
          \* configuration has been synchronized following restarts.
          /\ configuration.applied.term = mastership.term
@@ -261,61 +258,49 @@ ApplyChange(n, i) ==
          /\ mastership.conn = conn[n].id
          /\ target.running
          \* Model successful and failed target update requests.
-         /\ \/ /\ target' = [target EXCEPT !.values = proposal[i].change.values @@ target.values]
-               /\ configuration' = [configuration EXCEPT !.applied.index  = i,
-                                                         !.applied.values = proposal[i].change.values @@
-                                                                               configuration.applied.values]
-               /\ proposal' = [proposal EXCEPT ![i].change.state = Complete]
-               /\ history' = Append(history, [type |-> Change, phase |-> Apply, index |-> i])
-            \* If the proposal could not be applied, mark it failed but do not update the
-            \* last applied index. The proposal must be rolled back before new proposals
-            \* can be applied to the configuration/target.
-            \/ /\ proposal' = [proposal EXCEPT ![i].change.state = Failed]
+         /\ \/ /\ LET values == [p \in DOMAIN proposal[i].change.values |-> 
+                                    proposal[i].change.values[p] @@ [index |-> i]]
+                  IN /\ target' = [target EXCEPT !.values = values @@ target.values]
+                     /\ configuration' = [configuration EXCEPT !.applied.index  = i,
+                                                               !.applied.values = values @@ 
+                                                                  configuration.applied.values]
+                     /\ proposal' = [proposal EXCEPT ![i].change.apply = Complete]
+                     /\ history' = Append(history, [type |-> Change, phase |-> Apply, index |-> i])
+            \/ /\ proposal' = [proposal EXCEPT ![i].change.apply = Failed]
                /\ UNCHANGED <<configuration, target, history>>
    /\ UNCHANGED <<mastership, conn>>
 
 CommitRollback(n, i) == 
-   /\ proposal[i].rollback.phase = Commit
-   /\ \/ /\ proposal[i].rollback.state = Pending
-         /\ \A j \in DOMAIN proposal : j > i => 
-               \/ /\ proposal[j].rollback.phase = Commit
-                  /\ proposal[j].rollback.state \in Done
-               \/ proposal[j].rollback.phase = Apply
-         /\ \/ /\ proposal[i].change.phase = Commit
-               /\ proposal[i].change.state = Pending
-               /\ proposal' = [proposal EXCEPT ![i].change.state   = Aborted,
-                                               ![i].rollback.state = Complete]
-            \/ /\ proposal[i].change.phase = Commit
-               /\ proposal[i].change.state \in Done
-               /\ proposal' = [proposal EXCEPT ![i].rollback.state = Complete]
-            \/ /\ proposal[i].change.phase = Apply
-               /\ proposal' = [proposal EXCEPT ![i].rollback.state = InProgress]
+   /\ \/ /\ proposal[i].rollback.commit = Pending
+         /\ \A j \in DOMAIN proposal : j > i /\ proposal[j].phase # None => 
+               proposal[j].rollback.commit \in Finished
+         /\ \/ /\ proposal[i].change.commit = Pending
+               /\ proposal' = [proposal EXCEPT ![i].change.commit   = Aborted,
+                                               ![i].rollback.commit = Complete]
+            \/ /\ proposal[i].change.commit \in Finished
+               /\ proposal' = [proposal EXCEPT ![i].rollback.commit = InProgress]
          /\ UNCHANGED <<configuration, history>>
-      \/ /\ proposal[i].rollback.state = InProgress
+      \/ /\ proposal[i].rollback.commit = InProgress
          /\ LET index  == proposal[i].rollback.index
                 values == proposal[i].rollback.values @@ configuration.committed.values
             IN /\ configuration' = [configuration EXCEPT !.committed.index  = index,
                                                          !.committed.values = values]
-               /\ proposal' = [proposal EXCEPT ![i].rollback.phase = Apply,
-                                               ![i].rollback.state = Pending]
+               /\ proposal' = [proposal EXCEPT ![i].rollback.commit = Complete]
                /\ history' = Append(history, [type |-> Rollback, phase |-> Commit, index |-> i])
    /\ UNCHANGED <<mastership, conn, target>>
 
 ApplyRollback(n, i) == 
-   /\ proposal[i].rollback.phase = Apply
-   /\ \/ /\ proposal[i].rollback.state = Pending
-         /\ \A j \in DOMAIN proposal : j > i =>
-               /\ proposal[j].rollback.phase = Apply
-               /\ proposal[j].rollback.state \in Done
-         /\ \/ /\ proposal[i].change.phase = Apply
-               /\ proposal[i].change.state = Pending
-               /\ proposal' = [proposal EXCEPT ![i].change.state   = Aborted,
-                                               ![i].rollback.state = Complete]
-            \/ /\ proposal[i].change.phase = Apply
-               /\ proposal[i].change.state \in Done
-               /\ proposal' = [proposal EXCEPT ![i].rollback.state = InProgress]
+   /\ \/ /\ proposal[i].rollback.apply = Pending
+         /\ proposal[i].rollback.commit = Complete
+         /\ \A j \in DOMAIN proposal : j > i /\ proposal[j].phase # None =>
+               proposal[j].rollback.apply \in Finished
+         /\ \/ /\ proposal[i].change.apply = Pending
+               /\ proposal' = [proposal EXCEPT ![i].change.apply   = Aborted,
+                                               ![i].rollback.apply = Complete]
+            \/ /\ proposal[i].change.apply \in Finished
+               /\ proposal' = [proposal EXCEPT ![i].rollback.apply = InProgress]
          /\ UNCHANGED <<configuration, target, history>>
-      \/ /\ proposal[i].rollback.state = InProgress
+      \/ /\ proposal[i].rollback.apply = InProgress
          \* Verify the applied term is the current mastership term to ensure the
          \* configuration has been synchronized following restarts.
          /\ configuration.applied.term = mastership.term
@@ -328,7 +313,7 @@ ApplyRollback(n, i) ==
             IN 
                /\ configuration' = [configuration EXCEPT !.applied.index  = index,
                                                          !.applied.values = values]
-               /\ proposal' = [proposal EXCEPT ![i].rollback.state = Complete]
+               /\ proposal' = [proposal EXCEPT ![i].rollback.apply = Complete]
                /\ history' = Append(history, [type |-> Rollback, phase |-> Apply, index |-> i])
    /\ UNCHANGED <<mastership, conn>>
 
@@ -348,20 +333,21 @@ This section models changes to the proposal queue.
 
 \* Propose change at index 'i'
 ProposeChange(i) ==
-   /\ proposal[i].change.phase = None
-   /\ i-1 \in DOMAIN proposal => proposal[i-1].change.phase # None
-   /\ \E p \in Path, v \in Value \union {None} :
-         /\ proposal' = [proposal EXCEPT ![i].change.phase = Commit,
-                                         ![i].change.state = Pending,
-                                         ![i].change.values = (p :> [value |-> v])]
+   /\ proposal[i].phase = None
+   /\ i-1 \in DOMAIN proposal => proposal[i-1].phase # None
+   /\ \E p \in Path, v \in AllValues :
+         /\ proposal' = [proposal EXCEPT ![i].phase         = Change,
+                                         ![i].change.values = (p :> [value |-> v]),
+                                         ![i].change.commit = Pending,
+                                         ![i].change.apply  = Pending]
    /\ UNCHANGED <<configuration, mastership, conn, target, history>>
 
 \* Rollback proposed change at index 'i'
 ProposeRollback(i) ==
-   /\ proposal[i].change.phase # None
-   /\ proposal[i].rollback.phase = None
-   /\ proposal' = [proposal EXCEPT ![i].rollback.phase = Commit,
-                                   ![i].rollback.state = Pending]
+   /\ proposal[i].phase = Change
+   /\ proposal' = [proposal EXCEPT ![i].phase           = Rollback,
+                                   ![i].rollback.commit = Pending,
+                                   ![i].rollback.apply  = Pending]
    /\ UNCHANGED <<configuration, mastership, conn, target, history>>
 
 ----
@@ -373,15 +359,16 @@ Formal specification, constraints, and theorems.
 Init ==
    /\ proposal = [
          i \in 1..NumProposals |-> [
+            phase    |-> None,
             change   |-> [
                values |-> [p \in {} |-> [index |-> 0, value |-> None]],
-               phase  |-> None,
-               state  |-> None],
+               commit |-> None,
+               apply  |-> None],
             rollback |-> [
                index  |-> 0,
                values |-> [p \in {} |-> [index |-> 0, value |-> None]],
-               phase  |-> None,
-               state  |-> None]]]
+               commit |-> None,
+               apply  |-> None]]]
    /\ configuration = [
          committed |-> [
             index  |-> 0,
@@ -455,32 +442,26 @@ Order ==
       \/ IsOrderedRollback(Commit, i)
       \/ IsOrderedRollback(Apply, i)
    /\ \A i \in DOMAIN proposal :
-      /\ proposal[i].change.phase = Apply
-      /\ proposal[i].change.state \notin {Pending, Aborted}
-      => \A j \in DOMAIN proposal :
-            /\ j < i
-            /\ proposal[j].change.phase = Apply
-            /\ proposal[j].change.state = Failed
-            => /\ proposal[j].rollback.phase = Apply
-               /\ proposal[j].rollback.state = Complete
+         /\ proposal[i].change.apply = Failed 
+         /\ proposal[i].rollback.apply # Complete
+         => \A j \in DOMAIN proposal : j > i => 
+               proposal[j].change.apply \in {None, Pending, Aborted}
 
 Consistency ==
    /\ target.running 
    /\ configuration.status = Complete
    /\ configuration.applied.target = target.id
    => \A i \in DOMAIN proposal :
-         /\ proposal[i].change.phase = Apply
-         /\ proposal[i].change.state = Complete
-         /\ proposal[i].rollback.state # Complete
+         /\ proposal[i].change.apply = Complete
+         /\ proposal[i].rollback.apply # Complete
          => \A p \in DOMAIN proposal[i].change.values :
                /\ ~\E j \in DOMAIN proposal : 
                      /\ j > i 
-                     /\ proposal[i].change.phase = Apply
-                     /\ proposal[i].change.state = Complete
-                     /\ proposal[i].rollback.state # Complete
+                     /\ proposal[j].change.apply = Complete
+                     /\ proposal[j].rollback.apply # Complete
                => /\ p \in DOMAIN target.values 
                   /\ target.values[p].value = proposal[i].change.values[p].value
-                  /\ target.values[p].index = proposal[i].change.values[p].index
+                  /\ target.values[p].index = i
 
 Safety == [](Order /\ Consistency)
 
@@ -488,21 +469,14 @@ THEOREM Spec => Safety
 
 Termination ==
    \A i \in 1..NumProposals :
-      /\ proposal[i].change.phase = Commit ~>
-            \/ /\ proposal[i].change.phase = Commit
-               /\ proposal[i].change.state \in Done
-            \/ proposal[i].change.phase = Apply
-      /\ proposal[i].change.phase = Apply ~>
-            /\ proposal[i].change.state \in Done
-      /\ proposal[i].rollback.phase = Commit ~>
-            \/ /\ proposal[i].rollback.phase = Commit
-               /\ proposal[i].rollback.state \in Done
-            \/ proposal[i].rollback.phase = Apply
-      /\ proposal[i].rollback.phase = Apply ~>
-            /\ proposal[i].rollback.state \in Done
-            /\ \/ /\ proposal[i].change.phase = Commit
-                  /\ proposal[i].change.state \in Done
-               \/ proposal[i].change.phase = Apply
+      /\ proposal[i].change.commit = Pending ~>
+            proposal[i].change.commit \in Finished
+      /\ proposal[i].change.apply = Pending ~>
+            proposal[i].change.apply \in Finished
+      /\ proposal[i].rollback.commit = Pending ~>
+            proposal[i].rollback.commit \in Finished
+      /\ proposal[i].rollback.apply = Pending ~>
+            proposal[i].rollback.apply \in Finished
 
 Liveness == Termination
 
