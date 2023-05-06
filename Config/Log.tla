@@ -12,9 +12,9 @@ CONSTANT Enabled
 
 CONSTANT File
 
-CONSTANT CurrentState
+CONSTANT CurrState
 
-CONSTANT SuccessorState
+CONSTANT SuccState
 
 FormatOpts == 
    [format      |-> "TXT",
@@ -26,12 +26,12 @@ Init ==
 
 Log(context) ==
    Enabled => 
-      LET currentState   == [k \in {k \in DOMAIN CurrentState : DOMAIN CurrentState[k] # {}} |-> CurrentState[k]]
-          successorState == [k \in {k \in DOMAIN SuccessorState : DOMAIN SuccessorState[k] # {}} |-> SuccessorState[k]]
-          record         == [context        |-> context,
-                             currentState   |-> currentState, 
-                             successorState |-> [k \in {k \in DOMAIN successorState : k \in DOMAIN currentState => 
-                                                    currentState[k] # successorState[k]} |-> successorState[k]]]
+      LET currState == [k \in {k \in DOMAIN CurrState : DOMAIN CurrState[k] # {}} |-> CurrState[k]]
+          succState == [k \in {k \in DOMAIN SuccState : DOMAIN SuccState[k] # {}} |-> SuccState[k]]
+          record    == [context   |-> context,
+                        currState |-> currState, 
+                        succState |-> [k \in {k \in DOMAIN succState : k \in DOMAIN currState => 
+                                                    currState[k] # succState[k]} |-> succState[k]]]
       IN Serialize(ToJsonObject(record) \o "\n", File, FormatOpts).exitValue = 0
 
 Action(action, context) ==
