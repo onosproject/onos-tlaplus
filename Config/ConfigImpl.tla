@@ -309,6 +309,7 @@ ApplyChange(n, i) ==
                /\ configuration.applied.proposal < i
                /\ configuration.applied.index = configuration.applied.proposal
                /\ proposal' = [proposal EXCEPT ![i].change.apply = Aborted]
+               /\ UNCHANGED <<configuration>>
             \/ /\ configuration.applied.proposal = i
                /\ configuration.applied.index # i
                /\ proposal' = [proposal EXCEPT ![i].change.apply = InProgress]
