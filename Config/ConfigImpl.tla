@@ -490,29 +490,31 @@ Spec ==
    /\ WF_<<target>>(StopTarget)
 
 Mapping == INSTANCE Config WITH 
-   proposal <- [i \in DOMAIN proposal |-> 
-      [proposal[i] EXCEPT !.change.commit   = IF /\ proposal[i].change.commit = InProgress 
-                                                 /\ configuration.committed.index = i 
-                                              THEN Complete 
-                                              ELSE proposal[i].change.commit,
-                          !.change.apply    = IF /\ proposal[i].change.apply = InProgress 
-                                                 /\ configuration.applied.index = i 
-                                              THEN Complete 
-                                              ELSE proposal[i].change.apply,
-                          !.rollback.commit = IF /\ proposal[i].rollback.commit = InProgress
-                                                 /\ configuration.committed.index = proposal[i].rollback.index
-                                              THEN Complete
-                                              ELSE proposal[i].rollback.commit,
-                          !.rollback.apply  = IF /\ proposal[i].rollback.apply = InProgress
-                                                 /\ configuration.applied.index = proposal[i].rollback.index
-                                              THEN Complete
-                                              ELSE proposal[i].rollback.apply]],
+   proposal <- [i \in DOMAIN proposal |-> [
+      phase    |-> proposal[i].phase,
+      values   |-> [p \in DOMAIN proposal[i].change.values |-> proposal[i].change.values[p].value],
+      change   |-> [
+         commit |-> IF /\ proposal[i].change.commit = InProgress 
+                       /\ configuration.committed.index = i
+                    THEN Complete
+                    ELSE proposal[i].change.commit,
+         apply  |-> IF /\ proposal[i].change.apply = InProgress 
+                       /\ configuration.applied.index = i
+                     THEN Complete
+                     ELSE proposal[i].change.apply],
+      rollback |-> [
+         commit |-> IF /\ proposal[i].rollback.commit = InProgress 
+                       /\ configuration.committed.index = proposal[i].rollback.index
+                    THEN Complete
+                    ELSE proposal[i].rollback.commit,
+         apply  |-> IF /\ proposal[i].rollback.apply = InProgress 
+                       /\ configuration.applied.index = proposal[i].rollback.index
+                     THEN Complete
+                     ELSE proposal[i].rollback.apply]]],
    configuration <- [
       committed |-> [
-         index  |-> configuration.committed.index,
          values |-> configuration.committed.values],
       applied |-> [
-         index  |-> configuration.applied.index,
          term   |-> configuration.applied.term,
          target |-> configuration.applied.target,
          values |-> configuration.applied.values],
