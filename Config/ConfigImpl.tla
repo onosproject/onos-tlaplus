@@ -388,7 +388,7 @@ CommitRollback(n, i) ==
       \/ /\ proposal[i].rollback.commit = InProgress
          /\ \/ /\ configuration.committed.index = i
                /\ LET values == [p \in DOMAIN configuration.committed.values |-> 
-                                    IF p \in DOMAIN proposal[i].change.values THEN
+                                    IF p \in DOMAIN proposal[i].rollback.values THEN
                                        proposal[i].rollback.values[p]
                                     ELSE
                                        configuration.committed.values[p]]
@@ -438,7 +438,7 @@ ApplyRollback(n, i) ==
                /\ conn[n].connected
                /\ target.running
                /\ LET values == [p \in DOMAIN configuration.applied.values |-> 
-                                    IF p \in DOMAIN proposal[i].change.values THEN
+                                    IF p \in DOMAIN proposal[i].rollback.values THEN
                                        proposal[i].rollback.values[p]
                                     ELSE
                                        configuration.applied.values[p]]
