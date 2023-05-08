@@ -412,6 +412,7 @@ ApplyRollback(n, i) ==
    \* rollback index, thus matching the targetIndex. This unblocks new changes
    \* to be applied.
    /\ \/ /\ proposal[i].rollback.apply = Pending
+         /\ configuration.committed.index <= proposal[i].rollback.index
          /\ configuration.applied.changeIndex >= i
          /\ configuration.applied.index = i
          /\ \/ /\ configuration.applied.targetIndex = i
