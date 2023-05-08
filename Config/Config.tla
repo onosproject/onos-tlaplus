@@ -207,7 +207,10 @@ CommitChange(n, i) ==
          /\ \A j \in DOMAIN proposal : j < i => 
                /\ proposal[j].change.commit \in Done
                /\ proposal[j].rollback.commit # InProgress
-         /\ proposal' = [proposal EXCEPT ![i].change.commit = InProgress]
+         /\ \/ /\ proposal[i].rollback.commit = None
+               /\ proposal' = [proposal EXCEPT ![i].change.commit = InProgress]
+            \/ /\ proposal[i].rollback.commit = Pending
+               /\ proposal' = [proposal EXCEPT ![i].change.commit = Aborted]
          /\ UNCHANGED <<configuration, history>>
       \/ /\ proposal[i].change.commit = InProgress
          \* Changes are validated during the commit phase. If a change fails validation,
@@ -259,12 +262,14 @@ ApplyChange(n, i) ==
 
 CommitRollback(n, i) == 
    /\ \/ /\ proposal[i].rollback.commit = Pending
-         /\ \A j \in DOMAIN proposal : j > i /\ proposal[j].phase # None => 
-               proposal[j].rollback.commit = Complete
-         /\ \/ /\ proposal[i].change.commit = Pending
-               /\ proposal' = [proposal EXCEPT ![i].change.commit   = Aborted,
-                                               ![i].rollback.commit = Complete]
-            \/ /\ proposal[i].change.commit \in Done
+         /\ \A j \in DOMAIN proposal : 
+               /\ j > i 
+               /\ proposal[j].phase # None
+               /\ proposal[j].change.commit # Pending 
+               => proposal[j].rollback.commit = Complete
+         /\ \/ /\ proposal[i].change.commit = Aborted
+               /\ proposal' = [proposal EXCEPT ![i].rollback.commit = Complete]
+            \/ /\ proposal[i].change.commit \in {Complete, Failed}
                /\ proposal' = [proposal EXCEPT ![i].rollback.commit = InProgress]
          /\ UNCHANGED <<configuration, history>>
       \/ /\ proposal[i].rollback.commit = InProgress
@@ -291,8 +296,11 @@ CommitRollback(n, i) ==
 ApplyRollback(n, i) == 
    /\ \/ /\ proposal[i].rollback.apply = Pending
          /\ proposal[i].rollback.commit = Complete
-         /\ \A j \in DOMAIN proposal : j > i /\ proposal[j].phase # None =>
-               proposal[j].rollback.apply \in Done
+         /\ \A j \in DOMAIN proposal : 
+               /\ j > i 
+               /\ proposal[j].phase # None 
+               /\ proposal[j].change.apply # Pending 
+               => proposal[j].rollback.apply \in Done
          /\ \/ /\ proposal[i].change.apply = Pending
                /\ proposal' = [proposal EXCEPT ![i].change.apply   = Aborted,
                                                ![i].rollback.apply = Complete]
@@ -452,34 +460,6 @@ Order ==
          /\ proposal[i].rollback.apply # Complete
          => \A j \in DOMAIN proposal : j > i => 
                proposal[j].change.apply \in {None, Pending, Aborted}
-
-AdditiveChanges ==
-   /\ \A i \in DOMAIN proposal :
-         /\ proposal[i].change.commit = Pending
-         /\ proposal'[i].change.commit = InProgress
-         => \A j \in DOMAIN proposal : j < i  =>
-               /\ proposal[j].change.commit \in Done
-               /\ proposal[j].rollback.commit # InProgress
-   /\ \A i \in DOMAIN proposal :
-         /\ proposal[i].change.apply = Pending
-         /\ proposal'[i].change.apply = InProgress
-         => \A j \in DOMAIN proposal : j < i  =>
-               /\ proposal[j].change.apply \in Done
-               /\ proposal[j].rollback.apply # InProgress
-   
-SubtractiveRollbacks ==
-   /\ \A i \in DOMAIN proposal :
-         /\ proposal[i].rollback.commit = Pending
-         /\ proposal'[i].rollback.commit = InProgress
-         => \A j \in DOMAIN proposal : j > i /\ proposal[j].phase # None =>
-               proposal[j].rollback.commit = Complete
-   /\ \A i \in DOMAIN proposal :
-         /\ proposal[i].rollback.apply = Pending
-         /\ proposal'[i].rollback.apply = InProgress
-         => \A j \in DOMAIN proposal : j > i /\ proposal[j].phase # None => 
-               proposal[j].rollback.apply = Complete
-
-Sequential == [][AdditiveChanges /\ SubtractiveRollbacks]_<<proposal>>
 
 Consistency ==
    /\ target.running 
