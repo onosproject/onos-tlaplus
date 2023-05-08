@@ -47,8 +47,7 @@ CONSTANTS
 
 State == {Pending, InProgress, Complete, Aborted, Failed}
 
-Working == {Pending, InProgress}
-Finished == {Complete, Aborted, Failed}
+Done == {Complete, Aborted, Failed}
 
 ASSUME \A s \in State : s \in STRING
 
@@ -205,9 +204,8 @@ This section models proposal reconcilation.
 
 CommitChange(n, i) == 
    /\ \/ /\ proposal[i].change.commit = Pending
-         /\ proposal[i].rollback.commit = None
          /\ \A j \in DOMAIN proposal : j < i => 
-               /\ proposal[j].change.commit \in Finished
+               /\ proposal[j].change.commit \in Done
                /\ proposal[j].rollback.commit # InProgress
          /\ proposal' = [proposal EXCEPT ![i].change.commit = InProgress]
          /\ UNCHANGED <<configuration, history>>
@@ -229,7 +227,6 @@ CommitChange(n, i) ==
 
 ApplyChange(n, i) == 
    /\ \/ /\ proposal[i].change.apply = Pending
-         /\ proposal[i].rollback.apply = None
          /\ \/ /\ proposal[i].change.commit = Complete
                /\ \A j \in DOMAIN proposal : j < i =>
                      \/ /\ proposal[j].change.apply = Complete
@@ -267,7 +264,7 @@ CommitRollback(n, i) ==
          /\ \/ /\ proposal[i].change.commit = Pending
                /\ proposal' = [proposal EXCEPT ![i].change.commit   = Aborted,
                                                ![i].rollback.commit = Complete]
-            \/ /\ proposal[i].change.commit \in Finished
+            \/ /\ proposal[i].change.commit \in Done
                /\ proposal' = [proposal EXCEPT ![i].rollback.commit = InProgress]
          /\ UNCHANGED <<configuration, history>>
       \/ /\ proposal[i].rollback.commit = InProgress
@@ -295,11 +292,11 @@ ApplyRollback(n, i) ==
    /\ \/ /\ proposal[i].rollback.apply = Pending
          /\ proposal[i].rollback.commit = Complete
          /\ \A j \in DOMAIN proposal : j > i /\ proposal[j].phase # None =>
-               proposal[j].rollback.apply \in Finished
+               proposal[j].rollback.apply \in Done
          /\ \/ /\ proposal[i].change.apply = Pending
                /\ proposal' = [proposal EXCEPT ![i].change.apply   = Aborted,
                                                ![i].rollback.apply = Complete]
-            \/ /\ proposal[i].change.apply \in Finished
+            \/ /\ proposal[i].change.apply \in Done
                /\ proposal' = [proposal EXCEPT ![i].rollback.apply = InProgress]
          /\ UNCHANGED <<configuration, target, history>>
       \/ /\ proposal[i].rollback.apply = InProgress
@@ -461,13 +458,13 @@ AdditiveChanges ==
          /\ proposal[i].change.commit = Pending
          /\ proposal'[i].change.commit = InProgress
          => \A j \in DOMAIN proposal : j < i  =>
-               /\ proposal[j].change.commit \in Finished
+               /\ proposal[j].change.commit \in Done
                /\ proposal[j].rollback.commit # InProgress
    /\ \A i \in DOMAIN proposal :
          /\ proposal[i].change.apply = Pending
          /\ proposal'[i].change.apply = InProgress
          => \A j \in DOMAIN proposal : j < i  =>
-               /\ proposal[j].change.apply \in Finished
+               /\ proposal[j].change.apply \in Done
                /\ proposal[j].rollback.apply # InProgress
    
 SubtractiveRollbacks ==
@@ -507,13 +504,13 @@ THEOREM Spec => Safety
 Termination ==
    \A i \in 1..NumProposals :
       /\ proposal[i].change.commit = Pending ~>
-            proposal[i].change.commit \in Finished
+            proposal[i].change.commit \in Done
       /\ proposal[i].change.apply = Pending ~>
-            proposal[i].change.apply \in Finished
+            proposal[i].change.apply \in Done
       /\ proposal[i].rollback.commit = Pending ~>
-            proposal[i].rollback.commit \in Finished
+            proposal[i].rollback.commit \in Done
       /\ proposal[i].rollback.apply = Pending ~>
-            proposal[i].rollback.apply \in Finished
+            proposal[i].rollback.apply \in Done
 
 Liveness == Termination
 
