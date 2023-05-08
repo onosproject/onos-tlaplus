@@ -303,7 +303,7 @@ CommitChange(n, i) ==
       \/ /\ proposal[i].change.commit \in {Aborted, Failed}
          /\ configuration.committed.changeIndex = i-1
          /\ configuration' = [configuration EXCEPT !.committed.index       = i,
-                                                   !.committed.targetIndex = i]
+                                                   !.committed.changeIndex = i]
          /\ UNCHANGED <<proposal, history>>
    /\ UNCHANGED <<target>>
 
@@ -325,7 +325,10 @@ ApplyChange(n, i) ==
                /\ configuration' = [configuration EXCEPT !.applied.targetIndex = i]
                /\ UNCHANGED <<proposal>>
             \/ /\ configuration.applied.targetIndex = i
-               /\ proposal' = [proposal EXCEPT ![i].change.apply = InProgress]
+               /\ \/ /\ proposal[i].change.commit \in {Aborted, Failed}
+                     /\ proposal' = [proposal EXCEPT ![i].change.apply = Aborted]
+                  \/ /\ proposal[i].change.commit = Complete
+                     /\ proposal' = [proposal EXCEPT ![i].change.apply = InProgress]
                /\ UNCHANGED <<configuration>>
          /\ UNCHANGED <<target, history>>
       \/ /\ proposal[i].change.apply = InProgress
@@ -384,9 +387,13 @@ CommitRollback(n, i) ==
          /\ UNCHANGED <<history>>
       \/ /\ proposal[i].rollback.commit = InProgress
          /\ \/ /\ configuration.committed.index = i
-               /\ configuration' = [configuration EXCEPT !.committed.index  = proposal[i].rollback.index,
-                                                         !.committed.values = proposal[i].rollback.values @@ 
-                                                                                 configuration.committed.values]
+               /\ LET values == [p \in DOMAIN configuration.committed.values |-> 
+                                    IF p \in DOMAIN proposal[i].change.values THEN
+                                       proposal[i].rollback.values[p]
+                                    ELSE
+                                       configuration.committed.values[p]]
+                  IN configuration' = [configuration EXCEPT !.committed.index  = proposal[i].rollback.index,
+                                                            !.committed.values = values]
                /\ history' = Append(history, [type |-> Rollback, phase |-> Commit, index |-> i])
                /\ UNCHANGED <<proposal>>
             \/ /\ configuration.committed.index = proposal[i].rollback.index
@@ -430,10 +437,14 @@ ApplyRollback(n, i) ==
                \* Verify the node's connection to the target.
                /\ conn[n].connected
                /\ target.running
-               /\ target' = [target EXCEPT !.values = proposal[i].rollback.values @@ target.values]
-               /\ configuration' = [configuration EXCEPT !.applied.index  = proposal[i].rollback.index,
-                                                         !.applied.values = proposal[i].rollback.values @@ 
-                                                                               configuration.applied.values]
+               /\ LET values == [p \in DOMAIN configuration.applied.values |-> 
+                                    IF p \in DOMAIN proposal[i].change.values THEN
+                                       proposal[i].rollback.values[p]
+                                    ELSE
+                                       configuration.applied.values[p]]
+                  IN /\ target' = [target EXCEPT !.values = proposal[i].rollback.values @@ target.values]
+                     /\ configuration' = [configuration EXCEPT !.applied.index  = proposal[i].rollback.index,
+                                                               !.applied.values = values]
                /\ history' = Append(history, [type |-> Rollback, phase |-> Apply, index |-> i])
                /\ UNCHANGED <<proposal>>
             \/ /\ configuration.applied.index # i
