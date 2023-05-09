@@ -1,5 +1,5 @@
 ---- MODULE MC ----
-EXTENDS ConfigImpl, TLC
+EXTENDS Config, TLC
 
 const_Path ==
     {"path1"}
