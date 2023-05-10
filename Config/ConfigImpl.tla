@@ -400,6 +400,7 @@ CommitRollback(n, i) ==
                /\ proposal' = [proposal EXCEPT ![i].rollback.commit = Complete]
                /\ UNCHANGED <<configuration, history>>
       \/ /\ proposal[i].rollback.commit = Complete
+         /\ proposal[i].change.commit = Aborted
          /\ configuration.committed.targetIndex = proposal[i].rollback.index
          /\ configuration.committed.index # proposal[i].rollback.index
          /\ configuration' = [configuration EXCEPT !.committed.index = proposal[i].rollback.index]
