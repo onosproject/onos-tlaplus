@@ -484,6 +484,9 @@ Formal specification, constraints, and theorems.
 *)
 
 Init ==
+   /\ MastershipLog!Delete
+   /\ ConfigurationLog!Delete
+   /\ ProposalLog!Delete
    /\ proposal = [
          i \in 1..NumProposals |-> [
             phase    |-> None,

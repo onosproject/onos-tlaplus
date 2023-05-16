@@ -21,7 +21,7 @@ FormatOpts ==
     charset     |-> "UTF-8",
     openOptions |-> <<"WRITE", "CREATE", "APPEND">>]
 
-Init ==
+Delete ==
    /\ IOExec(<<"rm", "-f", File>>).exitValue = 0
 
 Log(context) ==
