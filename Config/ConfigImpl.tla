@@ -423,6 +423,7 @@ ApplyRollback(n, i) ==
                /\ configuration' = [configuration EXCEPT !.applied.targetIndex = proposal[i].rollback.index]
                /\ UNCHANGED <<proposal>>
             \/ /\ configuration.applied.targetIndex = proposal[i].rollback.index
+               /\ proposal[i].rollback.commit \in Done
                /\ proposal' = [proposal EXCEPT ![i].rollback.apply = InProgress]
                /\ UNCHANGED <<configuration>>
          /\ UNCHANGED <<target, history>>
@@ -525,7 +526,7 @@ Next ==
    \/ \E i \in 1..NumProposals :
          \/ ProposeChange(i)
          \/ ProposeRollback(i)
-   \/ \E n \in Node, i \in DOMAIN proposal : 
+   \/ \E n \in Node, i \in 1..NumProposals : 
          ProposalLog!Action(ReconcileProposal(n, i), [node |-> n, index |-> i])
    \/ \E n \in Node : 
          ConfigurationLog!Action(ReconcileConfiguration(n), [node |-> n])
@@ -549,6 +550,12 @@ Spec ==
    /\ WF_<<target>>(StopTarget)
 
 Alias == [
+   source |-> [
+      configuration |-> configuration,
+      proposal      |-> proposal,
+      mastership    |-> mastership,
+      conn          |-> conn,
+      target        |-> target],
    configuration |-> [
       committed |-> [
          values |-> configuration.committed.values],
@@ -580,7 +587,8 @@ Alias == [
                     ELSE proposal[i].rollback.apply]]],
    mastership |-> mastership,
    conn       |-> conn,
-   target     |-> target]
+   target     |-> target,
+   history    |-> history]
 
 Mapping == INSTANCE Config WITH 
    proposal      <- Alias.proposal,

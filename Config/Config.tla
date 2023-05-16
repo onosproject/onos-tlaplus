@@ -481,7 +481,7 @@ Consistency ==
       /\ configuration.applied.target = target.id
       => \A i \in DOMAIN proposal :
             /\ proposal[i].change.apply = Complete
-            /\ proposal[i].rollback.apply # Complete
+            /\ proposal[i].rollback.apply = None
             => \A p \in DOMAIN proposal[i].values :
                   /\ ~\E j \in DOMAIN proposal : 
                         /\ j > i 
