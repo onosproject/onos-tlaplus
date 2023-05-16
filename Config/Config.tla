@@ -236,6 +236,8 @@ ApplyChange(n, i) ==
                         /\ proposal[j].rollback.apply # InProgress
                      \/ /\ proposal[j].change.apply = Failed
                         /\ proposal[j].rollback.apply = Complete
+               /\ i-1 \in DOMAIN proposal /\ proposal[i-1].change.apply = Failed =>
+                     proposal[i-1].rollback.apply = Complete
                /\ proposal' = [proposal EXCEPT ![i].change.apply = InProgress]
             \/ /\ proposal[i].change.commit \in {Aborted, Failed}
                /\ proposal' = [proposal EXCEPT ![i].change.apply = Aborted]

@@ -322,6 +322,8 @@ ApplyChange(n, i) ==
          /\ configuration.applied.changeIndex = i-1
          /\ \/ /\ configuration.applied.targetIndex # i
                /\ configuration.applied.index = configuration.applied.targetIndex
+               /\ i-1 \in DOMAIN proposal /\ proposal[i-1].change.apply = Failed =>
+                     proposal[i-1].rollback.apply = Complete
                /\ configuration' = [configuration EXCEPT !.applied.targetIndex = i]
                /\ UNCHANGED <<proposal>>
             \/ /\ configuration.applied.targetIndex = i

@@ -12,7 +12,7 @@ const_Node ==
 
 const_LogEnabled == FALSE
 
-const_NumProposals == 3
+const_NumProposals == 2
 
 const_None == "<none>"
 
