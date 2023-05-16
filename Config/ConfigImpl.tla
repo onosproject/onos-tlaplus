@@ -389,13 +389,9 @@ CommitRollback(n, i) ==
          /\ UNCHANGED <<history>>
       \/ /\ proposal[i].rollback.commit = InProgress
          /\ \/ /\ configuration.committed.index = i
-               /\ LET values == [p \in DOMAIN configuration.committed.values |-> 
-                                    IF p \in DOMAIN proposal[i].rollback.values THEN
-                                       proposal[i].rollback.values[p]
-                                    ELSE
-                                       configuration.committed.values[p]]
-                  IN configuration' = [configuration EXCEPT !.committed.index  = proposal[i].rollback.index,
-                                                            !.committed.values = values]
+               /\ configuration' = [configuration EXCEPT !.committed.index  = proposal[i].rollback.index,
+                                                         !.committed.values = proposal[i].rollback.values @@ 
+                                                            configuration.committed.values]
                /\ history' = Append(history, [type |-> Rollback, phase |-> Commit, index |-> i])
                /\ UNCHANGED <<proposal>>
             \/ /\ configuration.committed.index = proposal[i].rollback.index
@@ -440,14 +436,10 @@ ApplyRollback(n, i) ==
                \* Verify the node's connection to the target.
                /\ conn[n].connected
                /\ target.running
-               /\ LET values == [p \in DOMAIN configuration.applied.values |-> 
-                                    IF p \in DOMAIN proposal[i].rollback.values THEN
-                                       proposal[i].rollback.values[p]
-                                    ELSE
-                                       configuration.applied.values[p]]
-                  IN /\ target' = [target EXCEPT !.values = proposal[i].rollback.values @@ target.values]
-                     /\ configuration' = [configuration EXCEPT !.applied.index  = proposal[i].rollback.index,
-                                                               !.applied.values = values]
+               /\ target' = [target EXCEPT !.values = proposal[i].rollback.values @@ target.values]
+               /\ configuration' = [configuration EXCEPT !.applied.index  = proposal[i].rollback.index,
+                                                         !.applied.values = proposal[i].rollback.values @@ 
+                                                            configuration.applied.values]
                /\ history' = Append(history, [type |-> Rollback, phase |-> Apply, index |-> i])
                /\ UNCHANGED <<proposal>>
             \/ /\ configuration.applied.index # i
