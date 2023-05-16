@@ -464,20 +464,32 @@ Order ==
                proposal[j].change.apply \in {None, Pending, Aborted}
 
 Consistency ==
-   /\ target.running 
-   /\ configuration.status = Complete
-   /\ configuration.applied.target = target.id
-   => \A i \in DOMAIN proposal :
-         /\ proposal[i].change.apply = Complete
-         /\ proposal[i].rollback.apply # Complete
-         => \A p \in DOMAIN proposal[i].values :
-               /\ ~\E j \in DOMAIN proposal : 
-                     /\ j > i 
-                     /\ proposal[j].change.apply = Complete
-                     /\ proposal[j].rollback.apply # Complete
-               => /\ p \in DOMAIN target.values 
-                  /\ target.values[p].value = proposal[i].values[p]
-                  /\ target.values[p].index = i
+   /\ \A i \in DOMAIN proposal :
+         \/ proposal[i].change.commit # Complete
+         \/ proposal[i].rollback.commit = Complete
+         => ~\E p \in DOMAIN configuration.committed.values : 
+               configuration.committed.values[p].index = i
+   /\ \A i \in DOMAIN proposal :
+         \/ proposal[i].change.commit # Complete
+         \/ proposal[i].rollback.apply = Complete 
+         => /\ ~\E p \in DOMAIN configuration.applied.values : 
+                  configuration.applied.values[p].index = i
+            /\ ~\E p \in DOMAIN target.values :
+                  target.values[p].index = i
+   /\ /\ target.running 
+      /\ configuration.status = Complete
+      /\ configuration.applied.target = target.id
+      => \A i \in DOMAIN proposal :
+            /\ proposal[i].change.apply = Complete
+            /\ proposal[i].rollback.apply # Complete
+            => \A p \in DOMAIN proposal[i].values :
+                  /\ ~\E j \in DOMAIN proposal : 
+                        /\ j > i 
+                        /\ proposal[j].change.apply = Complete
+                        /\ proposal[j].rollback.apply # Complete
+                  => /\ p \in DOMAIN target.values 
+                     /\ target.values[p].value = proposal[i].values[p]
+                     /\ target.values[p].index = i
 
 Safety == [](Order /\ Consistency)
 
