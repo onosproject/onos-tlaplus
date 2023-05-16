@@ -36,7 +36,7 @@ Log(context) ==
 
 Action(action, context) ==
    /\ action
-   /\ action => Log(context)
+   /\ Log(context)
 
 ASSUME Enabled \in BOOLEAN
 

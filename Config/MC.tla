@@ -10,7 +10,7 @@ const_Value ==
 const_Node == 
    {"node1"}
 
-const_LogEnabled == FALSE
+const_LogEnabled == TRUE
 
 const_NumProposals == 2
 
