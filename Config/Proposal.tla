@@ -84,6 +84,19 @@ VARIABLE target
 \* A record of target masterships
 VARIABLE mastership
 
+Test == INSTANCE Test WITH 
+   File      <- "Proposal.log",
+   CurrState <- [
+      proposals     |-> proposal,
+      configuration |-> configuration,
+      mastership    |-> mastership,
+      target        |-> target],
+   SuccState <- [
+      proposals     |-> proposal',
+      configuration |-> configuration',
+      mastership    |-> mastership',
+      target        |-> target']
+
 ----
 
 \* Reconcile a proposal

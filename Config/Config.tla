@@ -10,6 +10,8 @@ INSTANCE TLC
 
 ----
 
+GenerateTestCases == FALSE
+
 Nil == "<nil>"
 
 Change == "Change"
@@ -136,14 +138,17 @@ UnsetMaster(t) ==
 
 ReconcileTransaction(n, t) ==
    /\ Transaction!ReconcileTransaction(n, t)
+   /\ GenerateTestCases => Transaction!Test!Log([node |-> n, index |-> t])
 
 ReconcileProposal(n, t, i) ==
    /\ Proposal!ReconcileProposal(n, t, i)
    /\ UNCHANGED <<transaction>>
+   /\ GenerateTestCases => Proposal!Test!Log([node |-> n, target |-> t, index |-> i])
 
 ReconcileConfiguration(n, c) ==
    /\ Configuration!ReconcileConfiguration(n, c)
    /\ UNCHANGED <<transaction, proposal>>
+   /\ GenerateTestCases => Configuration!Test!Log([node |-> n, target |-> c])
 
 ----
 

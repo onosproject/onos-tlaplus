@@ -53,6 +53,17 @@ VARIABLE target
 \* A record of target masterships
 VARIABLE mastership
 
+Test == INSTANCE Test WITH 
+   File      <- "Configuration.log",
+   CurrState <- [
+      configuration |-> configuration,
+      mastership    |-> mastership,
+      target        |-> target],
+   SuccState <- [
+      configuration |-> configuration',
+      mastership    |-> mastership',
+      target        |-> target']
+
 ----
 
 (*
