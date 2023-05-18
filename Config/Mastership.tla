@@ -30,13 +30,13 @@ can be unset when the target disconnects.
 *)
 
 \* Set node n as the master for target t
-SetMaster(n, t) ==
-   /\ mastership[t].master # n
-   /\ mastership' = [mastership EXCEPT ![t].term   = mastership[t].term + 1,
-                                       ![t].master = n]
+SetMaster(n) ==
+   /\ mastership.master # n
+   /\ mastership' = [mastership EXCEPT !.term   = mastership.term + 1,
+                                       !.master = n]
 
-UnsetMaster(t) ==
-   /\ mastership[t].master # Nil
-   /\ mastership' = [mastership EXCEPT ![t].master = Nil]
+UnsetMaster ==
+   /\ mastership.master # Nil
+   /\ mastership' = [mastership EXCEPT !.master = Nil]
 
 =============================================================================
