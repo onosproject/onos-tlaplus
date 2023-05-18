@@ -43,21 +43,6 @@ State ==
     Complete,
     Failed}
 
-\* State constants
-CONSTANTS
-   Pending,
-   Validated,
-   Committed,
-   Applied,
-   Aborted
-
-Status ==
-   {Pending,
-    Validated,
-    Committed,
-    Applied,
-    Aborted}
-
 CONSTANTS
    Valid,
    Invalid

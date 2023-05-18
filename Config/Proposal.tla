@@ -22,14 +22,12 @@ CONSTANTS
 CONSTANTS
    Initialize,
    Validate,
-   Abort,
    Commit,
    Apply
 
 Phase ==
    {Initialize,
     Validate,
-    Abort,
     Commit,
     Apply}
 
@@ -43,21 +41,6 @@ State ==
    {InProgress,
     Complete,
     Failed}
-
-\* State constants
-CONSTANTS
-   Pending,
-   Validated,
-   Committed,
-   Applied,
-   Aborted
-
-Status ==
-   {Pending,
-    Validated,
-    Committed,
-    Applied,
-    Aborted}
 
 CONSTANTS
    Valid,
@@ -202,30 +185,6 @@ ReconcileProposal(n, i) ==
                   /\ configuration' = [configuration EXCEPT !.target.index = i]
                   /\ proposal' = [proposal EXCEPT ![i].state = Failed]
                   /\ UNCHANGED <<target>>
-      \/ /\ proposal[i].phase = Abort
-         /\ proposal[i].state = InProgress
-            \* The commit.index will always be greater than or equal to the target.index.
-            \* If only the commit.index matches the previous proposal index, update
-            \* the commit.index to enable commits of later proposals, but do not
-            \* mark the Abort phase Complete until the target.index has been incremented.
-         /\ \/ /\ configuration.commit.index = i-1
-               /\ configuration' = [configuration EXCEPT !.commit.index = i]
-               /\ UNCHANGED <<proposal>>
-            \* If the configuration's target.index matches the previous proposal index, 
-            \* update the target.index and mark the proposal Complete for the Abort phase.
-            \/ /\ configuration.commit.index >= i
-               /\ configuration.target.index = i-1
-               /\ configuration' = [configuration EXCEPT !.target.index = i]
-               /\ proposal' = [proposal EXCEPT ![i].state = Complete]
-            \* If both the configuration's commit.index and target.index match the
-            \* previous proposal index, update the commit.index and target.index
-            \* and mark the proposal Complete for the Abort phase.
-            \/ /\ configuration.commit.index = i-1
-               /\ configuration.target.index = i-1
-               /\ configuration' = [configuration EXCEPT !.commit.index = i,
-                                                         !.target.index = i]
-               /\ proposal' = [proposal EXCEPT ![i].state = Complete]
-         /\ UNCHANGED <<target>>
    /\ UNCHANGED <<mastership>>
 
 =============================================================================
