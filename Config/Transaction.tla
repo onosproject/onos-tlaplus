@@ -141,12 +141,11 @@ ReconcileTransaction(n, i) ==
       \* proposal is Failed, the transaction will be marked Failed as well.
    /\ \/ /\ transaction[i].phase = Initialize
          /\ \/ /\ transaction[i].state = InProgress
-               \* All prior transaction must be initialized before proceeding
-               \* to initialize this transaction.
-               /\ ~\E j \in DOMAIN transaction :
-                     /\ j < i
-                     /\ transaction[j].phase = Initialize
-                     /\ transaction[j].state = InProgress
+               \* The transaction can only be initialized once the prior transaction
+               \* has been initialized.
+               /\ i-1 \in DOMAIN transaction => 
+                     \/ transaction[i-1].phase = Initialize => transaction[i-1].state = Complete
+                     \/ transaction[i-1].phase # Initialize
                   \* If the proposal does not exist in the queue, create it.
                /\ \/ /\ i \notin DOMAIN proposal
                         \* Append a change proposal.
