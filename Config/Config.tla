@@ -29,7 +29,9 @@ Done == {Complete, Aborted, Failed}
 
 Node == {"node1"}
 
-NumTransactions == 5
+NumTransactions == 4
+NumTerms == 2
+NumConns == 2
 
 Path == {"path1"}
 Value == {"value1", "value2"}
@@ -46,16 +48,19 @@ VARIABLE proposal
 \* A record of per-target configurations
 VARIABLE configuration
 
-\* A record of target states
-VARIABLE target
-
 \* A record of target masterships
 VARIABLE mastership
+
+\* A record of node connections to the target
+VARIABLE conn
+
+\* The target state
+VARIABLE target
 
 \* A sequence of state changes used for model checking.
 VARIABLE history
 
-vars == <<transaction, proposal, configuration, mastership, target, history>>
+vars == <<transaction, proposal, configuration, mastership, conn, target, history>>
 
 ----
 
@@ -67,25 +72,22 @@ LOCAL Configuration == INSTANCE Configuration
 
 LOCAL Mastership == INSTANCE Mastership
 
+LOCAL Target == INSTANCE Target
+
 ----
 
 RequestChange(p, v) ==
    /\ Transaction!RequestChange(p, v)
+   /\ UNCHANGED <<mastership, conn, target, history>>
 
 RequestRollback(i) ==
    /\ Transaction!RequestRollback(i)
-
-SetMaster(n) ==
-   /\ Mastership!SetMaster(n)
-   /\ UNCHANGED <<transaction, proposal, configuration, target, history>>
-
-UnsetMaster ==
-   /\ Mastership!UnsetMaster
-   /\ UNCHANGED <<transaction, proposal, configuration, target, history>>
+   /\ UNCHANGED <<mastership, conn, target, history>>
 
 ReconcileTransaction(n, i) ==
    /\ i \in DOMAIN transaction
    /\ Transaction!ReconcileTransaction(n, i)
+   /\ UNCHANGED <<mastership, conn, target, history>>
    /\ GenerateTestCases => Transaction!Test!Log([node |-> n, index |-> i])
 
 ReconcileProposal(n, i) ==
@@ -98,6 +100,27 @@ ReconcileConfiguration(n) ==
    /\ Configuration!ReconcileConfiguration(n)
    /\ UNCHANGED <<transaction, proposal, history>>
    /\ GenerateTestCases => Configuration!Test!Log([node |-> n])
+
+ReconcileMastership(n) ==
+   /\ Mastership!ReconcileMastership(n)
+   /\ UNCHANGED <<transaction, proposal, configuration, target, history>>
+   /\ GenerateTestCases => Mastership!Test!Log([node |-> n])
+
+ConnectNode(n) ==
+   /\ Target!Connect(n)
+   /\ UNCHANGED <<transaction, proposal, configuration, mastership, history>>
+
+DisconnectNode(n) ==
+   /\ Target!Disconnect(n)
+   /\ UNCHANGED <<transaction, proposal, configuration, mastership, history>>
+
+StartTarget ==
+   /\ Target!Start
+   /\ UNCHANGED <<transaction, proposal, configuration, mastership, history>>
+
+StopTarget ==
+   /\ Target!Stop
+   /\ UNCHANGED <<transaction, proposal, configuration, mastership, history>>
 
 ----
 
@@ -142,18 +165,26 @@ Init ==
          applied |-> [
             index    |-> 0,
             revision |-> 0,
+            target   |-> 0,
             values   |-> [
                p \in {} |-> [
                   index |-> 0,
                   value |-> Nil]]]]
    /\ target = [
-         values |-> [
+         id      |-> 0,
+         running |-> FALSE,
+         values  |-> [
             p \in {} |-> [
                index |-> 0, 
                value |-> Nil]]]
    /\ mastership = [
          master |-> Nil, 
-         term   |-> 0]
+         term   |-> 0,
+         conn   |-> 0]
+   /\ conn = [
+         n \in Node |-> [
+            id        |-> 0,
+            connected |-> FALSE]]
    /\ history = <<>>
 
 Next ==
@@ -162,10 +193,6 @@ Next ==
    \/ \E i \in DOMAIN transaction :
          RequestRollback(i)
    \/ \E n \in Node :
-         SetMaster(n)
-   \*\/ \E t \in DOMAIN Target :
-   \*      UnsetMaster(t)
-   \/ \E n \in Node :
          \E i \in DOMAIN transaction :
             ReconcileTransaction(n, i)
    \/ \E n \in Node :
@@ -173,6 +200,13 @@ Next ==
             ReconcileProposal(n, i)
    \/ \E n \in Node :
          ReconcileConfiguration(n)
+   \/ \E n \in Node :
+         ReconcileMastership(n)
+   \/ \E n \in Node :
+         \/ ConnectNode(n)
+         \/ DisconnectNode(n)
+   \/ StartTarget
+   \/ StopTarget
 
 Spec ==
    /\ Init
@@ -181,20 +215,32 @@ Spec ==
          WF_<<transaction, proposal, configuration, mastership, target>>(Transaction!RequestChange(p, v))
    /\ \A i \in 1..NumTransactions : i \in DOMAIN transaction =>
          WF_<<transaction, proposal, configuration, mastership, target>>(Transaction!RequestRollback(i))
-   /\ \A n \in Node :
-         WF_<<mastership>>(Mastership!SetMaster(n))
-   \*/\ \E t \in DOMAIN Target :
-   \*      WF_<<mastership>>(Mastership!UnsetMaster(t))
    /\ \A n \in Node, i \in 1..NumTransactions :
          WF_<<transaction, proposal, configuration, mastership, target>>(Transaction!ReconcileTransaction(n, i))
    /\ \A n \in Node, i \in 1..NumTransactions :
-         WF_<<proposal, configuration, mastership, target, history>>(Proposal!ReconcileProposal(n, i))
+         WF_<<proposal, configuration, mastership, conn, target, history>>(Proposal!ReconcileProposal(n, i))
    /\ \A n \in Node :
-         WF_<<configuration, mastership, target>>(Configuration!ReconcileConfiguration(n))
+         WF_<<configuration, mastership, conn, target>>(Configuration!ReconcileConfiguration(n))
+   /\ \A n \in Node :
+         WF_<<mastership, conn>>(Mastership!ReconcileMastership(n))
+   /\ \A n \in Node :
+         WF_<<conn, target>>(Target!Connect(n) \/ Target!Disconnect(n))
+   /\ WF_<<conn, target>>(Target!Start \/ Target!Stop)
 
 ----
 
 LimitTransactions == Len(transaction) <= NumTransactions
+
+LimitTerms == 
+   \/ mastership.term < NumTerms
+   \/ /\ mastership.term = NumTerms
+      /\ mastership.master # Nil
+
+LimitConns ==
+   \A n \in DOMAIN conn :
+      \/ conn[n].id < NumConns
+      \/ /\ conn[n].id = NumConns 
+         /\ conn[n].connected
 
 ----
 
@@ -255,8 +301,10 @@ Consistency ==
                   configuration.applied.values[p].index = i
             /\ ~\E p \in DOMAIN target.values :
                   target.values[p].index = i
-   /\ configuration.state = Complete => 
-         \A i \in DOMAIN proposal :
+   /\ /\ target.running
+      /\ configuration.applied.target = target.id
+      /\ configuration.state = Complete 
+      => \A i \in DOMAIN proposal :
             /\ configuration.applied.index >= i
             /\ configuration.applied.revision >= i
             => \A p \in DOMAIN proposal[i].change.values :

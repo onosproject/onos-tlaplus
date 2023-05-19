@@ -47,10 +47,7 @@ Empty == [p \in {} |-> Nil]
 \* Variables defined by other modules.
 VARIABLES 
    proposal,
-   configuration,
-   mastership,
-   target,
-   history
+   configuration
 
 \* A transaction log. Transactions may either request a set
 \* of changes to a set of targets or rollback a prior change.
@@ -71,15 +68,11 @@ Test == INSTANCE Test WITH
    CurrState <- [
       transactions  |-> transaction,
       proposals     |-> proposal,
-      configuration |-> configuration,
-      mastership    |-> mastership,
-      target        |-> target],
+      configuration |-> configuration],
    SuccState <- [
       transactions  |-> transaction',
       proposals     |-> proposal',
-      configuration |-> configuration',
-      mastership    |-> mastership',
-      target        |-> target']
+      configuration |-> configuration']
 
 ----
 
@@ -97,7 +90,7 @@ RequestChange(p, v) ==
                         init   |-> InProgress,
                         commit |-> Pending,
                         apply  |-> Pending])
-   /\ UNCHANGED <<proposal, configuration, mastership, target, history>>
+   /\ UNCHANGED <<proposal, configuration>>
 
 \* Add a rollback of transaction 't' to the transaction log
 RequestRollback(i) ==
@@ -108,7 +101,7 @@ RequestRollback(i) ==
                         init   |-> InProgress,
                         commit |-> Pending,
                         apply  |-> Pending])
-   /\ UNCHANGED <<proposal, configuration, mastership, target, history>>
+   /\ UNCHANGED <<proposal, configuration>>
 
 ----
 
@@ -403,6 +396,6 @@ ReconcileTransaction(n, i) ==
    /\ i \in DOMAIN transaction
    /\ \/ ReconcileChange(n, i)
       \/ ReconcileRollback(n, i)
-   /\ UNCHANGED <<configuration, mastership, target, history>>
+   /\ UNCHANGED <<configuration>>
 
 =============================================================================

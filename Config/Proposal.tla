@@ -51,6 +51,7 @@ CONSTANT Node
 VARIABLES 
    configuration,
    mastership,
+   conn,
    target
 
 \* A record of per-target proposals
@@ -126,6 +127,9 @@ ApplyChange(n, i) ==
    /\ \/ /\ configuration.applied.index = i-1
          /\ configuration.state = Complete
          /\ configuration.term = mastership.term
+         /\ conn[n].id = mastership.conn
+         /\ conn[n].connected
+         /\ target.running
             \* If the change can be applied, update the index, revision, and values.
          /\ \/ /\ target' = [target EXCEPT !.values = proposal[i].change.values @@ target.values]
                /\ configuration' = [configuration EXCEPT !.applied.index    = i,
@@ -169,6 +173,11 @@ ApplyRollback(n, i) ==
    /\ proposal[i].rollback.state = InProgress
       \* If the applied revision matches the proposal revision, roll back to the previous revision.
    /\ \/ /\ configuration.applied.revision = i
+         /\ configuration.state = Complete
+         /\ configuration.term = mastership.term
+         /\ conn[n].id = mastership.conn
+         /\ conn[n].connected
+         /\ target.running
          /\ target' = [target EXCEPT !.values = proposal[i].rollback.values @@ target.values]
          /\ configuration' = [configuration EXCEPT !.applied.revision = proposal[i].rollback.revision,
                                                    !.applied.values   = proposal[i].rollback.values @@
@@ -188,6 +197,6 @@ ReconcileProposal(n, i) ==
       \/ ApplyChange(n, i)
       \/ CommitRollback(n, i)
       \/ ApplyRollback(n, i)
-   /\ UNCHANGED <<mastership>>
+   /\ UNCHANGED <<mastership, conn>>
 
 =============================================================================

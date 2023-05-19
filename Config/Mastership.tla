@@ -6,8 +6,6 @@ INSTANCE FiniteSets
 
 INSTANCE Sequences
 
-INSTANCE TLC
-
 ----
 
 \* An empty constant
@@ -18,12 +16,26 @@ CONSTANT Node
 
 ----
 
+\* Variables defined by other modules.
+VARIABLES 
+   conn
+
 \* A record of target masterships
 VARIABLE mastership
 
 TypeOK ==
    /\ mastership.term \in Nat
    /\ mastership.master # Nil => mastership.master \in Node
+   /\ mastership.conn \in Nat
+
+Test == INSTANCE Test WITH 
+   File      <- "Mastership.log",
+   CurrState <- [
+      mastership |-> mastership,
+      conn       |-> conn],
+   SuccState <- [
+      mastership |-> mastership',
+      conn       |-> conn']
 
 ----
 
@@ -36,14 +48,17 @@ Each target is assigned a master from the Node set, and masters
 can be unset when the target disconnects.
 *)
 
-\* Set node n as the master for target t
-SetMaster(n) ==
-   /\ mastership.master # n
-   /\ mastership' = [mastership EXCEPT !.term   = mastership.term + 1,
-                                       !.master = n]
-
-UnsetMaster ==
-   /\ mastership.master # Nil
-   /\ mastership' = [mastership EXCEPT !.master = Nil]
+ReconcileMastership(n) ==
+   /\ \/ /\ conn[n].connected
+         /\ mastership.master = Nil
+         /\ mastership' = [
+               master |-> n, 
+               term   |-> mastership.term + 1,
+               conn   |-> conn[n].id]
+      \/ /\ \/ ~conn[n].connected
+            \/ conn[n].id # mastership.conn
+         /\ mastership.master = n
+         /\ mastership' = [mastership EXCEPT !.master = Nil]
+   /\ UNCHANGED <<conn>>
 
 =============================================================================
