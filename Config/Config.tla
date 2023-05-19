@@ -272,20 +272,13 @@ Safety == [](Order /\ Consistency)
 
 THEOREM Spec => Safety
 
+Terminates(i) ==
+   /\ i \in DOMAIN transaction
+   /\ transaction[i].commit \in Done
+   /\ transaction[i].apply \in Done
+
 Termination ==
-   \A i \in 1..NumTransactions :
-      /\ proposal[transaction[i].index].change.phase = Commit ~>
-            /\ proposal[transaction[i].index].change.phase = Commit
-            /\ proposal[transaction[i].index].change.state \in Done
-      /\ proposal[transaction[i].index].change.phase = Apply ~>
-            /\ proposal[transaction[i].index].change.phase = Apply
-            /\ proposal[transaction[i].index].change.apply \in Done
-      /\ proposal[transaction[i].index].rollback.phase = Commit ~>
-            /\ proposal[transaction[i].index].rollback.phase = Commit
-            /\ proposal[transaction[i].index].rollback.commit \in Done
-      /\ proposal[transaction[i].index].rollback.phase = Apply ~>
-            /\ proposal[transaction[i].index].rollback.phase = Apply
-            /\ proposal[transaction[i].index].rollback.apply \in Done
+   \A i \in 1..NumTransactions : <>Terminates(i)
 
 Liveness == Termination
 
