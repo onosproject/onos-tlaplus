@@ -32,6 +32,7 @@ Node == {"node1"}
 NumTransactions == 4
 NumTerms == 2
 NumConns == 2
+NumStarts == 2
 
 Path == {"path1"}
 Value == {"value1", "value2"}
@@ -241,6 +242,11 @@ LimitConns ==
       \/ conn[n].id < NumConns
       \/ /\ conn[n].id = NumConns 
          /\ conn[n].connected
+
+LimitStarts ==
+   \/ target.id < 2
+   \/ /\ target.id = 2
+      /\ target.running
 
 ----
 
