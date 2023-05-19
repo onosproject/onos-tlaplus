@@ -276,6 +276,17 @@ Terminates(i) ==
    /\ i \in DOMAIN transaction
    /\ transaction[i].commit \in Done
    /\ transaction[i].apply \in Done
+   /\ transaction[i].index \in DOMAIN proposal 
+   /\ \/ /\ transaction[i].type = Change
+         /\ \/ /\ proposal[transaction[i].index].change.phase = Commit
+               /\ proposal[transaction[i].index].change.state \in {Aborted, Failed}
+            \/ /\ proposal[transaction[i].index].change.phase = Apply
+               /\ proposal[transaction[i].index].change.state \in Done
+      \/ /\ transaction[i].type = Rollback
+         /\ \/ /\ proposal[transaction[i].index].rollback.phase = Commit
+               /\ proposal[transaction[i].index].rollback.state \in {Aborted, Failed}
+            \/ /\ proposal[transaction[i].index].rollback.phase = Apply
+               /\ proposal[transaction[i].index].rollback.state \in Done
 
 Termination ==
    \A i \in 1..NumTransactions : <>Terminates(i)
