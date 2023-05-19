@@ -57,10 +57,12 @@ Test == INSTANCE Test WITH
    CurrState <- [
       configuration |-> configuration,
       mastership    |-> mastership,
+      conn          |-> conn,
       target        |-> target],
    SuccState <- [
       configuration |-> configuration',
       mastership    |-> mastership',
+      conn          |-> conn',
       target        |-> target']
 
 ----

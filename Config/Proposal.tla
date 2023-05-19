@@ -82,11 +82,13 @@ Test == INSTANCE Test WITH
       proposals     |-> proposal,
       configuration |-> configuration,
       mastership    |-> mastership,
+      conn          |-> conn,
       target        |-> target],
    SuccState <- [
       proposals     |-> proposal',
       configuration |-> configuration',
       mastership    |-> mastership',
+      conn          |-> conn',
       target        |-> target']
 
 LOCAL Max(s) == CHOOSE i \in s : \A j \in s : i > j
