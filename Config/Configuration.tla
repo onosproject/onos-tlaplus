@@ -72,6 +72,7 @@ ReconcileConfiguration(n) ==
          /\ configuration.term = mastership.term
          /\ mastership.master = n
          /\ configuration' = [configuration EXCEPT !.state = InProgress]
+         /\ UNCHANGED <<target>>
       \/ /\ configuration.state = InProgress
          /\ configuration.term = mastership.term
          /\ mastership.master = n
@@ -80,6 +81,7 @@ ReconcileConfiguration(n) ==
       \/ /\ configuration.term < mastership.term
          /\ configuration' = [configuration EXCEPT !.state = Pending,
                                                    !.term  = mastership.term]
+         /\ UNCHANGED <<target>>
    /\ UNCHANGED <<mastership>>
 
 =============================================================================

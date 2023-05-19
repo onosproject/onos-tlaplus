@@ -25,6 +25,7 @@ InProgress == "InProgress"
 Complete == "Complete"
 Aborted == "Aborted"
 Failed == "Failed"
+Done == {Complete, Aborted, Failed}
 
 Node == {"node1"}
 
@@ -51,7 +52,10 @@ VARIABLE target
 \* A record of target masterships
 VARIABLE mastership
 
-vars == <<transaction, proposal, configuration, mastership, target>>
+\* A sequence of state changes used for model checking.
+VARIABLE history
+
+vars == <<transaction, proposal, configuration, mastership, target, history>>
 
 ----
 
@@ -73,11 +77,11 @@ RequestRollback(i) ==
 
 SetMaster(n) ==
    /\ Mastership!SetMaster(n)
-   /\ UNCHANGED <<transaction, proposal, configuration, target>>
+   /\ UNCHANGED <<transaction, proposal, configuration, target, history>>
 
 UnsetMaster ==
    /\ Mastership!UnsetMaster
-   /\ UNCHANGED <<transaction, proposal, configuration, target>>
+   /\ UNCHANGED <<transaction, proposal, configuration, target, history>>
 
 ReconcileTransaction(n, i) ==
    /\ i \in DOMAIN transaction
@@ -92,7 +96,7 @@ ReconcileProposal(n, i) ==
 
 ReconcileConfiguration(n) ==
    /\ Configuration!ReconcileConfiguration(n)
-   /\ UNCHANGED <<transaction, proposal>>
+   /\ UNCHANGED <<transaction, proposal, history>>
    /\ GenerateTestCases => Configuration!Test!Log([node |-> n])
 
 ----
@@ -150,6 +154,7 @@ Init ==
    /\ mastership = [
          master |-> Nil, 
          term   |-> 0]
+   /\ history = <<>>
 
 Next ==
    \/ \E p \in Path, v \in Value :
@@ -183,7 +188,7 @@ Spec ==
    /\ \A n \in Node, i \in 1..NumTransactions :
          WF_<<transaction, proposal, configuration, mastership, target>>(Transaction!ReconcileTransaction(n, i))
    /\ \A n \in Node, i \in 1..NumTransactions :
-         WF_<<proposal, configuration, mastership, target>>(Proposal!ReconcileProposal(n, i))
+         WF_<<proposal, configuration, mastership, target, history>>(Proposal!ReconcileProposal(n, i))
    /\ \A n \in Node :
          WF_<<configuration, mastership, target>>(Configuration!ReconcileConfiguration(n))
 
@@ -199,59 +204,88 @@ TypeOK ==
    /\ Configuration!TypeOK
    /\ Mastership!TypeOK
 
-Order ==
-   \A i \in DOMAIN proposal :
-      /\ /\ proposal[i].phase = Commit
-         /\ proposal[i].state = InProgress
-         => ~\E j \in DOMAIN proposal :
-               /\ j > i
-               /\ proposal[j].phase = Commit
-               /\ proposal[j].state = Complete
-      /\ /\ proposal[i].phase = Apply
-         /\ proposal[i].state = InProgress
-         => ~\E j \in DOMAIN proposal :
-               /\ j > i
-               /\ proposal[j].phase = Apply
-               /\ proposal[j].state = Complete
+LOCAL IsOrderedChange(p, i) ==
+   /\ history[i].type = Change
+   /\ history[i].phase = p
+   /\ ~\E j \in DOMAIN history :
+         /\ j < i
+         /\ history[j].type = Change
+         /\ history[j].phase = p
+         /\ history[j].index >= history[i].index
 
-Consistency == 
-   LET 
-      \* Compute the transaction indexes that have been applied to the target
-      targetIndexes == {i \in DOMAIN transaction : 
-                           /\ i \in DOMAIN proposal
-                           /\ proposal[i].phase = Apply
-                           /\ proposal[i].state = Complete
-                           /\ ~\E j \in DOMAIN transaction :
-                                 /\ j > i
-                                 /\ transaction[j].type = Rollback
-                                 /\ transaction[j].rollback = i
-                                 /\ transaction[j].phase = Apply
-                                 /\ transaction[j].state = Complete}
-      \* Compute the set of paths in the target that have been updated by transactions
-      appliedPaths == UNION {DOMAIN proposal[i].change.values : i \in targetIndexes}
-      \* Compute the highest index applied to the target for each path
-      pathIndexes == [p \in appliedPaths |-> CHOOSE i \in targetIndexes : 
-                        \A j \in targetIndexes :
-                           /\ i >= j 
-                           /\ p \in DOMAIN proposal[i].change.values]
-      \* Compute the expected target configuration based on the last indexes applied
-      \* to the target for each path.
-      expectedConfig == [p \in DOMAIN pathIndexes |-> proposal[pathIndexes[p]].change.values[p]]
-   IN 
-      target = expectedConfig
+LOCAL IsOrderedRollback(p, i) ==
+   /\ history[i].type = Rollback
+   /\ history[i].phase = p
+   /\ ~\E j \in DOMAIN history :
+         /\ j < i
+         /\ history[j].type = Change
+         /\ history[j].phase = p
+         /\ history[j].index > history[i].index
+         /\ ~\E k \in DOMAIN history :
+               /\ k > j
+               /\ k < i
+               /\ history[k].type = Rollback
+               /\ history[k].phase = p
+               /\ history[k].index = history[j].index
+
+Order ==
+   /\ \A i \in DOMAIN history :
+      \/ IsOrderedChange(Commit, i)
+      \/ IsOrderedChange(Apply, i)
+      \/ IsOrderedRollback(Commit, i)
+      \/ IsOrderedRollback(Apply, i)
+   /\ \A i \in DOMAIN proposal :
+         /\ proposal[i].change.phase = Apply
+         /\ proposal[i].change.state = Failed
+         /\ proposal[i].rollback.phase = Apply => proposal[i].rollback.state # Complete
+         => \A j \in DOMAIN proposal : (j > i => 
+               (proposal[j].change.phase = Apply => 
+                  proposal[j].change.state \in {Nil, Pending, Aborted}))
+
+Consistency ==
+   /\ \A i \in DOMAIN proposal :
+         \/ configuration.committed.index < i
+         \/ configuration.committed.revision < i
+         => ~\E p \in DOMAIN configuration.committed.values : 
+               configuration.committed.values[p].index = i
+   /\ \A i \in DOMAIN proposal :
+         \/ configuration.applied.index < i
+         \/ configuration.applied.revision < i
+         => /\ ~\E p \in DOMAIN configuration.applied.values : 
+                  configuration.applied.values[p].index = i
+            /\ ~\E p \in DOMAIN target.values :
+                  target.values[p].index = i
+   /\ configuration.state = Complete => 
+         \A i \in DOMAIN proposal :
+            /\ configuration.applied.index >= i
+            /\ configuration.applied.revision >= i
+            => \A p \in DOMAIN proposal[i].change.values :
+                  /\ ~\E j \in DOMAIN proposal : 
+                        /\ j > i 
+                        /\ configuration.applied.index >= j
+                        /\ configuration.applied.revision >= j
+                  => /\ p \in DOMAIN target.values 
+                     /\ target.values[p].value = proposal[i].change.values[p].value
+                     /\ target.values[p].index = proposal[i].change.values[p].index
 
 Safety == [](Order /\ Consistency)
 
 THEOREM Spec => Safety
 
-Terminated(i) ==
-   /\ i \in DOMAIN transaction
-   /\ \/ /\ transaction[i].phase = Apply
-         /\ transaction[i].state = Complete
-      \/ transaction[i].state = Failed
-
 Termination ==
-   \A i \in 1..NumTransactions : <>Terminated(i)
+   \A i \in 1..NumTransactions :
+      /\ proposal[transaction[i].index].change.phase = Commit ~>
+            /\ proposal[transaction[i].index].change.phase = Commit
+            /\ proposal[transaction[i].index].change.state \in Done
+      /\ proposal[transaction[i].index].change.phase = Apply ~>
+            /\ proposal[transaction[i].index].change.phase = Apply
+            /\ proposal[transaction[i].index].change.apply \in Done
+      /\ proposal[transaction[i].index].rollback.phase = Commit ~>
+            /\ proposal[transaction[i].index].rollback.phase = Commit
+            /\ proposal[transaction[i].index].rollback.commit \in Done
+      /\ proposal[transaction[i].index].rollback.phase = Apply ~>
+            /\ proposal[transaction[i].index].rollback.phase = Apply
+            /\ proposal[transaction[i].index].rollback.apply \in Done
 
 Liveness == Termination
 

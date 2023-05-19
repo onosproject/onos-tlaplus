@@ -49,7 +49,8 @@ VARIABLES
    proposal,
    configuration,
    mastership,
-   target
+   target,
+   history
 
 \* A transaction log. Transactions may either request a set
 \* of changes to a set of targets or rollback a prior change.
@@ -96,7 +97,7 @@ RequestChange(p, v) ==
                         init   |-> InProgress,
                         commit |-> Pending,
                         apply  |-> Pending])
-   /\ UNCHANGED <<proposal, configuration, mastership, target>>
+   /\ UNCHANGED <<proposal, configuration, mastership, target, history>>
 
 \* Add a rollback of transaction 't' to the transaction log
 RequestRollback(i) ==
@@ -107,7 +108,7 @@ RequestRollback(i) ==
                         init   |-> InProgress,
                         commit |-> Pending,
                         apply  |-> Pending])
-   /\ UNCHANGED <<proposal, configuration, mastership, target>>
+   /\ UNCHANGED <<proposal, configuration, mastership, target, history>>
 
 ----
 
@@ -136,7 +137,10 @@ InitChange(n, i) ==
                            change   |-> [
                               phase  |-> Commit,
                               state  |-> Pending,
-                              values |-> transaction[i].change],
+                              values |-> [
+                                 p \in DOMAIN transaction[i].values |-> [
+                                    index |-> Len(proposal)+1,
+                                    value |-> transaction[i].values[p]]]],
                            rollback |-> [
                               phase    |-> Nil,
                               state    |-> Nil,
@@ -152,6 +156,7 @@ CommitChange(n, i) ==
          \* A transaction cannot be committed until the prior transaction has been committed.
          /\ IsCommitted(i-1)
          /\ transaction' = [transaction EXCEPT ![i].commit = InProgress]
+         /\ UNCHANGED <<proposal>>
       \/ /\ transaction[i].commit = InProgress
          /\ proposal[transaction[i].index].change.phase = Commit
             \* If the change commit is still in the Pending state, set it to InProgress.
@@ -204,6 +209,13 @@ ApplyChange(n, i) ==
             \/ /\ transaction[i].commit \in {Aborted, Failed}
                \* A transaction cannot be applied until the prior transaction has been applied.
                /\ IsApplied(i-1)
+               \* If the prior change failed being applied, it must be rolled back before
+               \* new changes can be applied.
+               /\ /\ transaction[i].index-1 \in DOMAIN proposal
+                  /\ proposal[transaction[i].index-1].change.phase = Apply
+                  /\ proposal[transaction[i].index-1].change.state = Failed
+                  => /\ proposal[transaction[i].index-1].rollback.phase = Apply
+                     /\ proposal[transaction[i].index-1].rollback.state = Complete
                /\ transaction' = [transaction EXCEPT ![i].apply = Aborted]
                /\ UNCHANGED <<proposal>>
       \/ /\ transaction[i].apply = InProgress
@@ -391,6 +403,6 @@ ReconcileTransaction(n, i) ==
    /\ i \in DOMAIN transaction
    /\ \/ ReconcileChange(n, i)
       \/ ReconcileRollback(n, i)
-   /\ UNCHANGED <<configuration, mastership, target>>
+   /\ UNCHANGED <<configuration, mastership, target, history>>
 
 =============================================================================
