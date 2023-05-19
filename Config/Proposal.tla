@@ -166,7 +166,7 @@ CommitRollback(n, i) ==
 
 ApplyRollback(n, i) ==
    /\ proposal[i].rollback.phase = Apply
-   /\ proposal[i].rollback.phase = InProgress
+   /\ proposal[i].rollback.state = InProgress
       \* If the applied revision matches the proposal revision, roll back to the previous revision.
    /\ \/ /\ configuration.applied.revision = i
          /\ target' = [target EXCEPT !.values = proposal[i].rollback.values @@ target.values]

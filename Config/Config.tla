@@ -29,7 +29,7 @@ Done == {Complete, Aborted, Failed}
 
 Node == {"node1"}
 
-NumTransactions == 3
+NumTransactions == 5
 
 Path == {"path1"}
 Value == {"value1", "value2"}
