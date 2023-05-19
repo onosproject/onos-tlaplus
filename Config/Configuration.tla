@@ -15,25 +15,40 @@ CONSTANT Nil
 
 \* Status constants
 CONSTANTS
+   Pending,
    InProgress,
-   Complete,
-   Failed
+   Complete
 
-State == 
-   {InProgress,
-    Complete,
-    Failed}
+Status == 
+   {Pending,
+    InProgress,
+    Complete}
 
 ----
+
+\* Variables defined by other modules.
+VARIABLES 
+   mastership,
+   target
 
 \* A record of per-target configurations
 VARIABLE configuration
 
-\* A record of target states
-VARIABLE target
-
-\* A record of target masterships
-VARIABLE mastership
+TypeOK ==
+   /\ configuration.state \in Status
+   /\ configuration.term \in Nat
+   /\ configuration.committed.index \in Nat
+   /\ configuration.committed.revision \in Nat
+   /\ \A p \in DOMAIN configuration.committed.values :
+         /\ configuration.committed.values[p].index \in Nat
+         /\ configuration.committed.values[p].value # Nil =>
+               configuration.committed.values[p].value \in STRING
+   /\ configuration.applied.index \in Nat
+   /\ configuration.applied.revision \in Nat
+   /\ \A p \in DOMAIN configuration.applied.values :
+         /\ configuration.applied.values[p].index \in Nat
+         /\ configuration.applied.values[p].value # Nil =>
+               configuration.applied.values[p].value \in STRING
 
 Test == INSTANCE Test WITH 
    File      <- "Configuration.log",
@@ -53,18 +68,18 @@ This section models the Configuration reconciler.
 *)
 
 ReconcileConfiguration(n) ==
-   /\ \/ /\ \/ mastership.term > configuration.config.term
-            \/ /\ mastership.term = configuration.config.term
-               /\ mastership.master = Nil
-         /\ configuration' = [configuration EXCEPT !.config.term = mastership.term,
-                                                   !.state       = InProgress]                                          
-         /\ UNCHANGED <<target>>
-      \/ /\ configuration.state = InProgress
-         /\ mastership.term = configuration.config.term
+   /\ \/ /\ configuration.state = Pending
+         /\ configuration.term = mastership.term
          /\ mastership.master = n
-         /\ target' = configuration.target.values
-         /\ configuration' = [configuration EXCEPT !.target.term = mastership.term,
-                                                   !.state       = Complete]
+         /\ configuration' = [configuration EXCEPT !.state = InProgress]
+      \/ /\ configuration.state = InProgress
+         /\ configuration.term = mastership.term
+         /\ mastership.master = n
+         /\ target' = [target EXCEPT !.values = configuration.applied.values]
+         /\ configuration' = [configuration EXCEPT !.state = Complete]
+      \/ /\ configuration.term < mastership.term
+         /\ configuration' = [configuration EXCEPT !.state = Pending,
+                                                   !.term  = mastership.term]
    /\ UNCHANGED <<mastership>>
 
 =============================================================================

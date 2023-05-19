@@ -17,27 +17,14 @@ Nil == "<nil>"
 Change == "Change"
 Rollback == "Rollback"
 
-Initialize == "Initialize"
-Validate == "Validate"
-Abort == "Abort"
 Commit == "Commit"
 Apply == "Apply"
 
+Pending == "Pending"
 InProgress == "InProgress"
 Complete == "Complete"
-Failed == "Failed"
-
-Pending == "Pending"
-Validated == "Validated"
-Committed == "Committed"
-Applied == "Applied"
 Aborted == "Aborted"
-
-Valid == TRUE
-Invalid == FALSE
-
-Success == "Success"
-Failure == "Failure"
+Failed == "Failed"
 
 Node == {"node1"}
 
@@ -118,36 +105,51 @@ Init ==
    /\ transaction = [
          i \in {} |-> [
             type   |-> Change,
-            phase  |-> Initialize,
-            state  |-> InProgress]]
+            index  |-> 0,
+            values |-> [p \in {} |-> Nil],
+            commit |-> Pending,
+            apply  |-> Pending]]
    /\ proposal = [
          i \in {} |-> [
-            phase |-> Initialize,
-            state |-> InProgress]]
+            change |-> [
+               phase  |-> Nil,
+               state  |-> Nil,
+               values |-> [
+                  p \in {} |-> [
+                     index |-> 0,
+                     value |-> Nil]]],
+            rollback |-> [
+               phase  |-> Nil,
+               state  |-> Nil,
+               values |-> [
+                  p \in {} |-> [
+                     index |-> 0,
+                     value |-> Nil]]]]]
    /\ configuration = [
          state  |-> InProgress,
-         config |-> [
-            index  |-> 0,
-            term   |-> 0,
-            values |-> [
-               path \in {} |-> [
-                  path    |-> path,
-                  value   |-> Nil,
-                  index   |-> 0,
-                  deleted |-> FALSE]]],
-         proposal  |-> [index |-> 0],
-         commit    |-> [index |-> 0],
-         target    |-> [
-            index  |-> 0,
-            term   |-> 0,
-            values |-> [
-               path \in {} |-> [
-                  path    |-> path,
-                  value   |-> Nil,
-                  index   |-> 0,
-                  deleted |-> FALSE]]]]
-   /\ target = [path \in {} |-> [value |-> Nil]]
-   /\ mastership = [master |-> Nil, term |-> 0]
+         term   |-> 0,
+         committed |-> [
+            index    |-> 0,
+            revision |-> 0,
+            values   |-> [
+               p \in {} |-> [
+                  index |-> 0,
+                  value |-> Nil]]],
+         applied |-> [
+            index    |-> 0,
+            revision |-> 0,
+            values   |-> [
+               p \in {} |-> [
+                  index |-> 0,
+                  value |-> Nil]]]]
+   /\ target = [
+         values |-> [
+            p \in {} |-> [
+               index |-> 0, 
+               value |-> Nil]]]
+   /\ mastership = [
+         master |-> Nil, 
+         term   |-> 0]
 
 Next ==
    \/ \E p \in Path, v \in Value :
@@ -190,6 +192,12 @@ Spec ==
 LimitTransactions == Len(transaction) <= NumTransactions
 
 ----
+
+TypeOK ==
+   /\ Transaction!TypeOK
+   /\ Proposal!TypeOK
+   /\ Configuration!TypeOK
+   /\ Mastership!TypeOK
 
 Order ==
    \A i \in DOMAIN proposal :

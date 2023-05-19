@@ -13,10 +13,17 @@ INSTANCE TLC
 \* An empty constant
 CONSTANT Nil
 
+\* The set of possible master nodes
+CONSTANT Node
+
 ----
 
 \* A record of target masterships
 VARIABLE mastership
+
+TypeOK ==
+   /\ mastership.term \in Nat
+   /\ mastership.master # Nil => mastership.master \in Node
 
 ----
 
