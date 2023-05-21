@@ -64,8 +64,8 @@ TypeOK ==
             transaction[i].values[p] # Nil => transaction[i].values[p] \in STRING
 
 LOCAL CurrState == [
-   transactions  |-> [i \in DOMAIN transaction |-> transaction[i] @@ [index |-> i]],
-   proposals     |-> [i \in DOMAIN proposal |-> proposal[i] @@ [index |-> i]],
+   transactions  |-> [i \in DOMAIN transaction |-> transaction[i] @@ [ordinal |-> i]],
+   proposals     |-> [i \in DOMAIN proposal |-> proposal[i] @@ [ordinal |-> i]],
    configuration |-> configuration]
 
 LOCAL SuccState ==
@@ -75,8 +75,8 @@ LOCAL SuccState ==
       proposals    == {i \in DOMAIN proposal' : 
                            i \in DOMAIN proposal => proposal'[i] # proposal[i]}
    IN 
-     [transactions |-> [i \in transactions |-> transaction'[i] @@ [index |-> i]],
-      proposals    |-> [i \in proposals    |-> proposal'[i] @@ [index |-> i]]]
+     [transactions |-> [i \in transactions |-> transaction'[i] @@ [ordinal |-> i]],
+      proposals    |-> [i \in proposals    |-> proposal'[i] @@ [ordinal |-> i]]]
 
 Test == INSTANCE Test WITH 
    File <- "Transaction.log"
