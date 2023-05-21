@@ -10,7 +10,7 @@ INSTANCE TLC
 
 ----
 
-GenerateTestCases == TRUE
+GenerateTestCases == FALSE
 
 Nil == "<nil>"
 
@@ -172,20 +172,20 @@ Init ==
                   index |-> 0,
                   value |-> Nil]]]]
    /\ target = [
-         id      |-> 0,
-         running |-> FALSE,
+         id      |-> 1,
+         running |-> TRUE,
          values  |-> [
             p \in {} |-> [
                index |-> 0, 
                value |-> Nil]]]
    /\ mastership = [
-         master |-> Nil, 
-         term   |-> 0,
-         conn   |-> 0]
+         master |-> CHOOSE n \in Node : TRUE, 
+         term   |-> 1,
+         conn   |-> 1]
    /\ conn = [
          n \in Node |-> [
-            id        |-> 0,
-            connected |-> FALSE]]
+            id        |-> 1,
+            connected |-> TRUE]]
    /\ history = <<>>
 
 Next ==
