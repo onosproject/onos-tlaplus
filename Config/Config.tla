@@ -132,11 +132,11 @@ Formal specification, constraints, and theorems.
 Init ==
    /\ transaction = [
          i \in {} |-> [
-            type   |-> Change,
-            index  |-> 0,
-            values |-> [p \in {} |-> Nil],
-            commit |-> Pending,
-            apply  |-> Pending]]
+            type     |-> Change,
+            proposal |-> 0,
+            values   |-> [p \in {} |-> Nil],
+            commit   |-> Pending,
+            apply    |-> Pending]]
    /\ proposal = [
          i \in {} |-> [
             change |-> [

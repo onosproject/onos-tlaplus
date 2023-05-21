@@ -77,7 +77,7 @@ TypeOK ==
                   proposal[i].rollback.values[p].value \in STRING
 
 LOCAL CurrState == [
-   proposals     |-> [i \in DOMAIN proposal |-> proposal[i] @@ [ordinal |-> i]],
+   proposals     |-> [i \in DOMAIN proposal |-> proposal[i] @@ [index |-> i]],
    configuration |-> configuration,
    mastership    |-> mastership,
    conn          |-> conn,
@@ -88,7 +88,7 @@ LOCAL SuccState ==
       proposals == {i \in DOMAIN proposal' : 
                         i \in DOMAIN proposal => proposal'[i] # proposal[i]}
    IN 
-     [proposals |-> [i \in proposals    |-> proposal'[i] @@ [ordinal |-> i]]] @@
+     [proposals |-> [i \in proposals    |-> proposal'[i] @@ [index |-> i]]] @@
      (IF configuration' # configuration THEN [configuration |-> configuration'] ELSE <<>>) @@
      (IF mastership' # mastership THEN [mastership |-> mastership'] ELSE <<>>) @@
      (IF conn' # conn THEN [conn |-> conn'] ELSE <<>>) @@
