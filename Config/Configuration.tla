@@ -52,18 +52,21 @@ TypeOK ==
          /\ configuration.applied.values[p].value # Nil =>
                configuration.applied.values[p].value \in STRING
 
+LOCAL CurrState == [
+   configuration |-> configuration,
+   mastership    |-> mastership,
+   conn          |-> conn,
+   target        |-> target]
+
+LOCAL SuccState ==
+   <<>> @@
+   (IF configuration' # configuration THEN [configuration |-> configuration'] ELSE <<>>) @@
+   (IF mastership' # mastership THEN [mastership |-> mastership'] ELSE <<>>) @@
+   (IF conn' # conn THEN [conn |-> conn'] ELSE <<>>) @@
+   (IF target' # target THEN [target |-> target'] ELSE <<>>)
+
 Test == INSTANCE Test WITH 
-   File      <- "Configuration.log",
-   CurrState <- [
-      configuration |-> configuration,
-      mastership    |-> mastership,
-      conn          |-> conn,
-      target        |-> target],
-   SuccState <- [
-      configuration |-> configuration',
-      mastership    |-> mastership',
-      conn          |-> conn',
-      target        |-> target']
+   File <- "Configuration.log"
 
 ----
 

@@ -6,6 +6,8 @@ INSTANCE FiniteSets
 
 INSTANCE Sequences
 
+INSTANCE TLC
+
 ----
 
 \* An empty constant
@@ -28,14 +30,17 @@ TypeOK ==
    /\ mastership.master # Nil => mastership.master \in Node
    /\ mastership.conn \in Nat
 
+LOCAL CurrState == [
+   mastership |-> mastership,
+   conn       |-> conn]
+
+LOCAL SuccState ==
+   <<>> @@
+   (IF mastership' # mastership THEN [mastership |-> mastership'] ELSE <<>>) @@
+   (IF conn' # conn THEN [conn |-> conn'] ELSE <<>>)
+
 Test == INSTANCE Test WITH 
-   File      <- "Mastership.log",
-   CurrState <- [
-      mastership |-> mastership,
-      conn       |-> conn],
-   SuccState <- [
-      mastership |-> mastership',
-      conn       |-> conn']
+   File <- "Mastership.log"
 
 ----
 

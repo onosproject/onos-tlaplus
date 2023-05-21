@@ -28,8 +28,7 @@ Log(context) ==
       succState == [k \in {k \in DOMAIN SuccState : DOMAIN SuccState[k] # {}} |-> SuccState[k]]
       record    == [context   |-> context,
                     currState |-> currState, 
-                    succState |-> [k \in {k \in DOMAIN succState : k \in DOMAIN currState => 
-                                             currState[k] # succState[k]} |-> succState[k]]]
+                    succState |-> succState]
    IN Serialize(ToJsonObject(record) \o "\n", File, FormatOpts).exitValue = 0
 
 =============================================================================

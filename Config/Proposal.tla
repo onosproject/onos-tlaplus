@@ -76,20 +76,26 @@ TypeOK ==
             /\ proposal[i].rollback.values[p].value # Nil => 
                   proposal[i].rollback.values[p].value \in STRING
 
+LOCAL CurrState == [
+   proposals     |-> [i \in DOMAIN proposal |-> proposal[i] @@ [index |-> i]],
+   configuration |-> configuration,
+   mastership    |-> mastership,
+   conn          |-> conn,
+   target        |-> target]
+
+LOCAL SuccState ==
+   LET
+      proposals == {i \in DOMAIN proposal' : 
+                        i \in DOMAIN proposal => proposal'[i] # proposal[i]}
+   IN 
+     [proposals |-> [i \in proposals    |-> proposal'[i] @@ [index |-> i]]] @@
+     (IF configuration' # configuration THEN [configuration |-> configuration'] ELSE <<>>) @@
+     (IF mastership' # mastership THEN [mastership |-> mastership'] ELSE <<>>) @@
+     (IF conn' # conn THEN [conn |-> conn'] ELSE <<>>) @@
+     (IF target' # target THEN [target |-> target'] ELSE <<>>)
+
 Test == INSTANCE Test WITH 
-   File      <- "Proposal.log",
-   CurrState <- [
-      proposals     |-> proposal,
-      configuration |-> configuration,
-      mastership    |-> mastership,
-      conn          |-> conn,
-      target        |-> target],
-   SuccState <- [
-      proposals     |-> proposal',
-      configuration |-> configuration',
-      mastership    |-> mastership',
-      conn          |-> conn',
-      target        |-> target']
+   File      <- "Proposal.log"
 
 LOCAL Max(s) == CHOOSE i \in s : \A j \in s : i > j
 
