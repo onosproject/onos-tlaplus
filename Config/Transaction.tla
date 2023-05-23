@@ -63,12 +63,12 @@ TypeOK ==
       /\ \A p \in DOMAIN transaction[i].values :
             transaction[i].values[p] # Nil => transaction[i].values[p] \in STRING
 
-LOCAL CurrState == [
+LOCAL State == [
    transactions  |-> [i \in DOMAIN transaction |-> transaction[i] @@ [index |-> i]],
    proposals     |-> [i \in DOMAIN proposal |-> proposal[i] @@ [index |-> i]],
    configuration |-> configuration]
 
-LOCAL SuccState ==
+LOCAL Transitions ==
    LET
       transactions == {i \in DOMAIN transaction' : 
                            i \in DOMAIN transaction => transaction'[i] # transaction[i]}

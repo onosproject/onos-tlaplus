@@ -30,14 +30,12 @@ TypeOK ==
    /\ mastership.master # Nil => mastership.master \in Node
    /\ mastership.conn \in Nat
 
-LOCAL CurrState == [
+LOCAL State == [
    mastership |-> mastership,
-   conn       |-> conn]
+   conns      |-> conn]
 
-LOCAL SuccState ==
-   <<>> @@
-   (IF mastership' # mastership THEN [mastership |-> mastership'] ELSE <<>>) @@
-   (IF conn' # conn THEN [conn |-> conn'] ELSE <<>>)
+LOCAL Transitions ==
+   IF mastership' # mastership THEN [mastership |-> mastership'] ELSE <<>>
 
 Test == INSTANCE Test WITH 
    File <- "Mastership.log"

@@ -52,17 +52,15 @@ TypeOK ==
          /\ configuration.applied.values[p].value # Nil =>
                configuration.applied.values[p].value \in STRING
 
-LOCAL CurrState == [
+LOCAL State == [
    configuration |-> configuration,
    mastership    |-> mastership,
-   conn          |-> conn,
+   conns         |-> conn,
    target        |-> target]
 
-LOCAL SuccState ==
+LOCAL Transitions ==
    <<>> @@
    (IF configuration' # configuration THEN [configuration |-> configuration'] ELSE <<>>) @@
-   (IF mastership' # mastership THEN [mastership |-> mastership'] ELSE <<>>) @@
-   (IF conn' # conn THEN [conn |-> conn'] ELSE <<>>) @@
    (IF target' # target THEN [target |-> target'] ELSE <<>>)
 
 Test == INSTANCE Test WITH 
