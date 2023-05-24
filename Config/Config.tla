@@ -139,16 +139,17 @@ Init ==
             apply    |-> Pending]]
    /\ proposal = [
          i \in {} |-> [
+            phase  |-> Nil,
             change |-> [
-               phase  |-> Nil,
-               state  |-> Nil,
+               commit |-> Nil,
+               apply  |-> Nil,
                values |-> [
                   p \in {} |-> [
                      index |-> 0,
                      value |-> Nil]]],
             rollback |-> [
-               phase  |-> Nil,
-               state  |-> Nil,
+               commit |-> Nil,
+               apply  |-> Nil,
                values |-> [
                   p \in {} |-> [
                      index |-> 0,
@@ -287,12 +288,10 @@ Order ==
       \/ IsOrderedRollback(Commit, i)
       \/ IsOrderedRollback(Apply, i)
    /\ \A i \in DOMAIN proposal :
-         /\ proposal[i].change.phase = Apply
-         /\ proposal[i].change.state = Failed
-         /\ proposal[i].rollback.phase = Apply => proposal[i].rollback.state # Complete
+         /\ proposal[i].change.apply = Failed
+         /\ proposal[i].rollback.apply # Complete
          => \A j \in DOMAIN proposal : (j > i => 
-               (proposal[j].change.phase = Apply => 
-                  proposal[j].change.state \in {Nil, Pending, Aborted}))
+               (proposal[j].change.apply \in {Pending, Aborted}))
 
 Consistency ==
    /\ \A i \in DOMAIN proposal :
@@ -332,15 +331,11 @@ Terminates(i) ==
    /\ transaction[i].apply \in Done
    /\ transaction[i].index \in DOMAIN proposal 
    /\ \/ /\ transaction[i].type = Change
-         /\ \/ /\ proposal[transaction[i].index].change.phase = Commit
-               /\ proposal[transaction[i].index].change.state \in {Aborted, Failed}
-            \/ /\ proposal[transaction[i].index].change.phase = Apply
-               /\ proposal[transaction[i].index].change.state \in Done
+         /\ \/ proposal[transaction[i].index].change.commit \in {Aborted, Failed}
+            \/ proposal[transaction[i].index].change.apply \in Done
       \/ /\ transaction[i].type = Rollback
-         /\ \/ /\ proposal[transaction[i].index].rollback.phase = Commit
-               /\ proposal[transaction[i].index].rollback.state \in {Aborted, Failed}
-            \/ /\ proposal[transaction[i].index].rollback.phase = Apply
-               /\ proposal[transaction[i].index].rollback.state \in Done
+         /\ \/ proposal[transaction[i].index].rollback.commit \in {Aborted, Failed}
+            \/ proposal[transaction[i].index].rollback.apply \in Done
 
 Termination ==
    \A i \in 1..NumTransactions : <>Terminates(i)
