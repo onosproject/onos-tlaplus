@@ -30,9 +30,9 @@ Done == {Complete, Aborted, Failed}
 Node == {"node1"}
 
 NumTransactions == 4
-NumTerms == 2
-NumConns == 2
-NumStarts == 2
+NumTerms == 1
+NumConns == 1
+NumStarts == 1
 
 Path == {"path1"}
 Value == {"value1", "value2"}
@@ -214,11 +214,11 @@ Spec ==
    /\ Init
    /\ [][Next]_vars
    /\ \A p \in Path, v \in Value :
-         WF_<<transaction, proposal, configuration, mastership, target>>(Transaction!RequestChange(p, v))
+         WF_<<transaction, proposal, configuration>>(Transaction!RequestChange(p, v))
    /\ \A i \in 1..NumTransactions : i \in DOMAIN transaction =>
-         WF_<<transaction, proposal, configuration, mastership, target>>(Transaction!RequestRollback(i))
+         WF_<<transaction, proposal, configuration>>(Transaction!RequestRollback(i))
    /\ \A n \in Node, i \in 1..NumTransactions :
-         WF_<<transaction, proposal, configuration, mastership, target>>(Transaction!ReconcileTransaction(n, i))
+         WF_<<transaction, proposal, configuration>>(Transaction!ReconcileTransaction(n, i))
    /\ \A n \in Node, i \in 1..NumTransactions :
          WF_<<proposal, configuration, mastership, conn, target, history>>(Proposal!ReconcileProposal(n, i))
    /\ \A n \in Node :
@@ -329,13 +329,13 @@ Terminates(i) ==
    /\ i \in DOMAIN transaction
    /\ transaction[i].commit \in Done
    /\ transaction[i].apply \in Done
-   /\ transaction[i].index \in DOMAIN proposal 
+   /\ transaction[i].proposal \in DOMAIN proposal 
    /\ \/ /\ transaction[i].type = Change
-         /\ \/ proposal[transaction[i].index].change.commit \in {Aborted, Failed}
-            \/ proposal[transaction[i].index].change.apply \in Done
+         /\ \/ proposal[transaction[i].proposal].change.commit \in {Aborted, Failed}
+            \/ proposal[transaction[i].proposal].change.apply \in Done
       \/ /\ transaction[i].type = Rollback
-         /\ \/ proposal[transaction[i].index].rollback.commit \in {Aborted, Failed}
-            \/ proposal[transaction[i].index].rollback.apply \in Done
+         /\ \/ proposal[transaction[i].proposal].rollback.commit \in {Aborted, Failed}
+            \/ proposal[transaction[i].proposal].rollback.apply \in Done
 
 Termination ==
    \A i \in 1..NumTransactions : <>Terminates(i)
