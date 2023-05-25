@@ -13,12 +13,10 @@ INSTANCE TLC
 \* An empty constant
 CONSTANT Nil
 
-\* Transaction type constants
+\* Transaction phase constants
 CONSTANTS
    Change,
    Rollback
-
-Type == {Change, Rollback}
 
 \* Proposal phase constants
 CONSTANTS 
@@ -28,12 +26,11 @@ CONSTANTS
 \* Status constants
 CONSTANTS
    Pending,
-   InProgress,
    Complete,
    Aborted,
    Failed
 
-Status == {Pending, InProgress, Complete, Aborted, Failed}
+Status == {Pending, Complete, Aborted, Failed}
 
 Done == {Complete, Aborted, Failed}
 
@@ -46,22 +43,42 @@ Empty == [p \in {} |-> Nil]
 
 \* Variables defined by other modules.
 VARIABLES 
-   proposal,
-   configuration
+   configuration,
+   mastership,
+   conn,
+   target
 
 \* A transaction log. Transactions may either request a set
 \* of changes to a set of targets or rollback a prior change.
 VARIABLE transaction
 
-TypeOK == 
+\* A proposal log.
+VARIABLE proposal
+
+\* A sequence of configuration changes used for model checking.
+VARIABLE history
+
+TransactionOK == 
    \A i \in DOMAIN transaction :
-      /\ transaction[i].type \in Type
-      /\ transaction[i].proposal \in Nat
-      /\ transaction[i].init \in Status
-      /\ transaction[i].commit \in Status
-      /\ transaction[i].apply \in Status
-      /\ \A p \in DOMAIN transaction[i].values :
-            transaction[i].values[p] # Nil => transaction[i].values[p] \in STRING
+      /\ transaction[i].phase \in {Change, Rollback}
+      /\ transaction[i].change.proposal \in Nat
+      /\ transaction[i].change.index \in Nat
+      /\ \A p \in DOMAIN transaction[i].change.values :
+            transaction[i].change.values[p] # Nil => 
+               transaction[i].change.values[p] \in STRING
+      /\ transaction[i].rollback.proposal \in Nat
+      /\ transaction[i].rollback.index \in Nat
+      /\ \A p \in DOMAIN transaction[i].rollback.values :
+            transaction[i].rollback.values[p] # Nil => 
+               transaction[i].rollback.values[p] \in STRING
+
+ProposalOK == 
+   \A i \in DOMAIN proposal :
+      /\ proposal[i].transaction \in Nat
+      /\ proposal[i].commit \in Status
+      /\ proposal[i].apply \in Status
+
+TypeOK == TransactionOK /\ ProposalOK
 
 LOCAL State == [
    transactions  |-> [i \in DOMAIN transaction |-> transaction[i] @@ [index |-> i]],
@@ -89,286 +106,176 @@ are appended to the transaction log and processed asynchronously.
 *)
 
 \* Add a set of changes 'c' to the transaction log
-RequestChange(p, v) ==
+AppendChange(p, v) ==
    /\ transaction' = Append(transaction, [
-                        type     |-> Change,
-                        proposal |-> 0,
-                        values   |-> (p :> v),
-                        init     |-> InProgress,
-                        commit   |-> Pending,
-                        apply    |-> Pending])
-   /\ UNCHANGED <<proposal, configuration>>
+                        phase    |-> Change,
+                        change   |-> [
+                           proposal |-> 0,
+                           index    |-> Len(transaction)+1,
+ 	                        values   |-> (p :> v)],
+                        rollback |-> [
+                           proposal |-> 0,
+                           index    |-> 0,
+                           values   |-> Empty]])
+   /\ UNCHANGED <<proposal, configuration, mastership, conn, target, history>>
 
 \* Add a rollback of transaction 't' to the transaction log
-RequestRollback(i) ==
-   /\ transaction' = Append(transaction, [
-                        type     |-> Rollback,
-                        proposal |-> i,
-                        values   |-> Empty,
-                        init     |-> InProgress,
-                        commit   |-> Pending,
-                        apply    |-> Pending])
-   /\ UNCHANGED <<proposal, configuration>>
+RollbackChange(i) ==
+   /\ i \in DOMAIN transaction
+   /\ transaction[i].phase = Change
+   /\ transaction[i].change.proposal # 0
+   /\ proposal[transaction[i].change.proposal].commit # Pending
+   /\ transaction' = [transaction EXCEPT ![i].phase = Rollback]
+   /\ UNCHANGED <<proposal, configuration, mastership, conn, target, history>>
 
 ----
 
-(*
-This section models the Transaction log reconciler.
-*)
-
-LOCAL IsInitialized(i) ==
-   i \in DOMAIN transaction => transaction[i].init \in Done
-
-
-LOCAL IsCommitted(i) ==
-   i \in DOMAIN transaction => transaction[i].commit \in Done
-
-
-LOCAL IsApplied(i) ==
-   i \in DOMAIN transaction => transaction[i].apply \in Done
-
-
-InitChange(n, i) ==
-   /\ \/ /\ transaction[i].init = InProgress
-         \* If the prior transaction has been initialized, initialize the transaction by
-         \* appending the proposal and updating the proposal index.
-         /\ IsInitialized(i-1)
-         /\ proposal' = Append(proposal, [
-                           phase    |-> Change,
-                           change   |-> [
-                              commit |-> Pending,
-                              apply  |-> Pending,
-                              values |-> [
-                                 p \in DOMAIN transaction[i].values |-> [
-                                    index |-> Len(proposal)+1,
-                                    value |-> transaction[i].values[p]]]],
-                           rollback |-> [
-                              commit   |-> Nil,
-                              apply    |-> Nil,
-                              revision |-> 0, 
-                              values   |-> Empty]])
-         /\ transaction' = [transaction EXCEPT ![i].proposal = Len(proposal'),
-                                               ![i].init     = Complete]
-
-
-CommitChange(n, i) ==
-   /\ \/ /\ transaction[i].commit = Pending
-         /\ transaction[i].init = Complete
-         \* A transaction cannot be committed until the prior transaction has been committed.
-         /\ IsCommitted(i-1)
-         /\ transaction' = [transaction EXCEPT ![i].commit = InProgress]
-         /\ UNCHANGED <<proposal>>
-      \/ /\ transaction[i].commit = InProgress
-            \* If the change commit is still in the Pending state, set it to InProgress.
-         /\ \/ /\ proposal[transaction[i].proposal].change.commit = Pending
-               /\ proposal' = [proposal EXCEPT ![transaction[i].proposal].change.commit     = InProgress,
-                                               ![transaction[i].proposal].rollback.revision = configuration.committed.revision,
-                                               ![transaction[i].proposal].rollback.values   = [
-                                                   p \in DOMAIN proposal[transaction[i].proposal].change.values |-> 
-                                                      IF p \in DOMAIN configuration.committed.values THEN
-                                                         configuration.committed.values[p]
-                                                      ELSE
-                                                         [index |-> 0, value |-> Nil]]]
-               /\ UNCHANGED <<transaction>>
-            \* If the change commit is Complete, mark the transaction Complete.
-            \/ /\ proposal[transaction[i].proposal].change.commit = Complete
-               /\ transaction' = [transaction EXCEPT ![i].commit = Complete]
-               /\ UNCHANGED <<proposal>>
-            \* If the change commit Failed, mark the transaction Failed.
-            \/ /\ proposal[transaction[i].proposal].change.commit = Failed
-               /\ transaction' = [transaction EXCEPT ![i].commit = Failed]
-               /\ UNCHANGED <<proposal>>
-
-
-ApplyChange(n, i) ==
-   /\ \/ /\ transaction[i].apply = Pending
-            \* If the commit phase was completed successfully, start the apply phase.
-         /\ \/ /\ transaction[i].commit = Complete
-                  \* If the proposal is in the apply phase and the previous transaction has completed
-                  \* the apply phase, start applying the change.
-               /\ \/ /\ proposal[transaction[i].proposal].change.apply = Pending
-                     \* A transaction cannot be applied until the prior transaction has been applied.
-                     /\ IsApplied(i-1)
-                     \* If the prior change failed being applied, it must be rolled back before
-                     \* new changes can be applied.
-                     /\ /\ transaction[i].proposal-1 \in DOMAIN proposal
-                        /\ proposal[transaction[i].proposal-1].change.apply = Failed
-                        => proposal[transaction[i].proposal-1].rollback.apply = Complete
-                     /\ transaction' = [transaction EXCEPT ![i].apply = InProgress]
-                     /\ UNCHANGED <<proposal>>
-            \* If the commit phase was aborted or failed, abort the apply phase once the previous
-            \* transaction has completed the apply phase.
-            \/ /\ transaction[i].commit \in {Aborted, Failed}
-               \* A transaction cannot be applied until the prior transaction has been applied.
-               /\ IsApplied(i-1)
-               \* If the prior change failed being applied, it must be rolled back before
-               \* new changes can be applied.
-               /\ /\ transaction[i].proposal-1 \in DOMAIN proposal
-                  /\ proposal[transaction[i].proposal-1].change.apply = Failed
-                  => proposal[transaction[i].proposal-1].rollback.apply = Complete
-               /\ transaction' = [transaction EXCEPT ![i].apply = Aborted]
-               /\ UNCHANGED <<proposal>>
-      \/ /\ transaction[i].apply = InProgress
-            \* If the change apply is still in the Pending state, set it to InProgress.
-         /\ \/ /\ proposal[transaction[i].proposal].change.apply = Pending
-               /\ proposal' = [proposal EXCEPT ![transaction[i].proposal].change.apply = InProgress]
-               /\ UNCHANGED <<transaction>>
-            \* If the change apply is Complete, mark the transaction Complete.
-            \/ /\ proposal[transaction[i].proposal].change.apply = Complete
-               /\ transaction' = [transaction EXCEPT ![i].apply = Complete]
-               /\ UNCHANGED <<proposal>>
-            \* If the change apply Failed, mark the transaction Failed.
-            \/ /\ proposal[transaction[i].proposal].change.apply = Failed
-               /\ transaction' = [transaction EXCEPT ![i].apply = Failed]
-               /\ UNCHANGED <<proposal>>
-
-
 ReconcileChange(n, i) ==
-   /\ transaction[i].type = Change
-   /\ \/ InitChange(n, i)
-      \/ CommitChange(n, i)
-      \/ ApplyChange(n, i)
-
-
-InitRollback(n, i) ==
-   /\ \/ /\ transaction[i].init = InProgress
-         \* Rollbacks cannot be initialized until all prior transactions have been initialized.
-         /\ IsInitialized(i-1)
-            \* Rollback transactions must target valid proposal index.
-         /\ \/ /\ transaction[i].proposal \in DOMAIN proposal
-                  \* To roll back a transaction, all subsequent transactions must be rolled back first.
-                  \* Check whether the following proposal is being rolled back.
-               /\ \/ /\ transaction[i].proposal+1 \in DOMAIN proposal =>
-                           proposal[transaction[i].proposal+1].phase = Rollback
-                     /\ transaction' = [transaction EXCEPT ![i].init = Complete]
-                  \* If the subsequent proposal is not being rolled back, fail the rollback transaction.
-                  \/ /\ transaction[i].proposal+1 \in DOMAIN proposal
-                     /\ proposal[transaction[i].proposal+1].phase = Change
-                     /\ transaction' = [transaction EXCEPT ![i].init = Failed]
-            \* If the proposal index is not valid, fail the rollback request.
-            \/ /\ transaction[i].proposal \notin DOMAIN proposal
-               /\ transaction' = [transaction EXCEPT ![i].init = Failed]
-   /\ UNCHANGED <<proposal>>
-
-
-CommitRollback(n, i) ==
-   /\ \/ /\ transaction[i].commit = Pending
-         \* A transaction cannot be committed until the prior transaction has been committed.
-         \* In the case of rollbacks, we serialize all state changes to ensure consistency
-         \* when rolling back changes.
-         /\ IsCommitted(i-1)
-            \* If the transaction was initialized successfully, commit the rollback.
-         /\ \/ /\ transaction[i].init = Complete
-                  \* If the target proposal is not yet being rolled back, transition the proposal.
-               /\ \/ /\ proposal[transaction[i].proposal].phase = Change
-                        \* If the target change is still pending, abort the change and rollback.
-                     /\ \/ /\ proposal[transaction[i].proposal].change.commit = Pending
-                           /\ proposal' = [proposal EXCEPT ![transaction[i].proposal].phase = Rollback,
-                                                           ![transaction[i].proposal].change.commit   = Aborted,
-                                                           ![transaction[i].proposal].rollback.commit = Aborted]
-                           /\ UNCHANGED <<transaction>>
-                        \* If the target change is complete, start the rollback commit phase.
-                        \/ /\ proposal[transaction[i].proposal].change.commit = Complete
-                           /\ proposal' = [proposal EXCEPT ![transaction[i].proposal].phase = Rollback,
-                                                           ![transaction[i].proposal].rollback.commit = Pending,
-                                                           ![transaction[i].proposal].rollback.apply  = Pending]
-                           /\ UNCHANGED <<transaction>>
-                        \* If the target change failed commit, complete the rollback commit.
-                        \/ /\ proposal[transaction[i].proposal].change.commit \in {Aborted, Failed}
-                           /\ transaction' = [transaction EXCEPT ![i].commit = Complete]
-                           /\ UNCHANGED <<proposal>>
-                  \* If the target proposal is being rolled back, transition the underlying proposal.
-                  \/ /\ proposal[transaction[i].proposal].phase = Rollback
-                        \* If the target proposal is being rolled back, begin the rollback commit
-                        \* once the prior transaction has completed the commit phase.
-                     /\ \/ /\ proposal[transaction[i].proposal].rollback.commit = Pending
-                           /\ transaction' = [transaction EXCEPT ![i].commit = InProgress]
-                           /\ UNCHANGED <<proposal>>
-                        \* If the target rollback was aborted, abort the transaction rollback
-                        \* once the prior transaction has completed the commit phase.
-                        \/ /\ proposal[transaction[i].proposal].rollback.commit = Aborted
-                           /\ transaction' = [transaction EXCEPT ![i].commit = Aborted]
-                           /\ UNCHANGED <<proposal>>
-            \* If the transaction failed initialization, abort the commit phase.
-            \/ /\ transaction[i].init \in {Aborted, Failed}
-               /\ transaction' = [transaction EXCEPT ![i].commit = Aborted]
-               /\ UNCHANGED <<proposal>>
-      \/ /\ transaction[i].commit = InProgress
-            \* If the rollback commit is still in the Pending state, set it to InProgress.
-         /\ \/ /\ proposal[transaction[i].proposal].rollback.commit = Pending
-               /\ proposal' = [proposal EXCEPT ![transaction[i].proposal].rollback.commit = InProgress]
+   /\ transaction[i].phase = Change
+      \* The change proposal has not yet been created.
+   /\ \/ /\ transaction[i].change.proposal = 0
+         \* The prior transaction must have created a change proposal.
+         /\ i-1 \in DOMAIN transaction => transaction[i-1].change.proposal # 0
+         /\ proposal' = Append(proposal, [transaction |-> i, commit |-> Pending, apply |-> Pending])
+         /\ transaction' = [transaction EXCEPT ![i].change.proposal = Len(proposal')]
+         /\ UNCHANGED <<configuration, target, history>>
+      \* The change proposal has been created.
+      \/ /\ transaction[i].change.proposal # 0
+            \* The change is pending commit. Validate and commit the change once the prior
+            \* change has been committed.
+         /\ \/ /\ proposal[transaction[i].change.proposal].commit = Pending
+               \* The prior proposal has been committed.
+               /\ transaction[i].change.proposal-1 \in DOMAIN proposal =>
+                     proposal[transaction[i].change.proposal-1].commit \in Done
+               \* The prior change has been committed.
+               /\ i-1 \in DOMAIN transaction =>
+                     proposal[transaction[i-1].change.proposal].commit \in Done
+                  \* Valid change is committed to the configuration.
+               /\ \/ /\ transaction' = [transaction EXCEPT ![i].rollback.index  = configuration.committed.index,
+                                                           ![i].rollback.values = [
+                                                               p \in DOMAIN transaction[i].change.values |-> 
+                                                                  IF p \in DOMAIN configuration.committed.values THEN
+                                                                     configuration.committed.values[p]
+                                                                  ELSE
+                                                                     Nil]]
+                     /\ configuration' = [configuration EXCEPT !.committed.index  = i,
+                                                               !.committed.values = transaction[i].change.values @@ 
+                                                                                       configuration.committed.values]
+                     /\ proposal' = [proposal EXCEPT ![transaction[i].change.proposal].commit = Complete]
+                     /\ history' = Append(history, [type |-> Change, phase |-> Commit, index |-> i])
+                  \* Invalid change commit is failed.
+                  \/ /\ proposal' = [proposal EXCEPT ![transaction[i].change.proposal].commit = Failed]
+                     /\ UNCHANGED <<transaction, configuration, history>>
+               /\ UNCHANGED <<target>>
+            \* The change apply is pending.
+            \/ /\ proposal[transaction[i].change.proposal].apply = Pending
+               \* The prior proposal has been applied.
+               /\ transaction[i].change.proposal-1 \in DOMAIN proposal =>
+                     proposal[transaction[i].change.proposal-1].apply \in Done
+               \* If the prior change failed, it must be rolled back.
+               /\ i-1 \in DOMAIN transaction =>
+                     \/ proposal[transaction[i-1].change.proposal].apply \in {Complete, Aborted}
+                     \/ /\ proposal[transaction[i-1].change.proposal].apply = Failed
+                        /\ transaction[i-1].rollback.proposal # 0
+                        /\ proposal[transaction[i-1].rollback.proposal].apply = Complete
+                  \* If the transaction proposal was committed, attempt to apply the transaction.
+               /\ \/ /\ proposal[transaction[i].change.proposal].commit = Complete
+                     /\ configuration.state = Complete
+                     /\ configuration.term = mastership.term
+                     /\ conn[n].id = mastership.conn
+                     /\ conn[n].connected
+                     /\ target.running
+                        \* The change is successfully applied to the target.
+                     /\ \/ /\ target' = [target EXCEPT !.values = transaction[i].change.values @@ target.values]
+                           /\ configuration' = [configuration EXCEPT !.applied.index  = i,
+                                                                     !.applied.values = transaction[i].change.values @@
+                                                                                          configuration.applied.values]
+                           /\ proposal' = [proposal EXCEPT ![transaction[i].change.proposal].apply = Complete]
+                           /\ history' = Append(history, [type |-> Change, phase |-> Apply, index |-> i])
+                        \* The change fails being applied to the target.
+                        \/ /\ proposal' = [proposal EXCEPT ![transaction[i].change.proposal].apply = Failed]
+                           /\ UNCHANGED <<configuration, target, history>>
+                  \* If the transaction proposal failed commit, abort applying the transaction.
+                  \/ /\ proposal[transaction[i].change.proposal].commit = Failed
+                     /\ proposal' = [proposal EXCEPT ![transaction[i].change.proposal].apply = Aborted]
+                     /\ UNCHANGED <<configuration, target, history>>
                /\ UNCHANGED <<transaction>>
-            \* If the rollback commit is Complete, mark the transaction Complete.
-            \/ /\ proposal[transaction[i].proposal].rollback.commit = Complete
-               /\ transaction' = [transaction EXCEPT ![i].commit = Complete]
-               /\ UNCHANGED <<proposal>>
-            \* If the rollback commit Failed, mark the transaction Failed.
-            \/ /\ proposal[transaction[i].proposal].rollback.commit = Failed
-               /\ transaction' = [transaction EXCEPT ![i].commit = Failed]
-               /\ UNCHANGED <<proposal>>
-
-
-ApplyRollback(n, i) ==
-   /\ \/ /\ transaction[i].apply = Pending
-         \* A transaction cannot be applied until the prior transaction has been applied.
-         \* In the case of rollbacks, we serialize all state changes to ensure consistency
-         \* when rolling back changes.
-         /\ IsApplied(i-1)
-            \* If the commit phase was completed successfully, start the apply phase.
-         /\ \/ /\ transaction[i].commit = Complete
-                  \* If the target proposal is being rolled back, begin the rollback apply
-                  \* once the prior transaction has completed the apply phase.
-               /\ \/ /\ proposal[transaction[i].proposal].rollback.apply = Pending
-                        \* If the target change has not yet been applied, abort the change and rollback.
-                     /\ \/ /\ \/ proposal[transaction[i].proposal].change.commit \notin Done
-                              \/ proposal[transaction[i].proposal].change.apply = Pending
-                           /\ proposal' = [proposal EXCEPT ![transaction[i].proposal].change.apply   = Aborted,
-                                                           ![transaction[i].proposal].rollback.apply = Aborted]
-                           /\ UNCHANGED <<transaction>>
-                        \* If the target change has been applied, begin applying the rollback.
-                        \/ /\ proposal[transaction[i].proposal].change.apply \in {Complete, Failed}
-                           /\ transaction' = [transaction EXCEPT ![i].apply = InProgress]
-                           /\ UNCHANGED <<proposal>>
-                        \* If the target change was aborted or failed, complete applying the rollback.
-                        \/ /\ proposal[transaction[i].proposal].change.apply = Aborted
-                           /\ transaction' = [transaction EXCEPT ![i].apply = Complete]
-                           /\ UNCHANGED <<proposal>>
-                  \* If the target rollback was aborted, abort the transaction rollback
-                  \* once the prior transaction has completed the apply phase.
-                  \/ /\ proposal[transaction[i].proposal].rollback.apply = Aborted
-                     /\ transaction' = [transaction EXCEPT ![i].apply = Aborted]
-                     /\ UNCHANGED <<proposal>>
-            \* If the transaction failed commit, abort the apply phase.
-            \/ /\ transaction[i].commit \in {Aborted, Failed}
-               /\ transaction' = [transaction EXCEPT ![i].apply = Aborted]
-               /\ UNCHANGED <<proposal>>
-      \/ /\ transaction[i].apply = InProgress
-            \* If the rollback apply is still in the Pending state, set it to InProgress.
-         /\ \/ /\ proposal[transaction[i].proposal].rollback.apply = Pending
-               /\ proposal' = [proposal EXCEPT ![transaction[i].proposal].rollback.apply = InProgress]
-               /\ UNCHANGED <<transaction>>
-            \* If the rollback apply is Complete, mark the transaction Complete.
-            \/ /\ proposal[transaction[i].proposal].rollback.apply = Complete
-               /\ transaction' = [transaction EXCEPT ![i].apply = Complete]
-               /\ UNCHANGED <<proposal>>
-            \* If the rollback apply Failed, mark the transaction Failed.
-            \/ /\ proposal[transaction[i].proposal].rollback.apply = Failed
-               /\ transaction' = [transaction EXCEPT ![i].apply = Failed]
-               /\ UNCHANGED <<proposal>>
-
 
 ReconcileRollback(n, i) ==
-   /\ transaction[i].type = Rollback
-   /\ \/ InitRollback(n, i)
-      \/ CommitRollback(n, i)
-      \/ ApplyRollback(n, i)
+   /\ transaction[i].phase = Rollback
+      \* The rollback proposal has not yet been created.
+   /\ \/ /\ transaction[i].rollback.proposal = 0
+         \* The subsequent transaction must have created a rollback proposal.
+         /\ i+1 \in DOMAIN transaction => transaction[i+1].rollback.proposal # 0
+         /\ proposal' = Append(proposal, [transaction |-> i, commit |-> Pending, apply |-> Pending])
+         /\ transaction' = [transaction EXCEPT ![i].rollback.proposal = Len(proposal')]
+         /\ UNCHANGED <<configuration, target, history>>
+      \* The rollback proposal has been created.
+      \/ /\ transaction[i].rollback.proposal # 0
+            \* The rollback commit is pending.
+         /\ \/ /\ proposal[transaction[i].rollback.proposal].commit = Pending
+                  \* The change has been committed. Commit the rollback.
+               /\ \/ /\ proposal[transaction[i].change.proposal].commit \in Done
+                        \* If the change proposal completed, commit the rollback proposal.
+                     /\ \/ /\ proposal[transaction[i].change.proposal].commit = Complete
+                           /\ configuration.committed.index = i
+                           /\ configuration' = [configuration EXCEPT !.committed.index  = transaction[i].rollback.index,
+                                                                     !.committed.values = transaction[i].rollback.values @@ 
+                                                                                             configuration.committed.values]
+                           /\ proposal' = [proposal EXCEPT ![transaction[i].rollback.proposal].commit = Complete]
+                           /\ history' = Append(history, [type |-> Rollback, phase |-> Commit, index |-> i])
+                        \* If the change proposal failed, complete the rollback commit.
+                        \/ /\ proposal[transaction[i].change.proposal].commit = Failed
+                           /\ proposal' = [proposal EXCEPT ![transaction[i].rollback.proposal].commit = Complete]
+                           /\ UNCHANGED <<configuration, history>>
+                  \* The change has not been committed. Abort the change once the prior change is committed.
+                  \/ /\ proposal[transaction[i].change.proposal].commit = Pending
+                     /\ i-1 \in DOMAIN transaction =>
+                           proposal[transaction[i-1].change.proposal].commit \in Done
+                     /\ proposal' = [proposal EXCEPT ![transaction[i].change.proposal].commit = Aborted]
+                     /\ UNCHANGED <<configuration, history>>
+               /\ UNCHANGED <<target>>
+            \* The rollback apply is pending.
+            \/ /\ proposal[transaction[i].rollback.proposal].apply = Pending
+                  \* The change has been applied. Apply the rollback.
+               /\ \/ /\ proposal[transaction[i].change.proposal].apply \in Done
+                        \* The rollback was committed. Apply the rollback.
+                     /\ \/ /\ proposal[transaction[i].rollback.proposal].commit = Complete
+                              \* If the change apply was completed or failed, apply the rollback.
+                           /\ \/ /\ proposal[transaction[i].change.proposal].apply \in {Complete, Failed}
+                                 /\ configuration.applied.index = i
+                                 /\ configuration.state = Complete
+                                 /\ configuration.term = mastership.term
+                                 /\ conn[n].id = mastership.conn
+                                 /\ conn[n].connected
+                                 /\ target.running
+                                 \* Rollbacks are applied until successful.
+                                 /\ target' = [target EXCEPT !.values = transaction[i].rollback.values @@ target.values]
+                                 /\ configuration' = [configuration EXCEPT !.applied.target = target.id,
+                                                                           !.applied.index  = transaction[i].rollback.index,
+                                                                           !.applied.values = transaction[i].rollback.values @@
+                                                                                                   configuration.applied.values]
+                                 /\ proposal' = [proposal EXCEPT ![transaction[i].rollback.proposal].apply = Complete]
+                                 /\ history' = Append(history, [type |-> Rollback, phase |-> Apply, index |-> i])
+                              \* If the change apply was aborted, complete the rollback apply without changes to the target.
+                              \/ /\ proposal[transaction[i].change.proposal].apply = Aborted
+                                 /\ proposal' = [proposal EXCEPT ![transaction[i].rollback.proposal].apply = Complete]
+                                 /\ UNCHANGED <<configuration, target, history>>
+                        \* The rollback failed validation. Abort applying the rollback.
+                        \/ /\ proposal[transaction[i].rollback.proposal].commit = Failed
+                           /\ proposal' = [proposal EXCEPT ![transaction[i].rollback.proposal].apply = Aborted]
+                           /\ UNCHANGED <<configuration, target, history>>
+                  \* The change has not been applied. Abort the change once the prior change is applied.
+                  \/ /\ proposal[transaction[i].change.proposal].apply = Pending
+                     /\ i-1 \in DOMAIN transaction =>
+                           proposal[transaction[i-1].change.proposal].apply \in Done
+                     /\ proposal' = [proposal EXCEPT ![transaction[i].change.proposal].apply = Aborted]
+                     /\ UNCHANGED <<configuration, target, history>>
+         /\ UNCHANGED <<transaction>>
 
-
-\* Reconcile a transaction
 ReconcileTransaction(n, i) ==
-   /\ i \in DOMAIN transaction
-   /\ \/ ReconcileChange(n, i)
-      \/ ReconcileRollback(n, i)
-   /\ UNCHANGED <<configuration>>
+	/\ \/ ReconcileChange(n, i)
+		\/ ReconcileRollback(n, i)
+	/\ UNCHANGED <<mastership, conn>>
 
 =============================================================================

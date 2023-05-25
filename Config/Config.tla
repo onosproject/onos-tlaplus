@@ -21,7 +21,6 @@ Commit == "Commit"
 Apply == "Apply"
 
 Pending == "Pending"
-InProgress == "InProgress"
 Complete == "Complete"
 Aborted == "Aborted"
 Failed == "Failed"
@@ -67,8 +66,6 @@ vars == <<transaction, proposal, configuration, mastership, conn, target, histor
 
 LOCAL Transaction == INSTANCE Transaction
 
-LOCAL Proposal == INSTANCE Proposal
-
 LOCAL Configuration == INSTANCE Configuration
 
 LOCAL Mastership == INSTANCE Mastership
@@ -77,25 +74,18 @@ LOCAL Target == INSTANCE Target
 
 ----
 
-RequestChange(p, v) ==
-   /\ Transaction!RequestChange(p, v)
-   /\ UNCHANGED <<mastership, conn, target, history>>
+AppendChange(p, v) ==
+   /\ Transaction!AppendChange(p, v)
 
-RequestRollback(i) ==
-   /\ Transaction!RequestRollback(i)
-   /\ UNCHANGED <<mastership, conn, target, history>>
+RollbackChange(i) ==
+   /\ Transaction!RollbackChange(i)
 
 ReconcileTransaction(n, i) ==
    /\ i \in DOMAIN transaction
    /\ Transaction!ReconcileTransaction(n, i)
-   /\ UNCHANGED <<mastership, conn, target, history>>
-   /\ GenerateTestCases => Transaction!Test!Log([node |-> n, index |-> i])
-
-ReconcileProposal(n, i) ==
-   /\ i \in DOMAIN proposal
-   /\ Proposal!ReconcileProposal(n, i)
-   /\ UNCHANGED <<transaction>>
-   /\ GenerateTestCases => Proposal!Test!Log([node |-> n, index |-> i])
+   /\ GenerateTestCases => 
+         LET context == [node |-> n, index |-> i]
+         IN Transaction!Test!Log(context)
 
 ReconcileConfiguration(n) ==
    /\ Configuration!ReconcileConfiguration(n)
@@ -132,43 +122,39 @@ Formal specification, constraints, and theorems.
 Init ==
    /\ transaction = [
          i \in {} |-> [
-            type     |-> Change,
-            proposal |-> 0,
-            values   |-> [p \in {} |-> Nil],
-            commit   |-> Pending,
-            apply    |-> Pending]]
-   /\ proposal = [
-         i \in {} |-> [
             phase  |-> Nil,
             change |-> [
-               commit |-> Nil,
-               apply  |-> Nil,
-               values |-> [
+               proposal |-> 0,
+               index    |-> 0,
+               values   |-> [
                   p \in {} |-> [
                      index |-> 0,
                      value |-> Nil]]],
             rollback |-> [
-               commit |-> Nil,
-               apply  |-> Nil,
-               values |-> [
+               proposal |-> 0,
+               index    |-> 0,
+               values   |-> [
                   p \in {} |-> [
                      index |-> 0,
                      value |-> Nil]]]]]
+   /\ proposal = [
+         i \in {} |-> [
+            transaction |-> 0,
+            commit      |-> Nil,
+            apply       |-> Nil]]
    /\ configuration = [
-         state  |-> InProgress,
+         state  |-> Pending,
          term   |-> 0,
          committed |-> [
-            index    |-> 0,
-            revision |-> 0,
-            values   |-> [
+            index  |-> 0,
+            values |-> [
                p \in {} |-> [
                   index |-> 0,
                   value |-> Nil]]],
          applied |-> [
-            index    |-> 0,
-            revision |-> 0,
-            target   |-> 0,
-            values   |-> [
+            target |-> 0,
+            index  |-> 0,
+            values |-> [
                p \in {} |-> [
                   index |-> 0,
                   value |-> Nil]]]]
@@ -191,15 +177,12 @@ Init ==
 
 Next ==
    \/ \E p \in Path, v \in Value :
-         RequestChange(p, v)
+         AppendChange(p, v)
    \/ \E i \in DOMAIN transaction :
-         RequestRollback(i)
+         RollbackChange(i)
    \/ \E n \in Node :
          \E i \in DOMAIN transaction :
             ReconcileTransaction(n, i)
-   \/ \E n \in Node :
-         \E i \in DOMAIN proposal :
-            ReconcileProposal(n, i)
    \/ \E n \in Node :
          ReconcileConfiguration(n)
    \/ \E n \in Node :
@@ -214,13 +197,11 @@ Spec ==
    /\ Init
    /\ [][Next]_vars
    /\ \A p \in Path, v \in Value :
-         WF_<<transaction, proposal, configuration>>(Transaction!RequestChange(p, v))
+         WF_<<transaction, proposal, configuration, mastership, conn, target, history>>(Transaction!AppendChange(p, v))
    /\ \A i \in 1..NumTransactions : i \in DOMAIN transaction =>
-         WF_<<transaction, proposal, configuration>>(Transaction!RequestRollback(i))
+         WF_<<transaction, proposal, configuration, mastership, conn, target, history>>(Transaction!RollbackChange(i))
    /\ \A n \in Node, i \in 1..NumTransactions :
-         WF_<<transaction, proposal, configuration>>(Transaction!ReconcileTransaction(n, i))
-   /\ \A n \in Node, i \in 1..NumTransactions :
-         WF_<<proposal, configuration, mastership, conn, target, history>>(Proposal!ReconcileProposal(n, i))
+         WF_<<transaction, proposal, configuration, mastership, conn, target, history>>(Transaction!ReconcileTransaction(n, i))
    /\ \A n \in Node :
          WF_<<configuration, mastership, conn, target>>(Configuration!ReconcileConfiguration(n))
    /\ \A n \in Node :
@@ -228,6 +209,36 @@ Spec ==
    /\ \A n \in Node :
          WF_<<conn, target>>(Target!Connect(n) \/ Target!Disconnect(n))
    /\ WF_<<conn, target>>(Target!Start \/ Target!Stop)
+
+Alias == [
+   log |-> [
+      i \in DOMAIN transaction |-> [
+         change |-> 
+            IF transaction[i].change.proposal # 0 THEN 
+               [commit |-> proposal[transaction[i].change.proposal].commit,
+                apply  |-> proposal[transaction[i].change.proposal].apply,
+                values |-> transaction[i].change.values] 
+            ELSE 
+               [commit |-> Nil, 
+                apply  |-> Nil,
+                values |-> transaction[i].change.values],
+         rollback |-> 
+            IF transaction[i].rollback.proposal # 0 THEN 
+               [commit |-> proposal[transaction[i].rollback.proposal].commit,
+                apply  |-> proposal[transaction[i].rollback.proposal].apply,
+                values |-> transaction[i].rollback.values] 
+            ELSE 
+               [commit |-> Nil, 
+                apply  |-> Nil,
+                values |-> transaction[i].rollback.values]] @@ 
+         transaction[i]],
+   transaction   |-> transaction,
+   proposal      |-> proposal,
+   configuration |-> configuration,
+   mastership    |-> mastership,
+   conn          |-> conn,
+   target        |-> target,
+   history       |-> history]
 
 ----
 
@@ -253,7 +264,6 @@ LimitStarts ==
 
 TypeOK ==
    /\ Transaction!TypeOK
-   /\ Proposal!TypeOK
    /\ Configuration!TypeOK
    /\ Mastership!TypeOK
 
@@ -269,6 +279,10 @@ LOCAL IsOrderedChange(p, i) ==
 LOCAL IsOrderedRollback(p, i) ==
    /\ history[i].type = Rollback
    /\ history[i].phase = p
+   /\ \E j \in DOMAIN history :
+         /\ j < i
+         /\ history[j].type = Change
+         /\ history[j].index = history[i].index
    /\ ~\E j \in DOMAIN history :
          /\ j < i
          /\ history[j].type = Change
@@ -287,39 +301,46 @@ Order ==
       \/ IsOrderedChange(Apply, i)
       \/ IsOrderedRollback(Commit, i)
       \/ IsOrderedRollback(Apply, i)
-   /\ \A i \in DOMAIN proposal :
-         /\ proposal[i].change.apply = Failed
-         /\ proposal[i].rollback.apply # Complete
-         => \A j \in DOMAIN proposal : (j > i => 
-               (proposal[j].change.apply \in {Pending, Aborted}))
+   /\ \A i \in DOMAIN transaction :
+         /\ transaction[i].change.proposal # 0
+         /\ proposal[transaction[i].change.proposal].apply = Failed
+         /\ transaction[i].rollback.proposal # 0 => 
+               proposal[transaction[i].rollback.proposal].apply # Complete
+         => \A j \in DOMAIN transaction : (j > i => 
+               (transaction[j].change.proposal # 0 => 
+                  proposal[transaction[j].change.proposal].apply # Complete))
+
+LOCAL IsChangeCommitted(i) ==
+   /\ transaction[i].change.proposal # 0
+   /\ proposal[transaction[i].change.proposal].commit = Complete
+   /\ transaction[i].rollback.proposal # 0 =>
+         proposal[transaction[i].rollback.proposal].commit # Complete
+
+LOCAL IsChangeApplied(i) ==
+   /\ transaction[i].change.proposal # 0
+   /\ proposal[transaction[i].change.proposal].apply = Complete
+   /\ transaction[i].rollback.proposal # 0 =>
+         proposal[transaction[i].rollback.proposal].apply # Complete
 
 Consistency ==
-   /\ \A i \in DOMAIN proposal :
-         \/ configuration.committed.index < i
-         \/ configuration.committed.revision < i
-         => ~\E p \in DOMAIN configuration.committed.values : 
-               configuration.committed.values[p].index = i
-   /\ \A i \in DOMAIN proposal :
-         \/ configuration.applied.index < i
-         \/ configuration.applied.revision < i
-         => /\ ~\E p \in DOMAIN configuration.applied.values : 
-                  configuration.applied.values[p].index = i
-            /\ ~\E p \in DOMAIN target.values :
-                  target.values[p].index = i
-   /\ /\ target.running
-      /\ configuration.applied.target = target.id
-      /\ configuration.state = Complete 
-      => \A i \in DOMAIN proposal :
-            /\ configuration.applied.index >= i
-            /\ configuration.applied.revision >= i
-            => \A p \in DOMAIN proposal[i].change.values :
-                  /\ ~\E j \in DOMAIN proposal : 
-                        /\ j > i 
-                        /\ configuration.applied.index >= j
-                        /\ configuration.applied.revision >= j
-                  => /\ p \in DOMAIN target.values 
-                     /\ target.values[p].value = proposal[i].change.values[p].value
-                     /\ target.values[p].index = proposal[i].change.values[p].index
+   /\ \A i \in DOMAIN transaction :
+         /\ IsChangeCommitted(i)
+         /\ ~\E j \in DOMAIN transaction :
+               /\ j > i
+               /\ IsChangeCommitted(j)
+         => \A p \in DOMAIN transaction[i].change.values :
+               /\ configuration.committed.values[p] = transaction[i].change.values[p]
+   /\ \A i \in DOMAIN transaction :
+         /\ IsChangeApplied(i)
+         /\ ~\E j \in DOMAIN transaction :
+               /\ j > i
+               /\ IsChangeApplied(j)
+         => \A p \in DOMAIN transaction[i].change.values :
+               /\ configuration.applied.values[p] = transaction[i].change.values[p]
+               /\ /\ target.running
+                  /\ configuration.applied.target = target.id
+                  /\ configuration.state = Complete
+                  => target.values[p] = transaction[i].change.values[p]
 
 Safety == [](Order /\ Consistency)
 
@@ -327,15 +348,14 @@ THEOREM Spec => Safety
 
 Terminates(i) ==
    /\ i \in DOMAIN transaction
-   /\ transaction[i].commit \in Done
-   /\ transaction[i].apply \in Done
-   /\ transaction[i].proposal \in DOMAIN proposal 
-   /\ \/ /\ transaction[i].type = Change
-         /\ \/ proposal[transaction[i].proposal].change.commit \in {Aborted, Failed}
-            \/ proposal[transaction[i].proposal].change.apply \in Done
-      \/ /\ transaction[i].type = Rollback
-         /\ \/ proposal[transaction[i].proposal].rollback.commit \in {Aborted, Failed}
-            \/ proposal[transaction[i].proposal].rollback.apply \in Done
+   /\ transaction[i].phase = Change ~>
+         /\ transaction[i].change.proposal # 0
+         /\ proposal[transaction[i].change.proposal].commit \in Done
+         /\ proposal[transaction[i].change.proposal].apply \in Done
+   /\ transaction[i].phase = Rollback ~>
+         /\ transaction[i].rollback.proposal # 0
+         /\ proposal[transaction[i].rollback.proposal].commit \in Done
+         /\ proposal[transaction[i].rollback.proposal].apply \in Done
 
 Termination ==
    \A i \in 1..NumTransactions : <>Terminates(i)
