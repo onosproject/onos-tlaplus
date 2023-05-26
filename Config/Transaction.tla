@@ -282,6 +282,7 @@ ReconcileRollback(n, i) ==
          /\ UNCHANGED <<transaction>>
 
 ReconcileTransaction(n, i) ==
+   /\ i \in DOMAIN transaction
 	/\ \/ ReconcileChange(n, i)
 		\/ ReconcileRollback(n, i)
 	/\ UNCHANGED <<mastership, conn>>

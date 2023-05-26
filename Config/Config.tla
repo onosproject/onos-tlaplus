@@ -200,7 +200,7 @@ Spec ==
    /\ [][Next]_vars
    /\ \A p \in Path, v \in Value :
          WF_<<transaction, proposal, configuration, mastership, conn, target, history>>(Transaction!AppendChange(p, v))
-   /\ \A i \in 1..NumTransactions : i \in DOMAIN transaction =>
+   /\ \A i \in 1..NumTransactions :
          WF_<<transaction, proposal, configuration, mastership, conn, target, history>>(Transaction!RollbackChange(i))
    /\ \A n \in Node, i \in 1..NumTransactions :
          WF_<<transaction, proposal, configuration, mastership, conn, target, history>>(Transaction!ReconcileTransaction(n, i))
@@ -349,12 +349,13 @@ Safety == [](Order /\ Consistency)
 THEOREM Spec => Safety
 
 Terminates(i) ==
-   /\ i \in DOMAIN transaction
-   /\ transaction[i].phase = Change ~>
+   /\ i \in DOMAIN transaction /\ transaction[i].phase = Change ~>
+         /\ i \in DOMAIN transaction
          /\ transaction[i].change.proposal # 0
          /\ proposal[transaction[i].change.proposal].commit \in Done
          /\ proposal[transaction[i].change.proposal].apply \in Done
-   /\ transaction[i].phase = Rollback ~>
+   /\ i \in DOMAIN transaction /\ transaction[i].phase = Rollback ~>
+         /\ i \in DOMAIN transaction
          /\ transaction[i].rollback.proposal # 0
          /\ proposal[transaction[i].rollback.proposal].commit \in Done
          /\ proposal[transaction[i].rollback.proposal].apply \in Done
