@@ -28,10 +28,10 @@ Done == {Complete, Aborted, Failed}
 
 Node == {"node1"}
 
-NumTransactions == 4
-NumTerms == 1
-NumConns == 1
-NumStarts == 1
+NumTransactions == 3
+NumTerms == 2
+NumConns == 2
+NumStarts == 2
 
 Path == {"path1"}
 Value == {"value1", "value2"}
@@ -125,14 +125,14 @@ Init ==
             phase  |-> Nil,
             change |-> [
                proposal |-> 0,
-               index    |-> 0,
+               revision |-> 0,
                values   |-> [
                   p \in {} |-> [
                      index |-> 0,
                      value |-> Nil]]],
             rollback |-> [
                proposal |-> 0,
-               index    |-> 0,
+               revision |-> 0,
                values   |-> [
                   p \in {} |-> [
                      index |-> 0,
@@ -146,15 +146,17 @@ Init ==
          state  |-> Pending,
          term   |-> 0,
          committed |-> [
-            index  |-> 0,
-            values |-> [
+            index    |-> 0,
+            revision |-> 0,
+            values   |-> [
                p \in {} |-> [
                   index |-> 0,
                   value |-> Nil]]],
          applied |-> [
-            target |-> 0,
-            index  |-> 0,
-            values |-> [
+            target   |-> 0,
+            index    |-> 0,
+            revision |-> 0,
+            values   |-> [
                p \in {} |-> [
                   index |-> 0,
                   value |-> Nil]]]]

@@ -38,11 +38,13 @@ TypeOK ==
    /\ configuration.term \in Nat
    /\ \A p \in DOMAIN configuration.committed.values :
          /\ configuration.committed.index \in Nat
+         /\ configuration.committed.revision \in Nat
          /\ configuration.committed.values[p] # Nil =>
                configuration.committed.values[p] \in STRING
    /\ configuration.applied.target \in Nat
    /\ \A p \in DOMAIN configuration.applied.values :
          /\ configuration.applied.index \in Nat
+         /\ configuration.applied.revision \in Nat
          /\ configuration.applied.values[p] # Nil =>
                configuration.applied.values[p] \in STRING
 
