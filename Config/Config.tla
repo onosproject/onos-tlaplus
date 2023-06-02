@@ -28,7 +28,7 @@ Done == {Complete, Aborted, Failed}
 
 Node == {"node1"}
 
-NumTransactions == 3
+NumTransactions == 2
 NumTerms == 1
 NumConns == 1
 NumStarts == 1
@@ -81,7 +81,6 @@ RollbackChange(i) ==
    /\ Transaction!RollbackChange(i)
 
 ReconcileTransaction(n, i) ==
-   /\ i \in DOMAIN transaction
    /\ Transaction!ReconcileTransaction(n, i)
    /\ GenerateTestCases => 
          LET context == [node |-> n, index |-> i]
@@ -180,10 +179,10 @@ Init ==
 Next ==
    \/ \E p \in Path, v \in Value :
          AppendChange(p, v)
-   \/ \E i \in DOMAIN transaction :
+   \/ \E i \in 1..NumTransactions :
          RollbackChange(i)
    \/ \E n \in Node :
-         \E i \in DOMAIN transaction :
+         \E i \in 1..NumTransactions :
             ReconcileTransaction(n, i)
    \/ \E n \in Node :
          ReconcileConfiguration(n)
@@ -210,7 +209,8 @@ Spec ==
          WF_<<mastership, conn>>(Mastership!ReconcileMastership(n))
    /\ \A n \in Node :
          WF_<<conn, target>>(Target!Connect(n) \/ Target!Disconnect(n))
-   /\ WF_<<conn, target>>(Target!Start \/ Target!Stop)
+   /\ WF_<<conn, target>>(Target!Start)
+   /\ WF_<<conn, target>>(Target!Stop)
 
 Alias == [
    log |-> [

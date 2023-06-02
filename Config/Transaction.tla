@@ -215,6 +215,9 @@ ReconcileRollback(n, i) ==
       \/ /\ transaction[i].rollback.proposal # 0
             \* The rollback commit is pending.
          /\ \/ /\ proposal[transaction[i].rollback.proposal].commit = Pending
+               \* The prior proposal has been committed.
+               /\ transaction[i].rollback.proposal-1 \in DOMAIN proposal =>
+                     proposal[transaction[i].rollback.proposal-1].commit \in Done
                   \* The change has been committed. Commit the rollback.
                /\ \/ /\ proposal[transaction[i].change.proposal].commit \in Done
                         \* If the change proposal completed, commit the rollback proposal.
@@ -243,6 +246,9 @@ ReconcileRollback(n, i) ==
                /\ UNCHANGED <<proposal, target, history>>
             \* The rollback apply is pending.
             \/ /\ proposal[transaction[i].rollback.proposal].apply = Pending
+               \* The prior proposal has been applied.
+               /\ transaction[i].rollback.proposal-1 \in DOMAIN proposal =>
+                     proposal[transaction[i].rollback.proposal-1].apply \in Done
                   \* The change has been applied and the rollback has been committed. 
                   \* Apply the rollback.
                /\ \/ /\ proposal[transaction[i].change.proposal].apply \in Done
