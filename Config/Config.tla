@@ -29,9 +29,9 @@ Done == {Complete, Aborted, Failed}
 Node == {"node1"}
 
 NumTransactions == 3
-NumTerms == 2
-NumConns == 2
-NumStarts == 2
+NumTerms == 1
+NumConns == 1
+NumStarts == 1
 
 Path == {"path1"}
 Value == {"value1", "value2"}
@@ -348,20 +348,33 @@ Safety == [](Order /\ Consistency)
 
 THEOREM Spec => Safety
 
+LOCAL IsChanging(i) ==
+   /\ i \in DOMAIN transaction
+   /\ transaction[i].phase = Change
+
+LOCAL IsChanged(i) ==
+   /\ i \in DOMAIN transaction
+   /\ transaction[i].change.proposal \in DOMAIN proposal
+   /\ proposal[transaction[i].change.proposal].commit \in Done
+   /\ proposal[transaction[i].change.proposal].apply \in Done
+
+LOCAL IsRollingBack(i) ==
+   /\ i \in DOMAIN transaction
+   /\ transaction[i].phase = Rollback
+
+LOCAL IsRolledBack(i) ==
+   /\ i \in DOMAIN transaction
+   /\ transaction[i].rollback.proposal \in DOMAIN proposal
+   /\ proposal[transaction[i].rollback.proposal].commit \in Done
+   /\ proposal[transaction[i].rollback.proposal].apply \in Done
+   
+
 Terminates(i) ==
-   /\ i \in DOMAIN transaction /\ transaction[i].phase = Change ~>
-         /\ i \in DOMAIN transaction
-         /\ transaction[i].change.proposal # 0
-         /\ proposal[transaction[i].change.proposal].commit \in Done
-         /\ proposal[transaction[i].change.proposal].apply \in Done
-   /\ i \in DOMAIN transaction /\ transaction[i].phase = Rollback ~>
-         /\ i \in DOMAIN transaction
-         /\ transaction[i].rollback.proposal # 0
-         /\ proposal[transaction[i].rollback.proposal].commit \in Done
-         /\ proposal[transaction[i].rollback.proposal].apply \in Done
+   /\ IsChanging(i) ~> IsChanged(i)
+   /\ IsRollingBack(i) ~> IsRolledBack(i)
 
 Termination ==
-   \A i \in 1..NumTransactions : <>Terminates(i)
+   \A i \in 1..NumTransactions : Terminates(i)
 
 Liveness == Termination
 

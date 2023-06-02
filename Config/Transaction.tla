@@ -184,7 +184,8 @@ ReconcileChange(n, i) ==
                      /\ target.running
                         \* The change is successfully applied to the target.
                      /\ \/ /\ target' = [target EXCEPT !.values = transaction[i].change.values @@ target.values]
-                           /\ configuration' = [configuration EXCEPT !.applied.revision = i,
+                           /\ configuration' = [configuration EXCEPT !.applied.index    = i,
+                                                                     !.applied.revision = i,
                                                                      !.applied.values   = transaction[i].change.values @@
                                                                                              configuration.applied.values]
                            /\ proposal' = [proposal EXCEPT ![transaction[i].change.proposal].apply = Complete]
