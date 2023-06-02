@@ -41,13 +41,6 @@ Empty == [p \in {} |-> Nil]
 
 ----
 
-\* Variables defined by other modules.
-VARIABLES 
-   configuration,
-   mastership,
-   conn,
-   target
-
 \* A transaction log. Transactions may either request a set
 \* of changes to a set of targets or rollback a prior change.
 VARIABLE transaction
