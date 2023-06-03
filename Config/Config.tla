@@ -82,9 +82,7 @@ RollbackChange(i) ==
 
 ReconcileTransaction(n, i) ==
    /\ Transaction!ReconcileTransaction(n, i)
-   /\ GenerateTestCases => 
-         LET context == [node |-> n, index |-> i]
-         IN Transaction!Test!Log(context)
+   /\ GenerateTestCases => Transaction!Test!Log([node |-> n, index |-> i])
 
 ReconcileConfiguration(n) ==
    /\ Configuration!ReconcileConfiguration(n)
@@ -197,20 +195,8 @@ Next ==
 Spec ==
    /\ Init
    /\ [][Next]_vars
-   /\ \A p \in Path, v \in Value :
-         WF_<<transaction, proposal, configuration, mastership, conn, target, history>>(Transaction!AppendChange(p, v))
-   /\ \A i \in 1..NumTransactions :
-         WF_<<transaction, proposal, configuration, mastership, conn, target, history>>(Transaction!RollbackChange(i))
    /\ \A n \in Node, i \in 1..NumTransactions :
          WF_<<transaction, proposal, configuration, mastership, conn, target, history>>(Transaction!ReconcileTransaction(n, i))
-   /\ \A n \in Node :
-         WF_<<configuration, mastership, conn, target>>(Configuration!ReconcileConfiguration(n))
-   /\ \A n \in Node :
-         WF_<<mastership, conn>>(Mastership!ReconcileMastership(n))
-   /\ \A n \in Node :
-         WF_<<conn, target>>(Target!Connect(n) \/ Target!Disconnect(n))
-   /\ WF_<<conn, target>>(Target!Start)
-   /\ WF_<<conn, target>>(Target!Stop)
 
 Alias == [
    log |-> [
@@ -367,7 +353,6 @@ LOCAL IsRolledBack(i) ==
    /\ transaction[i].rollback.proposal \in DOMAIN proposal
    /\ proposal[transaction[i].rollback.proposal].commit \in Done
    /\ proposal[transaction[i].rollback.proposal].apply \in Done
-   
 
 Terminates(i) ==
    /\ IsChanging(i) ~> IsChanged(i)

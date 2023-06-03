@@ -111,11 +111,11 @@ AppendChange(p, v) ==
                         phase    |-> Change,
                         change   |-> [
                            proposal |-> 0,
-                           revision    |-> Len(transaction)+1,
- 	                        values   |-> (p :> v)],
+                           revision |-> Len(transaction)+1,
+ 	                       values   |-> (p :> v)],
                         rollback |-> [
                            proposal |-> 0,
-                           revision    |-> 0,
+                           revision |-> 0,
                            values   |-> Empty]])
    /\ UNCHANGED <<proposal, configuration, mastership, conn, target, history>>
 
