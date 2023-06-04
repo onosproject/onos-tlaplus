@@ -22,13 +22,14 @@ Apply == "Apply"
 
 Pending == "Pending"
 Complete == "Complete"
+Canceled == "Canceled"
 Aborted == "Aborted"
 Failed == "Failed"
-Done == {Complete, Aborted, Failed}
+Done == {Complete, Canceled, Aborted, Failed}
 
 Node == {"node1"}
 
-NumTransactions == 2
+NumTransactions == 3
 NumTerms == 1
 NumConns == 1
 NumStarts == 1
@@ -199,6 +200,8 @@ Spec ==
          WF_<<transaction>>(Transaction!RollbackChange(i))
    /\ \A n \in Node, i \in 1..NumTransactions :
          WF_<<transaction, proposal, configuration, mastership, conn, target, history>>(Transaction!ReconcileTransaction(n, i))
+   /\ \A n \in Node :
+         WF_<<configuration, mastership, conn, target>>(Configuration!ReconcileConfiguration(n))
 
 Alias == [
    log |-> [
