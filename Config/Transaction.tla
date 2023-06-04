@@ -204,10 +204,10 @@ ReconcileChange(n, i) ==
                            /\ UNCHANGED <<target, history>>
                   \* If the prior change failed apply or was aborted due to an earlier apply failure 
                   \* and the change has not been rolled back, abort this change.
-                  \/ /\ i-1 \in DOMAIN transaction =>
-                           /\ proposal[transaction[i-1].change.proposal].apply \in {Aborted, Failed}
-                           /\ transaction[i-1].rollback.proposal \in DOMAIN proposal =>
-                                 proposal[transaction[i-1].rollback.proposal].apply # Complete
+                  \/ /\ i-1 \in DOMAIN transaction
+                     /\ proposal[transaction[i-1].change.proposal].apply \in {Aborted, Failed}
+                     /\ transaction[i-1].rollback.proposal \in DOMAIN proposal =>
+                           proposal[transaction[i-1].rollback.proposal].apply # Complete
                      /\ proposal' = [proposal EXCEPT ![transaction[i].change.proposal].apply = Aborted]
                      /\ UNCHANGED <<configuration, target, history>>
                /\ UNCHANGED <<transaction>>
