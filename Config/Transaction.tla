@@ -148,8 +148,7 @@ ReconcileChange(n, i) ==
                /\ transaction[i].change.proposal-1 \in DOMAIN proposal =>
                      proposal[transaction[i].change.proposal-1].commit \in Done
                \* The prior change has been committed.
-               /\ i-1 \in DOMAIN transaction =>
-                     proposal[transaction[i-1].change.proposal].commit \in Done
+               /\ configuration.committed.index = i-1
                   \* Valid change is committed to the configuration.
                /\ \/ /\ transaction' = [transaction EXCEPT ![i].rollback.revision = configuration.committed.revision,
                                                            ![i].rollback.values   = [
@@ -177,11 +176,7 @@ ReconcileChange(n, i) ==
                      proposal[transaction[i].change.proposal-1].apply \in Done
                   \* If the prior change completed apply, or if apply failed the prior change has been
                   \* rolled back, apply this change.
-               /\ \/ /\ i-1 \in DOMAIN transaction =>
-                           \/ proposal[transaction[i-1].change.proposal].apply \in {Complete, Canceled}
-                           \/ /\ proposal[transaction[i-1].change.proposal].apply = Aborted
-                              /\ transaction[i-1].rollback.proposal \in DOMAIN proposal
-                              /\ proposal[transaction[i-1].rollback.proposal].apply = Complete
+               /\ \/ /\ configuration.applied.index = i-1
                         \* The change was committed successfully. Apply the change.
                      /\ \/ /\ proposal[transaction[i].change.proposal].commit = Complete
                            /\ configuration.state = Complete
@@ -202,10 +197,11 @@ ReconcileChange(n, i) ==
                               \* subsequent changes until the failed change is rolled back.
                               \/ /\ proposal' = [proposal EXCEPT ![transaction[i].change.proposal].apply = Failed]
                                  /\ UNCHANGED <<configuration, target, history>>
-                        \* The change failed validation. Cancel the change.
+                        \* The change failed validation. Increment the applied index and cancel the change.
                         \/ /\ proposal[transaction[i].change.proposal].commit = Failed
+                           /\ configuration' = [configuration EXCEPT !.applied.index = i]
                            /\ proposal' = [proposal EXCEPT ![transaction[i].change.proposal].apply = Canceled]
-                           /\ UNCHANGED <<configuration, target, history>>
+                           /\ UNCHANGED <<target, history>>
                   \* If the prior change failed apply or was aborted due to an earlier apply failure 
                   \* and the change has not been rolled back, abort this change.
                   \/ /\ i-1 \in DOMAIN transaction =>
@@ -287,6 +283,14 @@ ReconcileRollback(n, i) ==
                   \/ /\ proposal[transaction[i].change.proposal].apply = Pending
                      /\ proposal' = [proposal EXCEPT ![transaction[i].change.proposal].apply = Canceled]
                      /\ UNCHANGED <<configuration, target, history>>
+               \* If the apply is complete and the applied index matches the previous change index,
+               \* increment the applied index to unblock later changes. This ensures that changes
+               \* following a sequence of aborted/failed changes are blocked until the failed/aborted
+               \* changes are rolled back and unblocked once all rollbacks have been applied.
+               \/ /\ proposal[transaction[i].rollback.proposal].apply = Complete
+                  /\ configuration.applied.index = i-1
+                  /\ configuration' = [configuration EXCEPT !.applied.index = i]
+                  /\ UNCHANGED <<proposal, target, history>>
          /\ UNCHANGED <<transaction>>
 
 ReconcileTransaction(n, i) ==
