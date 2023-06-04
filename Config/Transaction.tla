@@ -131,16 +131,15 @@ RollbackChange(i) ==
 ----
 
 ReconcileChange(n, i) ==
-   /\ transaction[i].phase = Change
       \* The change proposal has not yet been created.
-   /\ \/ /\ transaction[i].change.proposal = 0
+   /\ \/ /\ transaction[i].change.proposal \notin DOMAIN proposal
          \* The prior transaction must have created a change proposal.
          /\ i-1 \in DOMAIN transaction => transaction[i-1].change.proposal # 0
          /\ proposal' = Append(proposal, [transaction |-> i, commit |-> Pending, apply |-> Pending])
          /\ transaction' = [transaction EXCEPT ![i].change.proposal = Len(proposal')]
          /\ UNCHANGED <<configuration, target, history>>
       \* The change proposal has been created.
-      \/ /\ transaction[i].change.proposal # 0
+      \/ /\ transaction[i].change.proposal \in DOMAIN proposal
             \* The change is pending commit. Validate and commit the change once the prior
             \* change has been committed.
          /\ \/ /\ proposal[transaction[i].change.proposal].commit = Pending
@@ -203,21 +202,19 @@ ReconcileChange(n, i) ==
                /\ UNCHANGED <<transaction>>
 
 ReconcileRollback(n, i) ==
-   /\ transaction[i].phase = Rollback
+   /\ transaction[i].change.proposal \in DOMAIN proposal
       \* The rollback proposal has not yet been created.
-   /\ \/ /\ transaction[i].rollback.proposal = 0
+   /\ \/ /\ transaction[i].rollback.proposal \notin DOMAIN proposal
+         /\ transaction[i].phase = Rollback
          \* The subsequent transaction must have created a rollback proposal.
          /\ i+1 \in DOMAIN transaction => transaction[i+1].rollback.proposal # 0
          /\ proposal' = Append(proposal, [transaction |-> i, commit |-> Pending, apply |-> Pending])
          /\ transaction' = [transaction EXCEPT ![i].rollback.proposal = Len(proposal')]
          /\ UNCHANGED <<configuration, target, history>>
       \* The rollback proposal has been created.
-      \/ /\ transaction[i].rollback.proposal # 0
+      \/ /\ transaction[i].rollback.proposal \in DOMAIN proposal
             \* The rollback commit is pending.
          /\ \/ /\ proposal[transaction[i].rollback.proposal].commit = Pending
-               \* The prior proposal has been committed.
-               /\ transaction[i].rollback.proposal-1 \in DOMAIN proposal =>
-                     proposal[transaction[i].rollback.proposal-1].commit \in Done
                   \* The change has been committed. Commit the rollback.
                /\ \/ /\ proposal[transaction[i].change.proposal].commit \in Done
                         \* If the change proposal completed, commit the rollback proposal.
@@ -246,9 +243,6 @@ ReconcileRollback(n, i) ==
                /\ UNCHANGED <<proposal, target, history>>
             \* The rollback apply is pending.
             \/ /\ proposal[transaction[i].rollback.proposal].apply = Pending
-               \* The prior proposal has been applied.
-               /\ transaction[i].rollback.proposal-1 \in DOMAIN proposal =>
-                     proposal[transaction[i].rollback.proposal-1].apply \in Done
                   \* The change has been applied and the rollback has been committed. 
                   \* Apply the rollback.
                /\ \/ /\ proposal[transaction[i].change.proposal].apply \in Done

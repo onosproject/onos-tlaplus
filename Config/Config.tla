@@ -195,6 +195,8 @@ Next ==
 Spec ==
    /\ Init
    /\ [][Next]_vars
+   /\ \A i \in 1..NumTransactions :
+         WF_<<transaction>>(Transaction!RollbackChange(i))
    /\ \A n \in Node, i \in 1..NumTransactions :
          WF_<<transaction, proposal, configuration, mastership, conn, target, history>>(Transaction!ReconcileTransaction(n, i))
 
