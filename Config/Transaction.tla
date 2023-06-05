@@ -219,8 +219,7 @@ ReconcileRollback(n, i) ==
    /\ \/ /\ transaction[i].rollback.proposal \notin DOMAIN proposal
          \* The subsequent transaction, if present, is being rolled back.
          /\ i+1 \in DOMAIN transaction => 
-               /\ transaction[i+1].rollback.proposal \in DOMAIN proposal
-               /\ Len(proposal) = transaction[i+1].rollback.proposal
+               transaction[i+1].rollback.proposal \in DOMAIN proposal
          /\ proposal' = Append(proposal, [transaction |-> i, commit |-> Pending, apply |-> Pending])
          /\ transaction' = [transaction EXCEPT ![i].rollback.proposal = Len(proposal')]
          /\ UNCHANGED <<configuration, target, history>>
@@ -228,14 +227,10 @@ ReconcileRollback(n, i) ==
       \/ /\ transaction[i].rollback.proposal \in DOMAIN proposal
             \* The rollback commit is pending.
          /\ \/ /\ proposal[transaction[i].rollback.proposal].commit = Pending
-               \* The prior proposal has been committed.
-               /\ transaction[i].rollback.proposal-1 \in DOMAIN proposal =>
-                     proposal[transaction[i].rollback.proposal-1].commit \in Done
-               \* The prior change has been committed.
-               /\ i-1 \in DOMAIN transaction =>
-                     proposal[transaction[i-1].change.proposal].commit \in Done
                   \* If the change proposal completed, commit the rollback proposal.
                /\ \/ /\ proposal[transaction[i].change.proposal].commit = Complete
+                     \* This transaction is the current revision of the configuration.
+                     /\ configuration.committed.revision = i
                      /\ configuration' = [configuration EXCEPT !.committed.revision = transaction[i].rollback.revision,
                                                                !.committed.values   = transaction[i].rollback.values @@ 
                                                                                           configuration.committed.values]
@@ -248,19 +243,16 @@ ReconcileRollback(n, i) ==
                /\ UNCHANGED <<target>>
             \* The rollback apply is pending.
             \/ /\ proposal[transaction[i].rollback.proposal].apply = Pending
-               \* The prior proposal has been applied.
-               /\ transaction[i].rollback.proposal-1 \in DOMAIN proposal =>
-                     proposal[transaction[i].rollback.proposal-1].apply \in Done
-               \* The prior change has been applied.
-               /\ i-1 \in DOMAIN transaction =>
-                     proposal[transaction[i-1].change.proposal].apply \in Done
                   \* The change has been applied and the rollback has been committed. 
                   \* Apply the rollback.
                /\ \/ /\ proposal[transaction[i].change.proposal].apply \in Done
                      /\ proposal[transaction[i].rollback.proposal].commit = Complete
                         \* The change was applied or the apply failed. Ensure the rollback
                         \* is updated in the target.
-                     /\ \/ /\ proposal[transaction[i].change.proposal].apply \in {Complete, Failed}
+                     /\ \/ /\ \/ /\ proposal[transaction[i].change.proposal].apply = Complete
+                                 \* This transaction is the current revision of the configuration.
+                                 /\ configuration.applied.revision = i
+                              \/ proposal[transaction[i].change.proposal].apply = Failed
                            /\ configuration.state = Complete
                            /\ configuration.term = mastership.term
                            /\ conn[n].id = mastership.conn
