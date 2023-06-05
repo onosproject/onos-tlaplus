@@ -227,6 +227,8 @@ ReconcileRollback(n, i) ==
       \/ /\ transaction[i].rollback.proposal \in DOMAIN proposal
             \* The rollback commit is pending.
          /\ \/ /\ proposal[transaction[i].rollback.proposal].commit = Pending
+               /\ transaction[i].rollback.proposal-1 \in DOMAIN proposal =>
+                     proposal[transaction[i].rollback.proposal-1].commit \in Done
                   \* If the change proposal completed, commit the rollback proposal.
                /\ \/ /\ proposal[transaction[i].change.proposal].commit = Complete
                      \* This transaction is the current revision of the configuration.
@@ -247,18 +249,19 @@ ReconcileRollback(n, i) ==
                   \* Apply the rollback.
                /\ \/ /\ proposal[transaction[i].change.proposal].apply \in Done
                      /\ proposal[transaction[i].rollback.proposal].commit = Complete
-                        \* The change was applied or the apply failed. Ensure the rollback
-                        \* is updated in the target.
-                     /\ \/ /\ \/ /\ proposal[transaction[i].change.proposal].apply = Complete
-                                 \* This transaction is the current revision of the configuration.
-                                 /\ configuration.applied.revision = i
-                              \/ proposal[transaction[i].change.proposal].apply = Failed
+                     /\ transaction[i].rollback.proposal-1 \in DOMAIN proposal =>
+                           proposal[transaction[i].rollback.proposal-1].apply \in Done
+                        \* If the change was applied successfully, roll back the change on the target
+                        \* and update the applied values in the configuration. Rollbacks are serialized
+                        \* in proposal order. Rollbacks are blocked until the revision matches the change 
+                        \* index to avoid rolling back a change when a subsequent rollback is still pending.
+                     /\ \/ /\ proposal[transaction[i].change.proposal].apply = Complete
+                           /\ configuration.applied.revision = i
                            /\ configuration.state = Complete
                            /\ configuration.term = mastership.term
                            /\ conn[n].id = mastership.conn
                            /\ conn[n].connected
                            /\ target.running
-                           \* Rollbacks are applied until successful.
                            /\ target' = [target EXCEPT !.values = transaction[i].rollback.values @@ target.values]
                            /\ configuration' = [configuration EXCEPT !.applied.target   = target.id,
                                                                      !.applied.revision = transaction[i].rollback.revision,
@@ -266,15 +269,22 @@ ReconcileRollback(n, i) ==
                                                                                              configuration.applied.values]
                            /\ proposal' = [proposal EXCEPT ![transaction[i].rollback.proposal].apply = Complete]
                            /\ history' = Append(history, [type |-> Rollback, phase |-> Apply, index |-> i])
+                        \* If the change apply failed, the change could have been partially applied to the
+                        \* target and therefore mut be rolled back despite the failure.
+                        \/ /\ proposal[transaction[i].change.proposal].apply = Failed
+                           /\ configuration.state = Complete
+                           /\ configuration.term = mastership.term
+                           /\ conn[n].id = mastership.conn
+                           /\ conn[n].connected
+                           /\ target.running
+                           /\ target' = [target EXCEPT !.values = transaction[i].rollback.values @@ target.values]
+                           /\ proposal' = [proposal EXCEPT ![transaction[i].rollback.proposal].apply = Complete]
+                           /\ UNCHANGED <<configuration, history>>
                         \* If the change apply was aborted or canceled, no requests were sent to the target.
                         \* Complete the rollback apply without changes to the target.
                         \/ /\ proposal[transaction[i].change.proposal].apply \in {Aborted, Canceled}
                            /\ proposal' = [proposal EXCEPT ![transaction[i].rollback.proposal].apply = Complete]
                            /\ UNCHANGED <<configuration, target, history>>
-                  \* The change is pending apply. cancel applying the change.
-                  \/ /\ proposal[transaction[i].change.proposal].apply = Pending
-                     /\ proposal' = [proposal EXCEPT ![transaction[i].change.proposal].apply = Canceled]
-                     /\ UNCHANGED <<configuration, target, history>>
                \* If the apply is complete and the applied index matches the previous change index,
                \* increment the applied index to unblock later changes. This ensures that changes
                \* following a sequence of aborted/failed changes are blocked until the failed/aborted
