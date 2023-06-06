@@ -22,10 +22,8 @@ Apply == "Apply"
 
 Pending == "Pending"
 Complete == "Complete"
-Canceled == "Canceled"
 Aborted == "Aborted"
 Failed == "Failed"
-Done == {Complete, Canceled, Aborted, Failed}
 
 Node == {"node1"}
 
@@ -304,8 +302,8 @@ LOCAL IsChanged(i) ==
    \E j \in DOMAIN transaction : 
       /\ transaction[j].type = Change 
       /\ transaction[j].change.revision = i
-      /\ transaction[j].commit \in Done
-      /\ transaction[j].apply \in Done
+      /\ transaction[j].commit # Pending
+      /\ transaction[j].apply # Pending
 
 LOCAL IsRollingBack(i) ==
    \E j \in DOMAIN transaction : 
@@ -316,8 +314,8 @@ LOCAL IsRolledBack(i) ==
    \E j \in DOMAIN transaction : 
       /\ transaction[j].type = Rollback 
       /\ transaction[j].rollback.revision = i
-      /\ transaction[j].commit \in Done
-      /\ transaction[j].apply \in Done
+      /\ transaction[j].commit # Pending
+      /\ transaction[j].apply # Pending
 
 Terminates(i) ==
    /\ IsChanging(i) ~> IsChanged(i)

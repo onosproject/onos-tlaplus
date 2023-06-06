@@ -27,13 +27,10 @@ CONSTANTS
 CONSTANTS
    Pending,
    Complete,
-   Canceled,
    Aborted,
    Failed
 
-Status == {Pending, Complete, Canceled, Aborted, Failed}
-
-Done == {Complete, Canceled, Aborted, Failed}
+Status == {Pending, Complete, Aborted, Failed}
 
 \* The set of all nodes
 CONSTANT Node
@@ -130,7 +127,7 @@ ROLLBACK [index=9, revision=5,  change=(index=1, revision=1), rollback=(index=6,
 
 *)
 
-\* Add a set of changes 'c' to the transaction log
+\* Add a change for revision 'i' to the transaction log
 AppendChange(i) ==
    /\ LastTransaction.revision = i-1
    /\ Len(transaction) > 0 => transaction[Len(transaction)].commit = Complete
@@ -154,7 +151,7 @@ AppendChange(i) ==
                                  apply    |-> Pending])
    /\ UNCHANGED <<configuration, mastership, conn, target, history>>
 
-\* Add a rollback of transaction 't' to the transaction log
+\* Add a rollback of revision 'i' to the transaction log
 RollbackChange(i) ==
    /\ LastTransaction.change.revision = i
    /\ Len(transaction) > 0 => transaction[Len(transaction)].commit = Complete
@@ -179,7 +176,7 @@ RollbackChange(i) ==
 CommitChange(n, i) ==
    /\ transaction[i].commit = Pending
    /\ i-1 \in DOMAIN transaction =>
-         transaction[i-1].commit \in Done
+         transaction[i-1].commit # Pending
    /\ configuration' = [configuration EXCEPT !.committed.index    = transaction[i].change.index,
                                              !.committed.revision = transaction[i].change.revision,
                                              !.committed.values   = transaction[i].change.values @@ 
@@ -195,7 +192,7 @@ ApplyChange(n, i) ==
    /\ transaction[i].apply = Pending
    /\ transaction[i].commit = Complete
    /\ i-1 \in DOMAIN transaction =>
-         transaction[i-1].apply \in Done
+         transaction[i-1].apply # Pending
    /\ \/ /\ i-1 \in DOMAIN transaction =>
                transaction[i-1].apply = Complete
          /\ configuration.state = Complete
@@ -230,7 +227,7 @@ ReconcileChange(n, i) ==
 CommitRollback(n, i) ==
    /\ transaction[i].commit = Pending
    /\ i-1 \in DOMAIN transaction =>
-         transaction[i-1].commit \in Done
+         transaction[i-1].commit # Pending
    /\ configuration' = [configuration EXCEPT !.committed.index    = transaction[i].change.index,
                                              !.committed.revision = transaction[i].change.revision,
                                              !.committed.values   = transaction[i].change.values @@ 
@@ -246,7 +243,7 @@ ApplyRollback(n, i) ==
    /\ transaction[i].apply = Pending
    /\ transaction[i].commit = Complete
    /\ i-1 \in DOMAIN transaction =>
-         transaction[i-1].apply \in Done
+         transaction[i-1].apply # Pending
    /\ \/ /\ transaction[transaction[i].rollback.index].apply \in {Complete, Failed}
          /\ configuration.state = Complete
          /\ configuration.term = mastership.term
