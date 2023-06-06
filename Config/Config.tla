@@ -30,21 +30,17 @@ Done == {Complete, Canceled, Aborted, Failed}
 Node == {"node1"}
 
 NumTransactions == 3
-NumTerms == 1
-NumConns == 1
-NumStarts == 1
+NumTerms == 2
+NumConns == 2
+NumStarts == 2
 
 Path == {"path1"}
 Value == {"value1", "value2"}
 
 ----
 
-\* A transaction log. Transactions may either request a set
-\* of changes to a set of targets or rollback a prior change.
+\* A transaction log of changes and rollbacks.
 VARIABLE transaction
-
-\* A record of per-target proposals
-VARIABLE proposal
 
 \* A record of per-target configurations
 VARIABLE configuration
@@ -61,7 +57,7 @@ VARIABLE target
 \* A sequence of state changes used for model checking.
 VARIABLE history
 
-vars == <<transaction, proposal, configuration, mastership, conn, target, history>>
+vars == <<transaction, configuration, mastership, conn, target, history>>
 
 ----
 
@@ -75,8 +71,8 @@ LOCAL Target == INSTANCE Target
 
 ----
 
-AppendChange(p, v) ==
-   /\ Transaction!AppendChange(p, v)
+AppendChange(i) ==
+   /\ Transaction!AppendChange(i)
 
 RollbackChange(i) ==
    /\ Transaction!RollbackChange(i)
@@ -87,29 +83,29 @@ ReconcileTransaction(n, i) ==
 
 ReconcileConfiguration(n) ==
    /\ Configuration!ReconcileConfiguration(n)
-   /\ UNCHANGED <<transaction, proposal, history>>
+   /\ UNCHANGED <<transaction, history>>
    /\ GenerateTestCases => Configuration!Test!Log([node |-> n])
 
 ReconcileMastership(n) ==
    /\ Mastership!ReconcileMastership(n)
-   /\ UNCHANGED <<transaction, proposal, configuration, target, history>>
+   /\ UNCHANGED <<transaction, configuration, target, history>>
    /\ GenerateTestCases => Mastership!Test!Log([node |-> n])
 
 ConnectNode(n) ==
    /\ Target!Connect(n)
-   /\ UNCHANGED <<transaction, proposal, configuration, mastership, history>>
+   /\ UNCHANGED <<transaction, configuration, mastership, history>>
 
 DisconnectNode(n) ==
    /\ Target!Disconnect(n)
-   /\ UNCHANGED <<transaction, proposal, configuration, mastership, history>>
+   /\ UNCHANGED <<transaction, configuration, mastership, history>>
 
 StartTarget ==
    /\ Target!Start
-   /\ UNCHANGED <<transaction, proposal, configuration, mastership, history>>
+   /\ UNCHANGED <<transaction, configuration, mastership, history>>
 
 StopTarget ==
    /\ Target!Stop
-   /\ UNCHANGED <<transaction, proposal, configuration, mastership, history>>
+   /\ UNCHANGED <<transaction, configuration, mastership, history>>
 
 ----
 
@@ -120,26 +116,25 @@ Formal specification, constraints, and theorems.
 Init ==
    /\ transaction = [
          i \in {} |-> [
-            phase  |-> Nil,
-            change |-> [
-               proposal |-> 0,
+            type     |-> Nil,
+            index    |-> 0,
+            revision |-> 0,
+            commit   |-> Nil,
+            apply    |-> Nil,
+            change   |-> [
+               index    |-> 0,
                revision |-> 0,
                values   |-> [
                   p \in {} |-> [
                      index |-> 0,
                      value |-> Nil]]],
             rollback |-> [
-               proposal |-> 0,
+               index    |-> 0,
                revision |-> 0,
                values   |-> [
                   p \in {} |-> [
                      index |-> 0,
                      value |-> Nil]]]]]
-   /\ proposal = [
-         i \in {} |-> [
-            transaction |-> 0,
-            commit      |-> Nil,
-            apply       |-> Nil]]
    /\ configuration = [
          state  |-> Pending,
          term   |-> 0,
@@ -176,12 +171,11 @@ Init ==
    /\ history = <<>>
 
 Next ==
-   \/ \E p \in Path, v \in Value :
-         AppendChange(p, v)
    \/ \E i \in 1..NumTransactions :
-         RollbackChange(i)
+         \/ AppendChange(i)
+         \/ RollbackChange(i)
    \/ \E n \in Node :
-         \E i \in 1..NumTransactions :
+         \E i \in DOMAIN transaction :
             ReconcileTransaction(n, i)
    \/ \E n \in Node :
          ReconcileConfiguration(n)
@@ -198,44 +192,17 @@ Spec ==
    /\ [][Next]_vars
    /\ \A i \in 1..NumTransactions :
          WF_<<transaction>>(Transaction!RollbackChange(i))
-   /\ \A n \in Node, i \in 1..NumTransactions :
-         WF_<<transaction, proposal, configuration, mastership, conn, target, history>>(Transaction!ReconcileTransaction(n, i))
+   /\ \A n \in Node :
+         WF_vars(\E i \in DOMAIN transaction : Transaction!ReconcileTransaction(n, i))
    /\ \A n \in Node :
          WF_<<configuration, mastership, conn, target>>(Configuration!ReconcileConfiguration(n))
-
-Alias == [
-   log |-> [
-      i \in DOMAIN transaction |-> [
-         change |-> 
-            IF transaction[i].change.proposal # 0 THEN 
-               [commit |-> proposal[transaction[i].change.proposal].commit,
-                apply  |-> proposal[transaction[i].change.proposal].apply,
-                values |-> transaction[i].change.values] 
-            ELSE 
-               [commit |-> Nil, 
-                apply  |-> Nil,
-                values |-> transaction[i].change.values],
-         rollback |-> 
-            IF transaction[i].rollback.proposal # 0 THEN 
-               [commit |-> proposal[transaction[i].rollback.proposal].commit,
-                apply  |-> proposal[transaction[i].rollback.proposal].apply,
-                values |-> transaction[i].rollback.values] 
-            ELSE 
-               [commit |-> Nil, 
-                apply  |-> Nil,
-                values |-> transaction[i].rollback.values]] @@ 
-         transaction[i]],
-   transaction   |-> transaction,
-   proposal      |-> proposal,
-   configuration |-> configuration,
-   mastership    |-> mastership,
-   conn          |-> conn,
-   target        |-> target,
-   history       |-> history]
+   /\ \A n \in Node :
+         WF_<<mastership, conn>>(Mastership!ReconcileMastership(n))
+   /\ \A n \in Node :
+         WF_<<conn, target>>(Target!Connect(n) \/ Target!Disconnect(n))
+   /\ WF_<<conn, target>>(Target!Start \/ Target!Stop)
 
 ----
-
-LimitTransactions == Len(transaction) <= NumTransactions
 
 LimitTerms == 
    \/ mastership.term < NumTerms
@@ -267,7 +234,7 @@ LOCAL IsOrderedChange(p, i) ==
          /\ j < i
          /\ history[j].type = Change
          /\ history[j].phase = p
-         /\ history[j].index >= history[i].index
+         /\ history[j].revision >= history[i].revision
 
 LOCAL IsOrderedRollback(p, i) ==
    /\ history[i].type = Rollback
@@ -275,18 +242,18 @@ LOCAL IsOrderedRollback(p, i) ==
    /\ \E j \in DOMAIN history :
          /\ j < i
          /\ history[j].type = Change
-         /\ history[j].index = history[i].index
+         /\ history[j].revision = history[i].revision
    /\ ~\E j \in DOMAIN history :
          /\ j < i
          /\ history[j].type = Change
          /\ history[j].phase = p
-         /\ history[j].index > history[i].index
+         /\ history[j].revision > history[i].revision
          /\ ~\E k \in DOMAIN history :
                /\ k > j
                /\ k < i
                /\ history[k].type = Rollback
                /\ history[k].phase = p
-               /\ history[k].index = history[j].index
+               /\ history[k].revision = history[j].revision
 
 Order ==
    /\ \A i \in DOMAIN history :
@@ -295,39 +262,28 @@ Order ==
       \/ IsOrderedRollback(Commit, i)
       \/ IsOrderedRollback(Apply, i)
    /\ \A i \in DOMAIN transaction :
-         /\ transaction[i].change.proposal # 0
-         /\ proposal[transaction[i].change.proposal].apply = Failed
-         /\ transaction[i].rollback.proposal # 0 => 
-               proposal[transaction[i].rollback.proposal].apply # Complete
-         => \A j \in DOMAIN transaction : (j > i => 
-               (transaction[j].change.proposal # 0 => 
-                  proposal[transaction[j].change.proposal].apply # Complete))
-
-LOCAL IsChangeCommitted(i) ==
-   /\ transaction[i].change.proposal # 0
-   /\ proposal[transaction[i].change.proposal].commit = Complete
-   /\ transaction[i].rollback.proposal # 0 =>
-         proposal[transaction[i].rollback.proposal].commit # Complete
-
-LOCAL IsChangeApplied(i) ==
-   /\ transaction[i].change.proposal # 0
-   /\ proposal[transaction[i].change.proposal].apply = Complete
-   /\ transaction[i].rollback.proposal # 0 =>
-         proposal[transaction[i].rollback.proposal].apply # Complete
+         /\ transaction[i].type = Change
+         /\ transaction[i].apply = Failed
+         /\ ~\E j \in DOMAIN transaction : 
+               /\ transaction[j].type = Rollback
+               /\ transaction[j].rollback.revision = transaction[i].change.revision
+               /\ transaction[j].apply = Complete
+         => \A j \in DOMAIN transaction : (j > i =>
+               (transaction[j].type = Change => transaction[j].apply # Complete))
 
 Consistency ==
    /\ \A i \in DOMAIN transaction :
-         /\ IsChangeCommitted(i)
+         /\ transaction[i].commit = Complete
          /\ ~\E j \in DOMAIN transaction :
                /\ j > i
-               /\ IsChangeCommitted(j)
+               /\ transaction[j].commit = Complete
          => \A p \in DOMAIN transaction[i].change.values :
                /\ configuration.committed.values[p] = transaction[i].change.values[p]
    /\ \A i \in DOMAIN transaction :
-         /\ IsChangeApplied(i)
+         /\ transaction[i].apply = Complete
          /\ ~\E j \in DOMAIN transaction :
                /\ j > i
-               /\ IsChangeApplied(j)
+               /\ transaction[j].apply = Complete
          => \A p \in DOMAIN transaction[i].change.values :
                /\ configuration.applied.values[p] = transaction[i].change.values[p]
                /\ /\ target.running
@@ -340,24 +296,28 @@ Safety == [](Order /\ Consistency)
 THEOREM Spec => Safety
 
 LOCAL IsChanging(i) ==
-   /\ i \in DOMAIN transaction
-   /\ transaction[i].phase = Change
+   \E j \in DOMAIN transaction : 
+      /\ transaction[j].type = Change 
+      /\ transaction[j].change.revision = i
 
 LOCAL IsChanged(i) ==
-   /\ i \in DOMAIN transaction
-   /\ transaction[i].change.proposal \in DOMAIN proposal
-   /\ proposal[transaction[i].change.proposal].commit \in Done
-   /\ proposal[transaction[i].change.proposal].apply \in Done
+   \E j \in DOMAIN transaction : 
+      /\ transaction[j].type = Change 
+      /\ transaction[j].change.revision = i
+      /\ transaction[j].commit \in Done
+      /\ transaction[j].apply \in Done
 
 LOCAL IsRollingBack(i) ==
-   /\ i \in DOMAIN transaction
-   /\ transaction[i].phase = Rollback
+   \E j \in DOMAIN transaction : 
+      /\ transaction[j].type = Rollback 
+      /\ transaction[j].rollback.revision = i
 
 LOCAL IsRolledBack(i) ==
-   /\ i \in DOMAIN transaction
-   /\ transaction[i].rollback.proposal \in DOMAIN proposal
-   /\ proposal[transaction[i].rollback.proposal].commit \in Done
-   /\ proposal[transaction[i].rollback.proposal].apply \in Done
+   \E j \in DOMAIN transaction : 
+      /\ transaction[j].type = Rollback 
+      /\ transaction[j].rollback.revision = i
+      /\ transaction[j].commit \in Done
+      /\ transaction[j].apply \in Done
 
 Terminates(i) ==
    /\ IsChanging(i) ~> IsChanged(i)
