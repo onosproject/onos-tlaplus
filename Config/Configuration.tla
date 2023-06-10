@@ -76,8 +76,7 @@ ReconcileConfiguration(n) ==
          /\ conn[n].connected
          /\ target.running
          /\ target' = [target EXCEPT !.values = configuration.applied.values]
-         /\ configuration' = [configuration EXCEPT !.state = Complete,
-                                                   !.applied.target = target.id]
+         /\ configuration' = [configuration EXCEPT !.state = Complete]
       \/ /\ configuration.term < mastership.term
          /\ configuration' = [configuration EXCEPT !.state = Pending,
                                                    !.term  = mastership.term]

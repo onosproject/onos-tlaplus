@@ -217,40 +217,119 @@ TypeOK ==
    /\ Configuration!TypeOK
    /\ Mastership!TypeOK
 
+StatusCommitted(i) ==
+   \/ /\ transactions'[i].change.commit \notin {Pending, Canceled}
+      /\ transactions[i].change.commit # transactions'[i].change.commit
+   \/ /\ transactions'[i].rollback.commit \notin {Pending, Canceled}
+      /\ transactions[i].rollback.commit # transactions'[i].rollback.commit
+
+StatusApplied(i) ==
+   \/ /\ transactions'[i].change.apply \notin {Pending, Canceled}
+      /\ transactions[i].change.apply # transactions'[i].change.apply
+   \/ /\ transactions'[i].rollback.apply \notin {Pending, Canceled}
+      /\ transactions[i].rollback.apply # transactions'[i].rollback.apply
+
+ValidStatus(t, i, j) ==
+   /\ j \in DOMAIN history
+   /\ history[j].index = i
+   /\ \/ /\ history[j].type = Change
+         /\ history[j].phase = Commit
+         /\ t[i].change.commit = history[j].status
+      \/ /\ history[j].type = Change
+         /\ history[j].phase = Apply
+         /\ t[i].change.apply = history[j].status
+      \/ /\ history[j].type = Rollback
+         /\ history[j].phase = Commit
+         /\ t[i].rollback.commit = history[j].status
+      \/ /\ history[j].type = Rollback
+         /\ history[j].phase = Apply
+         /\ t[i].rollback.apply = history[j].status
+
+ValidCommit(t, i) ==
+   LET j == CHOOSE j \in DOMAIN history :
+               /\ history[j].phase = Commit
+               /\ ~\E k \in DOMAIN history :
+                     /\ history[k].phase = Commit
+                     /\ k > j
+   IN ValidStatus(t, i, j)
+
+ValidApply(t, i) ==
+   LET j == CHOOSE j \in DOMAIN history :
+               /\ history[j].phase = Apply
+               /\ ~\E k \in DOMAIN history :
+                     /\ history[k].phase = Apply
+                     /\ k > j
+   IN ValidStatus(t, i, j)
+
+ConfigurationCommitted ==
+   /\ configuration'.committed # configuration.committed
+   /\ \E i \in DOMAIN history : history[i].phase = Commit
+   => LET i == CHOOSE i \in DOMAIN history : 
+                  /\ history[i].phase = Commit 
+                  /\ ~\E j \in DOMAIN history : 
+                        /\ history[j].phase = Commit
+                        /\ j > i 
+      IN ValidStatus(transactions, history[i].index, i)
+
+ConfigurationApplied ==
+   /\ configuration'.applied # configuration.applied
+   /\ \E i \in DOMAIN history : history[i].phase = Apply
+   => LET i == CHOOSE i \in DOMAIN history : 
+                  /\ history[i].phase = Apply 
+                  /\ ~\E j \in DOMAIN history : 
+                        /\ history[j].phase = Apply
+                        /\ j > i 
+      IN ValidStatus(transactions, history[i].index, i)
+
+StatusChanged ==
+   \A i \in 1..NumTransactions :
+      /\ i \in DOMAIN transactions =>
+            /\ StatusCommitted(i) => ValidCommit(transactions', i)
+            /\ StatusApplied(i) => ValidApply(transactions', i)
+
+Transition == [][ConfigurationCommitted /\ ConfigurationApplied /\ StatusChanged]_<<transactions, history>>
+
 LOCAL IsOrderedChange(p, i) ==
    /\ history[i].type = Change
    /\ history[i].phase = p
+   /\ history[i].status = Complete
    /\ ~\E j \in DOMAIN history :
          /\ j < i
          /\ history[j].type = Change
          /\ history[j].phase = p
+         /\ history[j].status = Complete
          /\ history[j].index >= history[i].index
 
 LOCAL IsOrderedRollback(p, i) ==
    /\ history[i].type = Rollback
    /\ history[i].phase = p
+   /\ history[i].status = Complete
    /\ \E j \in DOMAIN history :
          /\ j < i
          /\ history[j].type = Change
+         /\ history[j].status = Complete
          /\ history[j].index = history[i].index
    /\ ~\E j \in DOMAIN history :
          /\ j < i
          /\ history[j].type = Change
          /\ history[j].phase = p
+         /\ history[j].status = Complete
          /\ history[j].index > history[i].index
          /\ ~\E k \in DOMAIN history :
                /\ k > j
                /\ k < i
                /\ history[k].type = Rollback
                /\ history[k].phase = p
+               /\ history[j].status = Complete
                /\ history[k].index = history[j].index
 
 Order ==
    /\ \A i \in DOMAIN history :
-      \/ IsOrderedChange(Commit, i)
-      \/ IsOrderedChange(Apply, i)
-      \/ IsOrderedRollback(Commit, i)
-      \/ IsOrderedRollback(Apply, i)
+         history[i].status = Complete => 
+            \/ IsOrderedChange(Commit, i)
+            \/ IsOrderedChange(Apply, i)
+            \/ IsOrderedRollback(Commit, i)
+            \/ IsOrderedRollback(Apply, i)
    /\ \A i \in DOMAIN transactions :
          /\ transactions[i].change.apply = Failed
          /\ transactions[i].rollback.apply # Complete
