@@ -29,7 +29,7 @@ Failed == "Failed"
 
 Node == {"node1"}
 
-NumTransactions == 2
+NumTransactions == 3
 NumTerms == 1
 NumConns == 1
 NumStarts == 1
@@ -130,6 +130,7 @@ Init ==
          term   |-> 0,
          committed |-> [
             index       |-> 0,
+            maxIndex    |-> 0,
             target      |-> 0,
             seqnum      |-> 0,
             transaction |-> 0,
