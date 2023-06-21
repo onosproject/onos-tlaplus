@@ -78,12 +78,13 @@ RollbackChange(i) ==
    /\ Transaction!RollbackChange(i)
 
 ReconcileTransaction(n, i) ==
-   \/ /\ Transaction!ReconcileTransaction(n, i)
-      /\ GenerateTestCases => Transaction!Test!Log([node |-> n, index |-> i])
-   \/ /\ GenerateTestCases
-      /\ ~ENABLED Transaction!ReconcileTransaction(n, i)
-      /\ UNCHANGED vars
-      /\ Transaction!Test!Log([node |-> n, index |-> i])
+   /\ i \in DOMAIN transactions
+   /\ \/ /\ Transaction!ReconcileTransaction(n, i)
+         /\ GenerateTestCases => Transaction!Test!Log([node |-> n, index |-> i])
+      \/ /\ GenerateTestCases
+         /\ ~ENABLED Transaction!ReconcileTransaction(n, i)
+         /\ UNCHANGED vars
+         /\ Transaction!Test!Log([node |-> n, index |-> i])
 
 ReconcileConfiguration(n) ==
    \/ /\ Configuration!ReconcileConfiguration(n)
@@ -178,7 +179,7 @@ Next ==
    \/ \E i \in 1..NumTransactions :
          \/ AppendChange(i)
          \/ RollbackChange(i)
-   \/ \E n \in Node, i \in DOMAIN transactions :
+   \/ \E n \in Node, i \in 1..NumTransactions :
          ReconcileTransaction(n, i)
    \/ \E n \in Node :
          ReconcileConfiguration(n)
