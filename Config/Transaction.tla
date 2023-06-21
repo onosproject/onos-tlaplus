@@ -147,7 +147,7 @@ RollbackChange(i) ==
 
 CommitChange(n, i) ==
    /\ \/ /\ transactions[i].change.commit = Pending
-         /\ configuration.committed.maxIndex = i-1
+         /\ configuration.committed.change = i-1
          /\ \/ /\ configuration.committed.target # i
                /\ configuration.committed.index = configuration.committed.target
                /\ configuration.committed.transaction \in DOMAIN transactions =>
@@ -175,7 +175,7 @@ CommitChange(n, i) ==
          /\ \/ /\ configuration.committed.index # i
                /\ \/ /\ configuration' = [configuration EXCEPT !.committed.transaction = i,
                                                                !.committed.index       = i,
-                                                               !.committed.maxIndex    = i,
+                                                               !.committed.change      = i,
                                                                !.committed.revision    = i,
                                                                !.committed.ordinal     = configuration.committed.ordinal+1,
                                                                !.committed.values      = transactions[i].change.values @@
@@ -187,7 +187,7 @@ CommitChange(n, i) ==
                                        status |-> Complete])
                   \/ /\ configuration' = [configuration EXCEPT !.committed.transaction = i,
                                                                !.committed.index       = i,
-                                                               !.committed.maxIndex    = i]
+                                                               !.committed.change    = i]
                      /\ history' = Append(history, [
                                        type   |-> Change, 
                                        phase  |-> Commit, 

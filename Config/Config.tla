@@ -142,7 +142,7 @@ Init ==
          term   |-> 0,
          committed |-> [
             index       |-> 0,
-            maxIndex    |-> 0,
+            change      |-> 0,
             target      |-> 0,
             ordinal     |-> 0,
             transaction |-> 0,
