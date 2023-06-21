@@ -78,18 +78,30 @@ RollbackChange(i) ==
    /\ Transaction!RollbackChange(i)
 
 ReconcileTransaction(n, i) ==
-   /\ Transaction!ReconcileTransaction(n, i)
-   /\ GenerateTestCases => Transaction!Test!Log([node |-> n, index |-> i])
+   \/ /\ Transaction!ReconcileTransaction(n, i)
+      /\ GenerateTestCases => Transaction!Test!Log([node |-> n, index |-> i])
+   \/ /\ GenerateTestCases
+      /\ ~ENABLED Transaction!ReconcileTransaction(n, i)
+      /\ UNCHANGED vars
+      /\ Transaction!Test!Log([node |-> n, index |-> i])
 
 ReconcileConfiguration(n) ==
-   /\ Configuration!ReconcileConfiguration(n)
-   /\ UNCHANGED <<transactions, history>>
-   /\ GenerateTestCases => Configuration!Test!Log([node |-> n])
+   \/ /\ Configuration!ReconcileConfiguration(n)
+      /\ UNCHANGED <<transactions, history>>
+      /\ GenerateTestCases => Configuration!Test!Log([node |-> n])
+   \/ /\ GenerateTestCases
+      /\ ~ENABLED Configuration!ReconcileConfiguration(n)
+      /\ UNCHANGED vars
+      /\ Configuration!Test!Log([node |-> n])
 
 ReconcileMastership(n) ==
-   /\ Mastership!ReconcileMastership(n)
-   /\ UNCHANGED <<transactions, configuration, target, history>>
-   /\ GenerateTestCases => Mastership!Test!Log([node |-> n])
+   \/ /\ Mastership!ReconcileMastership(n)
+      /\ UNCHANGED <<transactions, configuration, target, history>>
+      /\ GenerateTestCases => Mastership!Test!Log([node |-> n])
+   \/ /\ GenerateTestCases
+      /\ ~ENABLED Mastership!ReconcileMastership(n)
+      /\ UNCHANGED vars
+      /\ Mastership!Test!Log([node |-> n])
 
 ConnectNode(n) ==
    /\ Target!Connect(n)
