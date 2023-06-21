@@ -136,11 +136,11 @@ CommitChange(n, i) ==
          /\ configuration.committed.change = i-1
          /\ \/ /\ configuration.committed.target # i
                /\ configuration.committed.index = configuration.committed.target
-               /\ configuration.committed.transaction \in DOMAIN transactions =>
-                     \/ /\ configuration.committed.target = configuration.committed.transaction
-                        /\ transactions[configuration.committed.transaction].change.commit \in Done
-                     \/ /\ configuration.committed.target < configuration.committed.transaction
-                        /\ transactions[configuration.committed.transaction].rollback.commit \in Done
+               /\ configuration.committed.index \in DOMAIN transactions =>
+                     \/ /\ configuration.committed.target = configuration.committed.index
+                        /\ transactions[configuration.committed.index].change.commit \in Done
+                     \/ /\ configuration.committed.target < configuration.committed.index
+                        /\ transactions[configuration.committed.index].rollback.commit \in Done
                /\ configuration' = [configuration EXCEPT !.committed.target = i]
                /\ history' = Append(history, [
                                  type   |-> Change, 
@@ -159,21 +159,19 @@ CommitChange(n, i) ==
                /\ UNCHANGED <<configuration, history>>
       \/ /\ transactions[i].change.commit = InProgress
          /\ \/ /\ configuration.committed.index # i
-               /\ \/ /\ configuration' = [configuration EXCEPT !.committed.transaction = i,
-                                                               !.committed.index       = i,
-                                                               !.committed.change      = i,
-                                                               !.committed.revision    = i,
-                                                               !.committed.ordinal     = configuration.committed.ordinal+1,
-                                                               !.committed.values      = transactions[i].change.values @@
-                                                                                            configuration.committed.values]
+               /\ \/ /\ configuration' = [configuration EXCEPT !.committed.index    = i,
+                                                               !.committed.change   = i,
+                                                               !.committed.revision = i,
+                                                               !.committed.ordinal  = configuration.committed.ordinal+1,
+                                                               !.committed.values   = transactions[i].change.values @@
+                                                                                         configuration.committed.values]
                      /\ history' = Append(history, [
                                        type   |-> Change, 
                                        phase  |-> Commit, 
                                        index  |-> i,
                                        status |-> Complete])
-                  \/ /\ configuration' = [configuration EXCEPT !.committed.transaction = i,
-                                                               !.committed.index       = i,
-                                                               !.committed.change    = i]
+                  \/ /\ configuration' = [configuration EXCEPT !.committed.index  = i,
+                                                               !.committed.change = i]
                      /\ history' = Append(history, [
                                        type   |-> Change, 
                                        phase  |-> Commit, 
@@ -195,10 +193,10 @@ CommitRollback(n, i) ==
          /\ configuration.committed.revision = i
          /\ \/ /\ configuration.committed.target = i
                /\ configuration.committed.index = configuration.committed.target
-               /\ \/ /\ configuration.committed.transaction = i
-                     /\ transactions[configuration.committed.transaction].change.commit = Complete
-                  \/ /\ configuration.committed.transaction > i
-                     /\ transactions[configuration.committed.transaction].rollback.commit = Complete
+               /\ \/ /\ configuration.committed.index = i
+                     /\ transactions[configuration.committed.index].change.commit = Complete
+                  \/ /\ configuration.committed.index > i
+                     /\ transactions[configuration.committed.index].rollback.commit = Complete
                /\ configuration' = [configuration EXCEPT !.committed.target = transactions[i].rollback.index]
                /\ history' = Append(history, [
                                  type   |-> Rollback, 
@@ -212,12 +210,11 @@ CommitRollback(n, i) ==
                /\ UNCHANGED <<configuration, history>>
       \/ /\ transactions[i].rollback.commit = InProgress
          /\ \/ /\ configuration.committed.revision = i
-               /\ configuration' = [configuration EXCEPT !.committed.transaction = i,
-                                                         !.committed.index       = i,
-                                                         !.committed.ordinal     = configuration.committed.ordinal+1,
-                                                         !.committed.revision    = transactions[i].rollback.index,
-                                                         !.committed.values      = transactions[i].rollback.values @@
-                                                                                      configuration.committed.values]
+               /\ configuration' = [configuration EXCEPT !.committed.index    = i,
+                                                         !.committed.ordinal  = configuration.committed.ordinal+1,
+                                                         !.committed.revision = transactions[i].rollback.index,
+                                                         !.committed.values   = transactions[i].rollback.values @@
+                                                                                   configuration.committed.values]
                /\ history' = Append(history, [
                                  type   |-> Rollback, 
                                  phase  |-> Commit, 
@@ -235,14 +232,13 @@ ApplyChange(n, i) ==
    /\ \/ /\ transactions[i].change.apply = Pending
          /\ \/ /\ configuration.applied.ordinal = transactions[i].change.ordinal - 1
                /\ \/ /\ configuration.applied.target # i
-                     /\ configuration.applied.transaction \in DOMAIN transactions =>
-                           \/ /\ configuration.applied.target = configuration.applied.transaction
-                              /\ transactions[configuration.applied.transaction].change.apply \in Done
-                           \/ /\ configuration.applied.target < configuration.applied.transaction
-                              /\ transactions[configuration.applied.transaction].rollback.apply \in Done
+                     /\ configuration.applied.index \in DOMAIN transactions =>
+                           \/ /\ configuration.applied.target = configuration.applied.index
+                              /\ transactions[configuration.applied.index].change.apply \in Done
+                           \/ /\ configuration.applied.target < configuration.applied.index
+                              /\ transactions[configuration.applied.index].rollback.apply \in Done
                      /\ \/ /\ configuration.applied.revision = transactions[i].rollback.index
-                           /\ configuration' = [configuration EXCEPT !.applied.target = i,
-                                                                     !.applied.index  = i]
+                           /\ configuration' = [configuration EXCEPT !.applied.target = i]
                            /\ history' = Append(history, [
                                              type   |-> Change, 
                                              phase  |-> Apply, 
@@ -250,9 +246,9 @@ ApplyChange(n, i) ==
                                              status |-> InProgress])
                         \/ /\ \/ transactions[i].phase = Rollback
                               \/ configuration.applied.revision < transactions[i].rollback.index
-                           /\ configuration' = [configuration EXCEPT !.applied.target      = i,
-                                                                     !.applied.transaction = i,
-                                                                     !.applied.ordinal     = transactions[i].change.ordinal]
+                           /\ configuration' = [configuration EXCEPT !.applied.target  = i,
+                                                                     !.applied.index   = i,
+                                                                     !.applied.ordinal = transactions[i].change.ordinal]
                            /\ history' = Append(history, [
                                              type   |-> Change, 
                                              phase  |-> Apply, 
@@ -276,18 +272,18 @@ ApplyChange(n, i) ==
                      /\ conn[n].connected
                      /\ target.running
                      /\ \/ /\ target' = [target EXCEPT !.values = transactions[i].change.values @@ target.values]
-                           /\ configuration' = [configuration EXCEPT !.applied.transaction = i,
-                                                                     !.applied.ordinal     = transactions[i].change.ordinal,
-                                                                     !.applied.revision    = i,
-                                                                     !.applied.values      = transactions[i].change.values @@
-                                                                                                configuration.applied.values]
+                           /\ configuration' = [configuration EXCEPT !.applied.index    = i,
+                                                                     !.applied.ordinal  = transactions[i].change.ordinal,
+                                                                     !.applied.revision = i,
+                                                                     !.applied.values   = transactions[i].change.values @@
+                                                                                             configuration.applied.values]
                            /\ history' = Append(history, [
                                              type   |-> Change, 
                                              phase  |-> Apply, 
                                              index  |-> i,
                                              status |-> Complete])
-                        \/ /\ configuration' = [configuration EXCEPT !.applied.transaction = i,
-                                                                     !.applied.ordinal     = transactions[i].change.ordinal]
+                        \/ /\ configuration' = [configuration EXCEPT !.applied.index   = i,
+                                                                     !.applied.ordinal = transactions[i].change.ordinal]
                            /\ history' = Append(history, [
                                              type   |-> Change, 
                                              phase  |-> Apply, 
@@ -295,8 +291,8 @@ ApplyChange(n, i) ==
                                              status |-> Failed])
                            /\ UNCHANGED <<target>>
                   \/ /\ transactions[i].phase = Rollback
-                     /\ configuration' = [configuration EXCEPT !.applied.transaction = i,
-                                                               !.applied.ordinal     = transactions[i].change.ordinal]
+                     /\ configuration' = [configuration EXCEPT !.applied.index   = i,
+                                                               !.applied.ordinal = transactions[i].change.ordinal]
                      /\ history' = Append(history, [
                                        type   |-> Change, 
                                        phase  |-> Apply, 
@@ -318,10 +314,10 @@ ApplyRollback(n, i) ==
    /\ \/ /\ transactions[i].rollback.apply = Pending
          /\ \/ /\ configuration.applied.ordinal = transactions[i].rollback.ordinal - 1
                /\ \/ /\ configuration.applied.target # transactions[i].rollback.index
-                     /\ \/ /\ configuration.applied.transaction = i
-                           /\ transactions[configuration.applied.transaction].change.apply \in Done
-                        \/ /\ configuration.applied.transaction > i
-                           /\ transactions[configuration.applied.transaction].rollback.apply \in Done
+                     /\ \/ /\ configuration.applied.index = i
+                           /\ transactions[configuration.applied.index].change.apply \in Done
+                        \/ /\ configuration.applied.index > i
+                           /\ transactions[configuration.applied.index].rollback.apply \in Done
                      /\ configuration' = [configuration EXCEPT !.applied.target = transactions[i].rollback.index]
                      /\ history' = Append(history, [
                                        type   |-> Rollback, 
@@ -342,11 +338,11 @@ ApplyRollback(n, i) ==
                /\ conn[n].connected
                /\ target.running
                /\ target' = [target EXCEPT !.values = transactions[i].rollback.values @@ target.values]
-               /\ configuration' = [configuration EXCEPT !.applied.transaction = i,
-                                                         !.applied.ordinal     = transactions[i].rollback.ordinal,
-                                                         !.applied.revision    = transactions[i].rollback.index,
-                                                         !.applied.values      = transactions[i].rollback.values @@
-                                                                                    configuration.applied.values]
+               /\ configuration' = [configuration EXCEPT !.applied.index    = i,
+                                                         !.applied.ordinal  = transactions[i].rollback.ordinal,
+                                                         !.applied.revision = transactions[i].rollback.index,
+                                                         !.applied.values   = transactions[i].rollback.values @@
+                                                                                 configuration.applied.values]
                /\ history' = Append(history, [
                                  type   |-> Rollback, 
                                  phase  |-> Apply, 

@@ -142,21 +142,19 @@ Init ==
          state  |-> Pending,
          term   |-> 0,
          committed |-> [
-            index       |-> 0,
-            change      |-> 0,
-            target      |-> 0,
-            ordinal     |-> 0,
-            transaction |-> 0,
-            revision    |-> 0,
-            values      |-> [
+            index    |-> 0,
+            change   |-> 0,
+            target   |-> 0,
+            ordinal  |-> 0,
+            revision |-> 0,
+            values   |-> [
                p \in {} |-> Nil]],
          applied |-> [
-            index       |-> 0,
-            target      |-> 0,
-            ordinal     |-> 0,
-            transaction |-> 0,
-            revision    |-> 0,
-            values      |-> [
+            index    |-> 0,
+            target   |-> 0,
+            ordinal  |-> 0,
+            revision |-> 0,
+            values   |-> [
                p \in {} |-> Nil]]]
    /\ target = [
          id      |-> 1,
