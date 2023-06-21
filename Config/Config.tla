@@ -144,7 +144,7 @@ Init ==
             index       |-> 0,
             maxIndex    |-> 0,
             target      |-> 0,
-            seqnum      |-> 0,
+            ordinal     |-> 0,
             transaction |-> 0,
             revision    |-> 0,
             values      |-> [
@@ -152,7 +152,7 @@ Init ==
          applied |-> [
             index       |-> 0,
             target      |-> 0,
-            seqnum      |-> 0,
+            ordinal     |-> 0,
             transaction |-> 0,
             revision    |-> 0,
             values      |-> [
