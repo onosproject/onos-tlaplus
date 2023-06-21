@@ -18,7 +18,7 @@ CONSTANTS
    Change,
    Rollback
 
-\* Proposal phase constants
+\* Transaction phase constants
 CONSTANTS 
    Commit,
    Apply
