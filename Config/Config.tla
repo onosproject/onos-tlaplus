@@ -10,7 +10,7 @@ INSTANCE TLC
 
 ----
 
-GenerateTestCases == FALSE
+GenerateTestCases == TRUE
 
 Nil == "<nil>"
 
@@ -230,66 +230,68 @@ TypeOK ==
    /\ Mastership!TypeOK
 
 StatusCommitted(i) ==
-   \/ /\ transactions'[i].change.commit \notin {Pending, Canceled}
-      /\ transactions[i].change.commit # transactions'[i].change.commit
-   \/ /\ transactions'[i].rollback.commit \notin {Pending, Canceled}
-      /\ transactions[i].rollback.commit # transactions'[i].rollback.commit
+   /\ Len(history) = Len(history')
+   /\ \/ /\ transactions'[i].change.commit \notin {Pending, Canceled}
+         /\ transactions[i].change.commit # transactions'[i].change.commit
+      \/ /\ transactions'[i].rollback.commit \notin {Pending, Canceled}
+         /\ transactions[i].rollback.commit # transactions'[i].rollback.commit
 
 StatusApplied(i) ==
-   \/ /\ transactions'[i].change.apply \notin {Pending, Canceled}
-      /\ transactions[i].change.apply # transactions'[i].change.apply
-   \/ /\ transactions'[i].rollback.apply \notin {Pending, Canceled}
-      /\ transactions[i].rollback.apply # transactions'[i].rollback.apply
+   /\ Len(history) = Len(history')
+   /\ \/ /\ transactions'[i].change.apply \notin {Pending, Canceled, Aborted}
+         /\ transactions[i].change.apply # transactions'[i].change.apply
+      \/ /\ transactions'[i].rollback.apply \notin {Pending, Canceled, Aborted}
+         /\ transactions[i].rollback.apply # transactions'[i].rollback.apply
 
 ValidStatus(t, i, j) ==
    /\ j \in DOMAIN history
    /\ history[j].index = i
-   /\ \/ /\ history[j].type = Change
-         /\ history[j].phase = Commit
+   /\ \/ /\ history[j].phase = Change
+         /\ history[j].event = Commit
          /\ t[i].change.commit = history[j].status
-      \/ /\ history[j].type = Change
-         /\ history[j].phase = Apply
+      \/ /\ history[j].phase = Change
+         /\ history[j].event = Apply
          /\ t[i].change.apply = history[j].status
-      \/ /\ history[j].type = Rollback
-         /\ history[j].phase = Commit
+      \/ /\ history[j].phase = Rollback
+         /\ history[j].event = Commit
          /\ t[i].rollback.commit = history[j].status
-      \/ /\ history[j].type = Rollback
-         /\ history[j].phase = Apply
+      \/ /\ history[j].phase = Rollback
+         /\ history[j].event = Apply
          /\ t[i].rollback.apply = history[j].status
 
 ValidCommit(t, i) ==
    LET j == CHOOSE j \in DOMAIN history :
-               /\ history[j].phase = Commit
+               /\ history[j].event = Commit
                /\ ~\E k \in DOMAIN history :
-                     /\ history[k].phase = Commit
+                     /\ history[k].event = Commit
                      /\ k > j
    IN ValidStatus(t, i, j)
 
 ValidApply(t, i) ==
    LET j == CHOOSE j \in DOMAIN history :
-               /\ history[j].phase = Apply
+               /\ history[j].event = Apply
                /\ ~\E k \in DOMAIN history :
-                     /\ history[k].phase = Apply
+                     /\ history[k].event = Apply
                      /\ k > j
    IN ValidStatus(t, i, j)
 
 ConfigurationCommitted ==
    /\ configuration'.committed # configuration.committed
-   /\ \E i \in DOMAIN history : history[i].phase = Commit
+   /\ \E i \in DOMAIN history : history[i].event = Commit
    => LET i == CHOOSE i \in DOMAIN history : 
-                  /\ history[i].phase = Commit 
+                  /\ history[i].event = Commit 
                   /\ ~\E j \in DOMAIN history : 
-                        /\ history[j].phase = Commit
+                        /\ history[j].event = Commit
                         /\ j > i 
       IN ValidStatus(transactions, history[i].index, i)
 
 ConfigurationApplied ==
    /\ configuration'.applied # configuration.applied
-   /\ \E i \in DOMAIN history : history[i].phase = Apply
+   /\ \E i \in DOMAIN history : history[i].event = Apply
    => LET i == CHOOSE i \in DOMAIN history : 
-                  /\ history[i].phase = Apply 
-                  /\ ~\E j \in DOMAIN history : 
-                        /\ history[j].phase = Apply
+                  /\ history[i].event = Apply
+                  /\ ~\E j \in DOMAIN history :
+                        /\ history[j].event = Apply
                         /\ j > i 
       IN ValidStatus(transactions, history[i].index, i)
 
@@ -302,36 +304,36 @@ StatusChanged ==
 Transition == [][ConfigurationCommitted /\ ConfigurationApplied /\ StatusChanged]_<<transactions, history>>
 
 LOCAL IsOrderedChange(p, i) ==
-   /\ history[i].type = Change
-   /\ history[i].phase = p
+   /\ history[i].phase = Change
+   /\ history[i].event = p
    /\ history[i].status = Complete
    /\ ~\E j \in DOMAIN history :
          /\ j < i
-         /\ history[j].type = Change
-         /\ history[j].phase = p
+         /\ history[j].phase = Change
+         /\ history[j].event = p
          /\ history[j].status = Complete
          /\ history[j].index >= history[i].index
 
 LOCAL IsOrderedRollback(p, i) ==
-   /\ history[i].type = Rollback
-   /\ history[i].phase = p
+   /\ history[i].phase = Rollback
+   /\ history[i].event = p
    /\ history[i].status = Complete
    /\ \E j \in DOMAIN history :
          /\ j < i
-         /\ history[j].type = Change
+         /\ history[j].phase = Change
          /\ history[j].status = Complete
          /\ history[j].index = history[i].index
    /\ ~\E j \in DOMAIN history :
          /\ j < i
-         /\ history[j].type = Change
-         /\ history[j].phase = p
+         /\ history[j].phase = Change
+         /\ history[j].event = p
          /\ history[j].status = Complete
          /\ history[j].index > history[i].index
          /\ ~\E k \in DOMAIN history :
                /\ k > j
                /\ k < i
-               /\ history[k].type = Rollback
-               /\ history[k].phase = p
+               /\ history[k].phase = Rollback
+               /\ history[k].event = p
                /\ history[j].status = Complete
                /\ history[k].index = history[j].index
 
