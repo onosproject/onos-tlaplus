@@ -10,7 +10,7 @@ INSTANCE TLC
 
 ----
 
-GenerateTestCases == TRUE
+GenerateTestCases == FALSE
 
 Nil == "<nil>"
 

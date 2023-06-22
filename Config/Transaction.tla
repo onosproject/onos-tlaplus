@@ -166,7 +166,7 @@ CommitChange(n, i) ==
                                                              ELSE Nil]]
                /\ UNCHANGED <<configuration, history>>
       \/ /\ transactions[i].change.commit = InProgress
-         /\ \/ /\ configuration.committed.index # i
+         /\ \/ /\ configuration.committed.change # i
                /\ \/ /\ configuration' = [configuration EXCEPT !.committed.index    = i,
                                                                !.committed.change   = i,
                                                                !.committed.revision = i,
@@ -181,24 +181,25 @@ CommitChange(n, i) ==
                      /\ \/ transactions' = [transactions EXCEPT ![i].change.commit  = Complete,
                                                                 ![i].change.ordinal = configuration'.committed.ordinal]
                         \/ UNCHANGED <<transactions>>
-                  \/ /\ configuration' = [configuration EXCEPT !.committed.index  = i,
-                                                               !.committed.change = i]
+                  \/ /\ transactions' = [transactions EXCEPT ![i].change.commit = Failed,
+                                                             ![i].change.apply  = Canceled]
                      /\ history' = Append(history, [
                                        phase  |-> Change,
                                        event  |-> Commit,
                                        index  |-> i,
                                        status |-> Failed])
-                     /\ \/ transactions' = [transactions EXCEPT ![i].change.commit = Failed,
-                                                                ![i].change.apply  = Canceled]
-                        \/ UNCHANGED <<transactions>>
-            \/ /\ configuration.committed.index = i
-               /\ \/ /\ configuration.committed.revision = i
-                     /\ transactions' = [transactions EXCEPT ![i].change.commit  = Complete,
-                                                             ![i].change.ordinal = configuration.committed.ordinal]
-                  \/ /\ configuration.committed.revision # i
-                     /\ transactions' = [transactions EXCEPT ![i].change.commit = Failed,
-                                                             ![i].change.apply  = Canceled]
+                     /\ \/ configuration' = [configuration EXCEPT !.committed.index  = i,
+                                                                  !.committed.change = i]
+                        \/ UNCHANGED <<configuration>>
+            \/ /\ configuration.committed.change = i
+               /\ transactions' = [transactions EXCEPT ![i].change.commit  = Complete,
+                                                       ![i].change.ordinal = configuration.committed.ordinal]
                /\ UNCHANGED <<configuration, history>>
+      \/ /\ transactions[i].change.commit = Failed
+         /\ configuration.committed.change < i
+         /\ configuration' = [configuration EXCEPT !.committed.index  = i,
+                                                   !.committed.change = i]
+         /\ UNCHANGED <<transactions, history>>
    /\ UNCHANGED <<mastership, conn, target>>
 
 CommitRollback(n, i) ==
@@ -302,34 +303,36 @@ ApplyChange(n, i) ==
                                              status |-> Complete])
                            /\ \/ transactions' = [transactions EXCEPT ![i].change.apply = Complete]
                               \/ UNCHANGED <<transactions>>
-                        \/ /\ configuration' = [configuration EXCEPT !.applied.index   = i,
-                                                                     !.applied.ordinal = transactions[i].change.ordinal]
+                        \/ /\ transactions' = [transactions EXCEPT ![i].change.apply = Failed]
                            /\ history' = Append(history, [
                                              phase  |-> Change,
                                              event  |-> Apply,
                                              index  |-> i,
                                              status |-> Failed])
-                           /\ \/ transactions' = [transactions EXCEPT ![i].change.apply = Failed]
-                              \/ UNCHANGED <<transactions>>
+                           /\ \/ configuration' = [configuration EXCEPT !.applied.index   = i,
+                                                                        !.applied.ordinal = transactions[i].change.ordinal]
+                              \/ UNCHANGED <<configuration>>
                            /\ UNCHANGED <<target>>
                   \/ /\ transactions[i].phase = Rollback
-                     /\ configuration' = [configuration EXCEPT !.applied.index   = i,
-                                                               !.applied.ordinal = transactions[i].change.ordinal]
+                     /\ transactions' = [transactions EXCEPT ![i].change.apply = Failed]
                      /\ history' = Append(history, [
                                        phase  |-> Change,
                                        event  |-> Apply,
                                        index  |-> i,
                                        status |-> Failed])
-                     /\ \/ transactions' = [transactions EXCEPT ![i].change.apply = Failed]
-                        \/ UNCHANGED <<transactions>>
+                     /\ \/ configuration' = [configuration EXCEPT !.applied.index   = i,
+                                                                  !.applied.ordinal = transactions[i].change.ordinal]
+                        \/ UNCHANGED <<configuration>>
                      /\ UNCHANGED <<target>>
             \* If the change has been applied, update the transaction status.
             \/ /\ configuration.applied.ordinal = transactions[i].change.ordinal
-               /\ \/ /\ configuration.applied.revision = i
-                     /\ transactions' = [transactions EXCEPT ![i].change.apply = Complete]
-                  \/ /\ configuration.applied.revision = transactions[i].rollback.index
-                     /\ transactions' = [transactions EXCEPT ![i].change.apply = Failed]
+               /\ transactions' = [transactions EXCEPT ![i].change.apply = Complete]
                /\ UNCHANGED <<configuration, target, history>>
+      \/ /\ transactions[i].change.apply = Failed
+         /\ configuration.applied.ordinal < transactions[i].change.ordinal
+         /\ configuration' = [configuration EXCEPT !.applied.index   = i,
+                                                   !.applied.ordinal = transactions[i].change.ordinal]
+         /\ UNCHANGED <<transactions, target, history>>
    /\ UNCHANGED <<mastership, conn>>
 
 ApplyRollback(n, i) ==
