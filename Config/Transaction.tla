@@ -206,37 +206,34 @@ ApplyChange(n, i) ==
    /\ transactions[i].change.commit = Complete
    /\ \/ /\ transactions[i].change.apply = Pending
          /\ \/ /\ configuration.applied.ordinal = transactions[i].change.ordinal - 1
-               /\ \/ /\ configuration.applied.target # i
-                     /\ configuration.applied.index \in DOMAIN transactions =>
-                           \/ /\ configuration.applied.target = configuration.applied.index
-                              /\ transactions[configuration.applied.index].change.apply \in Done
-                           \/ /\ configuration.applied.target < configuration.applied.index
-                              /\ transactions[configuration.applied.index].rollback.apply \in Done
-                     /\ \/ /\ configuration.applied.revision = transactions[i].rollback.index
-                           /\ configuration' = [configuration EXCEPT !.applied.target = i]
-                           /\ history' = Append(history, [
-                                             phase  |-> Change,
-                                             event  |-> Apply,
-                                             index  |-> i,
-                                             status |-> InProgress])
-                           /\ \/ transactions' = [transactions EXCEPT ![i].change.apply = InProgress]
-                              \/ UNCHANGED <<transactions>>
-                        \/ /\ configuration.applied.revision < transactions[i].rollback.index
-                           /\ transactions' = [transactions EXCEPT ![i].change.apply = Aborted]
-                           /\ history' = Append(history, [
-                                             phase  |-> Change,
-                                             event  |-> Apply,
-                                             index  |-> i,
-                                             status |-> Aborted])
-                           /\ \/ configuration' = [configuration EXCEPT !.applied.target  = i,
-                                                                        !.applied.index   = i,
-                                                                        !.applied.ordinal = transactions[i].change.ordinal]
-                              \/ UNCHANGED <<configuration>>
-                  \/ /\ configuration.applied.target = i
-                     /\ transactions' = [transactions EXCEPT ![i].change.apply = InProgress]
-                     /\ UNCHANGED <<configuration, history>>
-            \/ /\ configuration.applied.ordinal = transactions[i].change.ordinal
-               /\ transactions' = [transactions EXCEPT ![i].change.apply = Aborted]
+               /\ configuration.applied.target # i
+               /\ configuration.applied.index \in DOMAIN transactions =>
+                     \/ /\ configuration.applied.target = configuration.applied.index
+                        /\ transactions[configuration.applied.index].change.apply \in Done
+                     \/ /\ configuration.applied.target < configuration.applied.index
+                        /\ transactions[configuration.applied.index].rollback.apply \in Done
+               /\ \/ /\ configuration.applied.revision = transactions[i].rollback.index
+                     /\ configuration' = [configuration EXCEPT !.applied.target = i]
+                     /\ history' = Append(history, [
+                                       phase  |-> Change,
+                                       event  |-> Apply,
+                                       index  |-> i,
+                                       status |-> InProgress])
+                     /\ \/ transactions' = [transactions EXCEPT ![i].change.apply = InProgress]
+                        \/ UNCHANGED <<transactions>>
+                  \/ /\ configuration.applied.revision < transactions[i].rollback.index
+                     /\ transactions' = [transactions EXCEPT ![i].change.apply = Aborted]
+                     /\ history' = Append(history, [
+                                       phase  |-> Change,
+                                       event  |-> Apply,
+                                       index  |-> i,
+                                       status |-> Aborted])
+                     /\ \/ configuration' = [configuration EXCEPT !.applied.target  = i,
+                                                                  !.applied.index   = i,
+                                                                  !.applied.ordinal = transactions[i].change.ordinal]
+                        \/ UNCHANGED <<configuration>>
+            \/ /\ configuration.applied.target = i
+               /\ transactions' = [transactions EXCEPT ![i].change.apply = InProgress]
                /\ UNCHANGED <<configuration, history>>
          /\ UNCHANGED <<target>>
       \/ /\ transactions[i].change.apply = InProgress
