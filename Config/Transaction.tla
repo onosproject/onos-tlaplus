@@ -253,7 +253,8 @@ ApplyChange(n, i) ==
                               /\ transactions[configuration.applied.index].change.apply \in Done
                            \/ /\ configuration.applied.target < configuration.applied.index
                               /\ transactions[configuration.applied.index].rollback.apply \in Done
-                     /\ \/ /\ configuration.applied.revision = transactions[i].rollback.index
+                     /\ \/ /\ transactions[i].phase = Change
+                           /\ configuration.applied.revision = transactions[i].rollback.index
                            /\ configuration' = [configuration EXCEPT !.applied.target = i]
                            /\ history' = Append(history, [
                                              phase  |-> Change,
@@ -264,16 +265,16 @@ ApplyChange(n, i) ==
                               \/ UNCHANGED <<transactions>>
                         \/ /\ \/ transactions[i].phase = Rollback
                               \/ configuration.applied.revision < transactions[i].rollback.index
-                           /\ configuration' = [configuration EXCEPT !.applied.target  = i,
-                                                                     !.applied.index   = i,
-                                                                     !.applied.ordinal = transactions[i].change.ordinal]
+                           /\ transactions' = [transactions EXCEPT ![i].change.apply = Aborted]
                            /\ history' = Append(history, [
                                              phase  |-> Change,
                                              event  |-> Apply,
                                              index  |-> i,
                                              status |-> Aborted])
-                           /\ \/ transactions' = [transactions EXCEPT ![i].change.apply = Aborted]
-                              \/ UNCHANGED <<transactions>>
+                           /\ \/ configuration' = [configuration EXCEPT !.applied.target  = i,
+                                                                        !.applied.index   = i,
+                                                                        !.applied.ordinal = transactions[i].change.ordinal]
+                              \/ UNCHANGED <<configuration>>
                   \/ /\ configuration.applied.target = i
                      /\ transactions' = [transactions EXCEPT ![i].change.apply = InProgress]
                      /\ UNCHANGED <<configuration, history>>
@@ -328,9 +329,10 @@ ApplyChange(n, i) ==
             \/ /\ configuration.applied.ordinal = transactions[i].change.ordinal
                /\ transactions' = [transactions EXCEPT ![i].change.apply = Complete]
                /\ UNCHANGED <<configuration, target, history>>
-      \/ /\ transactions[i].change.apply = Failed
+      \/ /\ transactions[i].change.apply \in {Aborted, Failed}
          /\ configuration.applied.ordinal < transactions[i].change.ordinal
-         /\ configuration' = [configuration EXCEPT !.applied.index   = i,
+         /\ configuration' = [configuration EXCEPT !.applied.target  = i,
+                                                   !.applied.index   = i,
                                                    !.applied.ordinal = transactions[i].change.ordinal]
          /\ UNCHANGED <<transactions, target, history>>
    /\ UNCHANGED <<mastership, conn>>
