@@ -275,33 +275,13 @@ ValidApply(t, i) ==
                      /\ k > j
    IN ValidStatus(t, i, j)
 
-ConfigurationCommitted ==
-   /\ configuration'.committed # configuration.committed
-   /\ \E i \in DOMAIN history : history[i].event = Commit
-   => LET i == CHOOSE i \in DOMAIN history : 
-                  /\ history[i].event = Commit 
-                  /\ ~\E j \in DOMAIN history : 
-                        /\ history[j].event = Commit
-                        /\ j > i 
-      IN ValidStatus(transactions, history[i].index, i)
-
-ConfigurationApplied ==
-   /\ configuration'.applied # configuration.applied
-   /\ \E i \in DOMAIN history : history[i].event = Apply
-   => LET i == CHOOSE i \in DOMAIN history : 
-                  /\ history[i].event = Apply
-                  /\ ~\E j \in DOMAIN history :
-                        /\ history[j].event = Apply
-                        /\ j > i 
-      IN ValidStatus(transactions, history[i].index, i)
-
-StatusChanged ==
+AtomicStatusChange ==
    \A i \in 1..NumTransactions :
       /\ i \in DOMAIN transactions =>
             /\ StatusCommitted(i) => ValidCommit(transactions', i)
             /\ StatusApplied(i) => ValidApply(transactions', i)
 
-Transition == [][ConfigurationCommitted /\ ConfigurationApplied /\ StatusChanged]_<<transactions, history>>
+Transition == [][AtomicStatusChange]_<<transactions, history>>
 
 LOCAL IsOrderedChange(p, i) ==
    /\ history[i].phase = Change
