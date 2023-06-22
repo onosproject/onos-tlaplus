@@ -49,7 +49,7 @@ VARIABLE configuration
 VARIABLE mastership
 
 \* A record of node connections to the target
-VARIABLE conn
+VARIABLE conns
 
 \* The target state
 VARIABLE target
@@ -57,7 +57,7 @@ VARIABLE target
 \* A sequence of state changes used for model checking.
 VARIABLE history
 
-vars == <<transactions, configuration, mastership, conn, target, history>>
+vars == <<transactions, configuration, mastership, conns, target, history>>
 
 ----
 
@@ -167,7 +167,7 @@ Init ==
          master |-> CHOOSE n \in Node : TRUE, 
          term   |-> 1,
          conn   |-> 1]
-   /\ conn = [
+   /\ conns = [
          n \in Node |-> [
             id        |-> 1,
             connected |-> TRUE]]
@@ -195,14 +195,14 @@ Spec ==
    /\ \A i \in 1..NumTransactions :
          WF_<<transactions>>(Transaction!RollbackChange(i))
    /\ \A n \in Node, i \in 1..NumTransactions :
-         WF_<<transactions, configuration, mastership, conn, target, history>>(Transaction!ReconcileTransaction(n, i))
+         WF_<<transactions, configuration, mastership, conns, target, history>>(Transaction!ReconcileTransaction(n, i))
    /\ \A n \in Node :
-         WF_<<configuration, mastership, conn, target>>(Configuration!ReconcileConfiguration(n))
+         WF_<<configuration, mastership, conns, target>>(Configuration!ReconcileConfiguration(n))
    /\ \A n \in Node :
-         WF_<<mastership, conn>>(Mastership!ReconcileMastership(n))
+         WF_<<mastership, conns>>(Mastership!ReconcileMastership(n))
    /\ \A n \in Node :
-         WF_<<conn, target>>(Target!Connect(n) \/ Target!Disconnect(n))
-   /\ WF_<<conn, target>>(Target!Start \/ Target!Stop)
+         WF_<<conns, target>>(Target!Connect(n) \/ Target!Disconnect(n))
+   /\ WF_<<conns, target>>(Target!Start \/ Target!Stop)
 
 ----
 
@@ -212,10 +212,10 @@ LimitTerms ==
       /\ mastership.master # Nil
 
 LimitConns ==
-   \A n \in DOMAIN conn :
-      \/ conn[n].id < NumConns
-      \/ /\ conn[n].id = NumConns 
-         /\ conn[n].connected
+   \A n \in DOMAIN conns :
+      \/ conns[n].id < NumConns
+      \/ /\ conns[n].id = NumConns 
+         /\ conns[n].connected
 
 LimitStarts ==
    \/ target.id < 2

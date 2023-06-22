@@ -16,7 +16,7 @@ CONSTANT Node
 VARIABLE target
 
 \* A record of connections between nodes and the target
-VARIABLE conn
+VARIABLE conns
 
 TypeOK ==
    /\ target.id \in Nat
@@ -24,10 +24,10 @@ TypeOK ==
          /\ target.values[p].index \in Nat
          /\ target.values[p].value \in STRING
    /\ target.running \in BOOLEAN 
-   /\ \A n \in DOMAIN conn : 
+   /\ \A n \in DOMAIN conns : 
          /\ n \in Node
-         /\ conn[n].id \in Nat
-         /\ conn[n].connected \in BOOLEAN 
+         /\ conns[n].id \in Nat
+         /\ conns[n].connected \in BOOLEAN 
 
 ----
 
@@ -39,13 +39,13 @@ Start ==
    /\ ~target.running
    /\ target' = [target EXCEPT !.id      = target.id + 1,
                                !.running = TRUE]
-   /\ UNCHANGED <<conn>>
+   /\ UNCHANGED <<conns>>
 
 Stop ==
    /\ target.running
    /\ target' = [target EXCEPT !.running = FALSE,
                                !.values  = [p \in {} |-> [index |-> 0, value |-> Nil]]]
-   /\ conn' = [n \in Node |-> [conn[n] EXCEPT !.connected = FALSE]]
+   /\ conns' = [n \in Node |-> [conns[n] EXCEPT !.connected = FALSE]]
 
 ----
 
@@ -54,15 +54,15 @@ This section specifies the behavior of connections to the target.
 *)
 
 Connect(n) ==
-   /\ ~conn[n].connected
+   /\ ~conns[n].connected
    /\ target.running
-   /\ conn' = [conn EXCEPT ![n].id        = conn[n].id + 1,
-                           ![n].connected = TRUE]
+   /\ conns' = [conns EXCEPT ![n].id        = conns[n].id + 1,
+                             ![n].connected = TRUE]
    /\ UNCHANGED <<target>>
 
 Disconnect(n) ==
-   /\ conn[n].connected
-   /\ conn' = [conn EXCEPT ![n].connected = FALSE]
+   /\ conns[n].connected
+   /\ conns' = [conns EXCEPT ![n].connected = FALSE]
    /\ UNCHANGED <<target>>
 
 =============================================================================

@@ -20,7 +20,7 @@ CONSTANT Node
 
 \* Variables defined by other modules.
 VARIABLES 
-   conn
+   conns
 
 \* A record of target masterships
 VARIABLE mastership
@@ -32,7 +32,7 @@ TypeOK ==
 
 LOCAL State == [
    mastership |-> mastership,
-   conns      |-> conn]
+   conns      |-> conns]
 
 LOCAL Transitions ==
    IF mastership' # mastership THEN [mastership |-> mastership'] ELSE <<>>
@@ -52,16 +52,16 @@ can be unset when the target disconnects.
 *)
 
 ReconcileMastership(n) ==
-   /\ \/ /\ conn[n].connected
+   /\ \/ /\ conns[n].connected
          /\ mastership.master = Nil
          /\ mastership' = [
                master |-> n, 
                term   |-> mastership.term + 1,
-               conn   |-> conn[n].id]
-      \/ /\ \/ ~conn[n].connected
-            \/ conn[n].id # mastership.conn
+               conn   |-> conns[n].id]
+      \/ /\ \/ ~conns[n].connected
+            \/ conns[n].id # mastership.conn
          /\ mastership.master = n
          /\ mastership' = [mastership EXCEPT !.master = Nil]
-   /\ UNCHANGED <<conn>>
+   /\ UNCHANGED <<conns>>
 
 =============================================================================

@@ -27,7 +27,7 @@ Status ==
 \* Variables defined by other modules.
 VARIABLES 
    mastership,
-   conn,
+   conns,
    target
 
 \* A record of per-target configurations
@@ -51,7 +51,7 @@ TypeOK ==
 LOCAL State == [
    configuration |-> configuration,
    mastership    |-> mastership,
-   conns         |-> conn,
+   conns         |-> conns,
    target        |-> target]
 
 LOCAL Transitions ==
@@ -72,8 +72,8 @@ ReconcileConfiguration(n) ==
    /\ \/ /\ configuration.state = Pending
          /\ configuration.term = mastership.term
          /\ mastership.master = n
-         /\ conn[n].id = mastership.conn
-         /\ conn[n].connected
+         /\ conns[n].id = mastership.conn
+         /\ conns[n].connected
          /\ target.running
          /\ target' = [target EXCEPT !.values = configuration.applied.values]
          /\ configuration' = [configuration EXCEPT !.state = Complete]
@@ -81,6 +81,6 @@ ReconcileConfiguration(n) ==
          /\ configuration' = [configuration EXCEPT !.state = Pending,
                                                    !.term  = mastership.term]
          /\ UNCHANGED <<target>>
-   /\ UNCHANGED <<mastership, conn>>
+   /\ UNCHANGED <<mastership, conns>>
 
 =============================================================================

@@ -50,7 +50,7 @@ Empty == [p \in {} |-> Nil]
 VARIABLES 
    configuration,
    mastership,
-   conn,
+   conns,
    target
 
 \* A transaction log. Transactions may either request a set
@@ -81,7 +81,7 @@ LOCAL State == [
    transactions  |-> transactions,
    configuration |-> configuration,
    mastership    |-> mastership,
-   conn          |-> conn,
+   conns         |-> conns,
    target        |-> target]
 
 LOCAL Transitions ==
@@ -118,7 +118,7 @@ AppendChange(i) ==
                   commit  |-> Nil,
                   apply   |-> Nil]]
          IN /\ transactions' = Append(transactions, transaction)
-   /\ UNCHANGED <<configuration, mastership, conn, target, history>>
+   /\ UNCHANGED <<configuration, mastership, conns, target, history>>
 
 \* Add a rollback of revision 'i' to the transaction log
 RollbackChange(i) ==
@@ -128,7 +128,7 @@ RollbackChange(i) ==
    /\ transactions' = [transactions EXCEPT ![i].phase           = Rollback,
                                            ![i].rollback.commit = Pending,
                                            ![i].rollback.apply  = Pending]
-   /\ UNCHANGED <<configuration, mastership, conn, target, history>>
+   /\ UNCHANGED <<configuration, mastership, conns, target, history>>
 
 ----
 
@@ -200,7 +200,7 @@ CommitChange(n, i) ==
          /\ configuration' = [configuration EXCEPT !.committed.index  = i,
                                                    !.committed.change = i]
          /\ UNCHANGED <<transactions, history>>
-   /\ UNCHANGED <<mastership, conn, target>>
+   /\ UNCHANGED <<mastership, conns, target>>
 
 ApplyChange(n, i) ==
    /\ transactions[i].change.commit = Complete
@@ -244,8 +244,8 @@ ApplyChange(n, i) ==
          /\ \/ /\ configuration.applied.ordinal # transactions[i].change.ordinal
                /\ configuration.state = Complete
                /\ configuration.term = mastership.term
-               /\ conn[n].id = mastership.conn
-               /\ conn[n].connected
+               /\ conns[n].id = mastership.conn
+               /\ conns[n].connected
                /\ target.running
                /\ \/ /\ target' = [target EXCEPT !.values = transactions[i].change.values @@ target.values]
                      /\ configuration' = [configuration EXCEPT !.applied.index    = i,
@@ -280,7 +280,7 @@ ApplyChange(n, i) ==
                                                    !.applied.index   = i,
                                                    !.applied.ordinal = transactions[i].change.ordinal]
          /\ UNCHANGED <<transactions, target, history>>
-   /\ UNCHANGED <<mastership, conn>>
+   /\ UNCHANGED <<mastership, conns>>
 
 ReconcileChange(n, i) ==
    /\ transactions[i].phase = Change
@@ -326,7 +326,7 @@ CommitRollback(n, i) ==
                /\ transactions' = [transactions EXCEPT ![i].rollback.commit  = Complete,
                                                        ![i].rollback.ordinal = configuration.committed.ordinal]
                /\ UNCHANGED <<configuration, history>>
-   /\ UNCHANGED <<mastership, conn, target>>
+   /\ UNCHANGED <<mastership, conns, target>>
 
 ApplyRollback(n, i) ==
    /\ transactions[i].rollback.commit = Complete
@@ -390,8 +390,8 @@ ApplyRollback(n, i) ==
          /\ \/ /\ configuration.applied.ordinal # transactions[i].rollback.ordinal
                /\ configuration.state = Complete
                /\ configuration.term = mastership.term
-               /\ conn[n].id = mastership.conn
-               /\ conn[n].connected
+               /\ conns[n].id = mastership.conn
+               /\ conns[n].connected
                /\ target.running
                /\ target' = [target EXCEPT !.values = transactions[i].rollback.values @@ target.values]
                /\ configuration' = [configuration EXCEPT !.applied.index    = i,
@@ -411,7 +411,7 @@ ApplyRollback(n, i) ==
                /\ configuration.applied.revision = transactions[i].rollback.index
                /\ transactions' = [transactions EXCEPT ![i].rollback.apply = Complete]
                /\ UNCHANGED <<configuration, target, history>>
-   /\ UNCHANGED <<mastership, conn>>
+   /\ UNCHANGED <<mastership, conns>>
 
 ReconcileRollback(n, i) ==
    /\ transactions[i].phase = Rollback
